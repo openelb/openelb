@@ -47,6 +47,4 @@ Porter LB controller 是基于 [Kubernetes controller runtime](https://github.co
 
 ## 开源许可
 
-**Porter** is licensed under the Apache License, Version 2.0. See
-[LICENSE](https://github.com/kubesphere/porter/blob/master/LICENSE) for the full
-license text.
+**Porter** is licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE) for the full license text.
