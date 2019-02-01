@@ -18,38 +18,28 @@ Porter LB controller 是基于 [Kubernetes controller runtime](https://github.co
 
 ![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/logic.png)
 
+## 物理架构
+
+下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
+
+![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/architecture.png)
+
 ## 部署插件
 
 1. [在物理部署的 k8s 集群上部署](https://github.com/kubesphere/porter/blob/master/doc/deploy_baremetal.md)
 2. [在青云上用模拟路由器的方式开始](https://github.com/kubesphere/porter/blob/master/doc/simulate_with_bird.md)
 
-## 服务的Porter注记
-如果应用想要使用Porter来暴露服务，需要在应用对应的服务中创建如下标记：
-```yaml
-annotations:
-    lb.kubesphere.io/v1alpha1: porter
-```
-同时，服务的类型需要为`LoadBalancer`
-```yaml
-spec:
-    type: LoadBalancer
-```
-可以参考代码仓库中的[nginx样例](https://github.com/kubesphere/porter/blob/master/config/sample/service.yaml)
-
-## 物理架构
-下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
-
-![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/architecture.png)
-
 ## 从代码构建新的插件
 
 ### 软件需求
+
 1. go 1.11，插件使用了 [gobgp](https://github.com/osrg/gobgp) 创建 BGP 服务端，gobgp 需要 go 1.11
 2. docker，无版本限制
 3. kustomize，插件使用了 [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) 动态生成集群所需的 k8s yaml 文件
 4. 如果插件会推送到远端私有仓库，需要提前执行 `docker login`
 
 ### 步骤
+
 1. `git clone https://github.com/kubesphere/porter.git`, 进入代码目录 
 2. `dep ensure --vendor-only`拉取依赖
 3. 按照上面教程的要求修改 config.toml (位于 `config/bgp/` 下） 
