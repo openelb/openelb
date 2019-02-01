@@ -3,7 +3,7 @@
 
 # Porter
 
-`Porter` 是一款适用于物理机部署 Kubernetes 的负载均衡器，该负载均衡器使用物理交换机实现，从而达到性能最优和高可用性。我们知道在云上部署的 Kubernetes 环境下，通常云服务厂商会提供 cloud LB 插件暴露 Kubernetes 服务到外网，但在物理机部署环境下由于没有云环境，服务暴露给外网非常不方便，Porter 是一个提供用户在物理环境暴露服务和在云上暴露服务一致性体验的插件。该插件提供两大功能模块：
+`Porter` 是一款适用于物理机部署 Kubernetes 的负载均衡器，该负载均衡器使用物理交换机实现，利用 BGP 和 ECMP 从而达到性能最优和高可用性。我们知道在云上部署的 Kubernetes 环境下，通常云服务厂商会提供 cloud LB 插件暴露 Kubernetes 服务到外网，但在物理机部署环境下由于没有云环境，服务暴露给外网非常不方便，Porter 是一个提供用户在物理环境暴露服务和在云上暴露服务一致性体验的插件。该插件提供两大功能模块：
 
 1. LB controller，负责同步 BGP 路由到物理交换机；
 2. EIP service，包括 EIP pool 管理和 EIP controller，controller 会负责更新服务的 EIP 信息。
@@ -27,7 +27,7 @@ Porter LB controller 是基于 [Kubernetes controller runtime](https://github.co
 ## 部署插件
 
 1. [在物理部署的 k8s 集群上部署](https://github.com/kubesphere/porter/blob/master/doc/deploy_baremetal.md)
-2. [在青云上用模拟路由器的方式开始](https://github.com/kubesphere/porter/blob/master/doc/simulate_with_bird.md)
+2. [在青云上用模拟路由器的方式测试](https://github.com/kubesphere/porter/blob/master/doc/simulate_with_bird.md)
 
 ## 从代码构建新的插件
 
