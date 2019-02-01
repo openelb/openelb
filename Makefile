@@ -5,7 +5,7 @@ IMG ?= kubespheredev/porter:0.0.1
 all: test manager
 
 # Run tests
-test: generate fmt vet manifests
+test: fmt vet manifests
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
@@ -59,6 +59,10 @@ debug-log:
 clean-up:
 	docker rmi $(docker images | grep "kubesphere/porter" | awk '{print $3}') 
 
-release: fmt vet
+release: test
 	./hack/deploy.sh ${IMG}
+	@echo "Done, the yaml is in deploy folder named 'release.yaml'"
+
+release-with-private-registry: test
+	./hack/deploy.sh ${IMG} --private
 	@echo "Done, the yaml is in deploy folder named 'release.yaml'"
