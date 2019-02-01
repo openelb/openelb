@@ -1,0 +1,10 @@
+[global.config]
+    as = 65000
+    router-id = "192.168.98.111"
+    port = 17900
+[[neighbors]]
+    [neighbors.config]
+        neighbor-address = "192.168.98.5"
+        peer-as = 65001
+    [neighbors.add-paths.config]
+        send-max = 8
