@@ -12,5 +12,9 @@ var _ = Describe("Util", func() {
 			ip := util.GetOutboundIP()
 			Expect(ip).ShouldNot(BeZero())
 		})
+		It("Should print right string", func() {
+			str := util.ToCommonString("1.0.0.1", 24)
+			Expect(str).To(Equal("1.0.0.1/24"))
+		})
 	})
 })

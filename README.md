@@ -7,14 +7,27 @@
 
 ## 工作原理
 
-该插件部署在集群中时，会与集群的边界路由器（三层交换机）建立BGP连接。每当集群中创建了带有特定注记的服务时，就会为该服务动态分配EIP，EIP将以辅助IP的形式绑定在Controller所在的节点主网卡上，然后创建路由，BGP将路由传导到公网（私网）中，使得外部能够访问这个服务。
+该插件部署在集群中时，会与集群的边界路由器（三层交换机）建立BGP连接。每当集群中创建了带有porter注记的服务时，就会为该服务动态分配EIP，EIP将以辅助IP的形式绑定在Controller所在的节点主网卡上，然后创建路由，BGP将路由传导到公网（私网）中，使得外部能够访问这个服务。
 
 ![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/logic.png)
 
-## 如何使用
+## 部署插件
 
 1. [在物理部署的k8s集群上部署](https://github.com/kubesphere/porter/blob/master/doc/deploy_baremetal.md)
 2. [在青云上用模拟路由器的方式开始](https://github.com/kubesphere/porter/blob/master/doc/simulate_with_bird.md)
+
+## 服务的Porter注记
+如果应用想要使用Porter来暴露服务，需要在应用对应的服务中创建如下标记：
+```yaml
+annotations:
+    lb.kubesphere.io/v1alpha1: porter
+```
+同时，服务的类型需要为`LoadBalancer`
+```yaml
+spec:
+    type: LoadBalancer
+```
+可以参考代码仓库中的[nginx样例](https://github.com/kubesphere/porter/blob/master/config/sample/service.yaml)
 
 ## 物理架构
 ![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/architecture.png)
