@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= kubesphere/porter:0.0.1
+IMG ?= kubespheredev/porter:0.0.1
 
 all: test manager
 

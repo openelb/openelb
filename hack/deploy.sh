@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-set -o
+set -u
 
 IMG=$1
 echo "Building binary"

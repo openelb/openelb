@@ -10,7 +10,7 @@ var _ = Describe("Util", func() {
 	Context("Tests of net function", func() {
 		It("Should get right ip", func() {
 			ip := util.GetOutboundIP()
-			Expect(ip).To(Equal("172.31.129.11"))
+			Expect(ip).ShouldNot(BeZero())
 		})
 	})
 })
