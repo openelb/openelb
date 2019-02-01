@@ -70,13 +70,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	//watch services
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if validate.HasPorterLBAnnotation(e.MetaNew.GetAnnotations()) || validate.HasPorterLBAnnotation(e.MetaOld.GetAnnotations()) {
-				return e.ObjectOld != e.ObjectNew
+			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
+				if validate.HasPorterLBAnnotation(e.MetaNew.GetAnnotations()) || validate.HasPorterLBAnnotation(e.MetaOld.GetAnnotations()) {
+					return e.ObjectOld != e.ObjectNew
+				}
 			}
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			return validate.HasPorterLBAnnotation(e.Meta.GetAnnotations())
+			if validate.IsTypeLoadBalancer(e.Object) {
+				return validate.HasPorterLBAnnotation(e.Meta.GetAnnotations())
+			}
+			return false
 		},
 	}
 	// Watch for changes to Service
@@ -85,7 +90,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	//watch endpoints
 	return nil
 }
 
@@ -204,6 +208,7 @@ func createLB(serv *corev1.Service) error {
 		return err
 	}
 	log.Info("VIP added successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
+	log.Info("Pls visit " + ip + ":" + serv.Spec.Ports[0].Port + " to check it out")
 	return nil
 }
 

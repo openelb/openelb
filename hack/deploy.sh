@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-set -o
 
 IMG=$1
 echo "Building binary"
@@ -14,8 +13,16 @@ docker push $IMG
 
 echo "updating kustomize image patch file for manager resource"
 sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
-dockerconfig=`cat ~/.docker/config.json | base64 -w 0`
-sed -i -e 's/dockerconfigjson:.*/dockerconfigjson: '"$dockerconfig"'/' ./config/default/manager_secret_patch.yaml
+
+if [ "$2" == "--private" ]; then
+    echo "add pull registry to manifest"
+    dockerconfig=`cat ~/.docker/config.json | base64 -w 0`
+    sed -i -e 's/dockerconfigjson:.*/dockerconfigjson: '"$dockerconfig"'/' ./config/overlays/private_registry/manager_secret.yaml
+    echo "Building yamls"
+    kustomize build config/overlays/private_registry -o deploy/release.yaml
+    exit 0   
+fi
 
 echo "Building yamls"
 kustomize build config/default -o deploy/release.yaml
+

@@ -44,8 +44,6 @@ spec:
       hostNetwork: true
       nodeSelector:
         dedicated: master
-      imagePullSecrets:
-        - name: pullkey
       containers:
       - command:
         - /manager
@@ -97,11 +95,3 @@ metadata:
   name: webhook-server-secret
   namespace: system
 
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pullkey
-data:
-  .dockerconfigjson:  {dockerconfig}
-type: kubernetes.io/dockerconfigjson

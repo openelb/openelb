@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
   name:  mylbapp
   annotations:
-    lb.kubesphere.io/v1apha1: porter
+    lb.kubesphere.io/v1alpha1: porter
 spec:
   externalIPs:
   - 139.198.121.228

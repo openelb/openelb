@@ -107,7 +107,7 @@
     metadata:
     name:  mylbapp
     annotations:
-        lb.kubesphere.io/v1apha1: porter
+        lb.kubesphere.io/v1alpha1: porter
     spec:
     externalIPs:
     - 139.198.121.228
@@ -120,8 +120,9 @@
         targetPort:  80
     ```
     可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/config/sample/service.yaml)
+    > 使用这个样例之前需先替换里面的EIP
     ```
-    kubectl apply -f https://raw.githubusercontent.com/kubesphere/porter/master/config/sample/service.yaml
+    kubectl apply -f service.yaml
     ``` 
 7. 检查一下Porter日志，如果没问题，就可以按照Service中的EIP和其端口访问服务了。
    ```bash
