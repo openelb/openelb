@@ -28,3 +28,38 @@ func IsTypeLoadBalancer(obj runtime.Object) bool {
 	}
 	return false
 }
+
+func IsNodeChangeWhenEPUpdate(a *corev1.Endpoints, b *corev1.Endpoints) bool {
+	if len(a.Subsets) != len(b.Subsets) {
+		return true
+	}
+	if len(a.Subsets) == 0 {
+		return false
+	}
+	if (len(a.Subsets[0].Addresses) + len(a.Subsets[0].NotReadyAddresses)) != (len(b.Subsets[0].Addresses) + len(b.Subsets[0].NotReadyAddresses)) {
+		return true
+	}
+	nodeMapa := make(map[string]bool)
+	for _, addr := range a.Subsets[0].Addresses {
+		nodeMapa[*addr.NodeName] = true
+	}
+	for _, addr := range a.Subsets[0].NotReadyAddresses {
+		nodeMapa[*addr.NodeName] = true
+	}
+	nodeMapb := make(map[string]interface{})
+	for _, addr := range b.Subsets[0].Addresses {
+		nodeMapb[*addr.NodeName] = true
+	}
+	for _, addr := range b.Subsets[0].NotReadyAddresses {
+		nodeMapb[*addr.NodeName] = true
+	}
+	if len(nodeMapa) != len(nodeMapb) {
+		return true
+	}
+	for key := range nodeMapa {
+		if _, ok := nodeMapb[key]; !ok {
+			return true
+		}
+	}
+	return false
+}

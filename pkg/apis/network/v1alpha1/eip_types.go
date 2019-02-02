@@ -34,8 +34,8 @@ type EIPSpec struct {
 type EIPStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Enable     bool     `json:"enable,omitempty"`
-	PortsUsage []uint16 `json:"portsUsage,omitempty"`
+	Enable     bool    `json:"enable,omitempty"`
+	PortsUsage []int32 `json:"portsUsage,omitempty"`
 }
 
 // +genclient

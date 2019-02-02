@@ -18,24 +18,17 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
-	"github.com/kubesphere/porter/pkg/bgp/routes"
 	"github.com/kubesphere/porter/pkg/util"
-	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 /**
@@ -66,31 +59,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
-
-	//watch services
-	p := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
-				if validate.HasPorterLBAnnotation(e.MetaNew.GetAnnotations()) || validate.HasPorterLBAnnotation(e.MetaOld.GetAnnotations()) {
-					return e.ObjectOld != e.ObjectNew
-				}
-			}
-			return false
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			if validate.IsTypeLoadBalancer(e.Object) {
-				return validate.HasPorterLBAnnotation(e.Meta.GetAnnotations())
-			}
-			return false
-		},
-	}
-	// Watch for changes to Service
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForObject{}, p)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	wm := NewWatchManager(c, mgr)
+	return wm.AddAllWatch()
 }
 
 var _ reconcile.Reconciler = &ReconcileService{}
@@ -128,7 +98,7 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, nil
 	}
 	if len(instance.Status.LoadBalancer.Ingress) == 0 {
-		err := createLB(instance)
+		err := r.createLB(instance)
 		if err != nil {
 			log.Error(err, "Create LB for service failed", "Service Name", instance.GetName())
 			return reconcile.Result{}, err
@@ -137,9 +107,9 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 			IP: instance.Spec.ExternalIPs[0],
 		})
 	} else {
-		if !checkLB(instance) {
+		if !r.checkLB(instance) {
 			log.Info("Detect ingress IP, however no route exsit in gbp, maybe due to the restart of controller")
-			err = createLB(instance)
+			err = r.createLB(instance)
 			if err != nil {
 				log.Error(err, "Create LB for service failed", "Service Name", instance.GetName())
 				return reconcile.Result{}, err
@@ -168,7 +138,7 @@ func (r *ReconcileService) useFinalizerIfNeeded(serv *corev1.Service) (bool, err
 		// The object is being deleted
 		if util.ContainsString(serv.ObjectMeta.Finalizers, FinalizerName) {
 			// our finalizer is present, so lets handle our external dependency
-			if err := deleteLB(serv); err != nil {
+			if err := r.deleteLB(serv); err != nil {
 				// if fail to delete the external dependency here, return with error
 				// so that it can be retried
 				return false, err
@@ -183,53 +153,4 @@ func (r *ReconcileService) useFinalizerIfNeeded(serv *corev1.Service) (bool, err
 		}
 	}
 	return false, nil
-}
-
-func getExternalIP(serv *corev1.Service) (string, error) {
-	if len(serv.Spec.ExternalIPs) > 0 {
-		return serv.Spec.ExternalIPs[0], nil
-	}
-	return "", fmt.Errorf("No available ips to use")
-}
-
-func createLB(serv *corev1.Service) error {
-	ip, err := getExternalIP(serv)
-	if err != nil {
-		return err
-	}
-	localip := util.GetOutboundIP()
-	if err := routes.AddRoute(ip, 32, localip); err != nil {
-		return err
-	}
-	//util.ExecIPRuleCommand("add", ip, "123")
-	log.Info("Routed added successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
-	if err := routes.AddVIP(ip, 32); err != nil {
-		log.Error(err, "Failed to create vip")
-		return err
-	}
-	log.Info("VIP added successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
-	log.Info(fmt.Sprintf("Pls visit %s:%d to check it out", ip, serv.Spec.Ports[0].Port))
-	return nil
-}
-
-func deleteLB(serv *corev1.Service) error {
-	ip, err := getExternalIP(serv)
-	if err != nil {
-		return err
-	}
-	log.Info("Routed deleted successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
-	if err := routes.DeleteVIP(ip, 32); err != nil {
-		return err
-	}
-	log.Info("VIP deleted successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
-	return nil
-}
-
-func checkLB(serv *corev1.Service) bool {
-	ip, err := getExternalIP(serv)
-	if err != nil {
-		log.Error(err, "Failed to get ip")
-		return false
-	}
-	return routes.IsRouteAdded(ip, 32)
 }
