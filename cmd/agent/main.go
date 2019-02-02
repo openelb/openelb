@@ -18,10 +18,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/kubesphere/porter/pkg/apis"
 	"github.com/kubesphere/porter/pkg/controller"
+	"github.com/kubesphere/porter/pkg/controller/eip/nettool"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -68,6 +71,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info("Setting up ip route")
+	command := fmt.Sprintf("ip route replace local 0/0 dev lo table %d", nettool.AgentTable)
+	_, err = exec.Command("sh", "-c", command).Output()
+	if err != nil {
+		log.Error(err, "Failed to execute command: "+command)
+		os.Exit(1)
+	}
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {

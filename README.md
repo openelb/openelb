@@ -10,7 +10,14 @@
 
 Porter 是 [KubeSphere](https://kubesphere.io/) 的一个子项目。
 
+
 ## 工作原理
+
+下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
+
+![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/architecture.png)
+
+## 插件逻辑
 
 该插件以服务的形式部署在 Kubernetes 集群中时，会与集群的边界路由器（三层交换机）建立 BGP 连接。每当集群中创建了带有特定注记（一个 annotation 为 lb.kubesphere.io/v1apha1: porter，见[示例](config/sample/service.yaml)）的服务时，就会为该服务动态分配 EIP (用户也可以自己指定 EIP)，EIP 将以辅助 IP 的形式绑定在 Controller 所在的节点主网卡上，然后创建路由，BGP 将路由传导到公网（私网）中，使得外部能够访问这个服务。
 
@@ -18,11 +25,10 @@ Porter LB controller 是基于 [Kubernetes controller runtime](https://github.co
 
 ![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/logic.png)
 
-## 物理架构
+## 部署架构
+插件通过一个`Manager`监控集群中的Service的变化，广播相关路由。同时集群中所有节点都部署有一个Agent，每当有一个EIP被使用时，就会在主机上添加一个主机路由规则，将发完这个EIP的IP报文引流到本地。
 
-下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
-
-![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/architecture.png)
+![deploy](https://github.com/kubesphere/porter/blob/master/doc/img/deploy.png)
 
 ## 部署插件
 

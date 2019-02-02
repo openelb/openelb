@@ -2,6 +2,8 @@
     as = 65000
     router-id = "192.168.98.111"
     port = 17900
+[global.use-multiple-paths.config]
+    enabled = true
 [[neighbors]]
     [neighbors.config]
         neighbor-address = "192.168.98.5"

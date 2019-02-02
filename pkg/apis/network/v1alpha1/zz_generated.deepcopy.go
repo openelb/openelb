@@ -105,8 +105,10 @@ func (in *EIPStatus) DeepCopyInto(out *EIPStatus) {
 	*out = *in
 	if in.PortsUsage != nil {
 		in, out := &in.PortsUsage, &out.PortsUsage
-		*out = make([]uint16, len(*in))
-		copy(*out, *in)
+		*out = make(map[int32]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

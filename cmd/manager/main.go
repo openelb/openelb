@@ -20,6 +20,7 @@ import (
 	"flag"
 	"os"
 
+	"github.com/kubesphere/porter/pkg/apis"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/controller"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -63,6 +64,13 @@ func main() {
 	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: metricsAddr})
 	if err != nil {
 		log.Error(err, "unable to set up overall controller manager")
+		os.Exit(1)
+	}
+
+	// Setup Scheme for all resources
+	log.Info("setting up scheme")
+	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "unable add APIs to scheme")
 		os.Exit(1)
 	}
 	// Setup all Controllers

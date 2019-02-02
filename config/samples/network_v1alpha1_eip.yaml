@@ -6,4 +6,5 @@ metadata:
   name: eip-sample
 spec:
   # Add fields here
-  foo: bar
+  address: 139.198.121.228
+  disable: false 
