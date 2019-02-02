@@ -208,7 +208,7 @@ func createLB(serv *corev1.Service) error {
 		return err
 	}
 	log.Info("VIP added successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
-	log.Info("Pls visit " + ip + ":" + serv.Spec.Ports[0].Port + " to check it out")
+	log.Info(fmt.Sprintf("Pls visit %s:%d to check it out", ip, serv.Spec.Ports[0].Port))
 	return nil
 }
 

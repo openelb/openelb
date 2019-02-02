@@ -39,8 +39,7 @@ vet:
 
 # Generate code
 generate:
-	go generate ./pkg/... ./cmd/...
-
+	go run vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i github.com/kubesphere/porter/pkg/apis/... -h hack/boilerplate.go.txt
 # Push the docker image
 docker-push:
 	docker push ${IMG}

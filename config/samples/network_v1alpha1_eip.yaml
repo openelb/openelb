@@ -1,0 +1,9 @@
+apiVersion: network.kubesphere.io/v1alpha1
+kind: EIP
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: eip-sample
+spec:
+  # Add fields here
+  foo: bar

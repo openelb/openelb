@@ -16,29 +16,9 @@ limitations under the License.
 
 package controller
 
-import (
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-)
+import "github.com/kubesphere/porter/pkg/controller/eip"
 
-// AddToXXFuncs is a list of functions to add all Controllers to the Manager/Agent
-var AddToManagerFuncs []func(manager.Manager) error
-var AddToAgentFuncs []func(manager.Manager) error
-
-// AddToManager adds all Controllers to the Manager
-func AddToManager(m manager.Manager) error {
-	for _, f := range AddToManagerFuncs {
-		if err := f(m); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func AddToAgent(m manager.Manager) error {
-	for _, f := range AddToAgentFuncs {
-		if err := f(m); err != nil {
-			return err
-		}
-	}
-	return nil
+func init() {
+	// AddToAgentFuncs is a list of functions to create controllers and add them to a agent.
+	AddToAgentFuncs = append(AddToAgentFuncs, eip.Add)
 }
