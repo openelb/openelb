@@ -2,15 +2,14 @@ package routes
 
 import (
 	"context"
+	"net"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	bgp "github.com/kubesphere/porter/pkg/bgp/serverd"
-	"github.com/kubesphere/porter/pkg/util"
+	"github.com/magicsong/porter/pkg/bgp/apiutil"
 	api "github.com/osrg/gobgp/api"
-	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
-	"golang.org/x/sys/unix"
 )
 
 var mainLink netlink.Link
@@ -60,61 +59,100 @@ func IsRouteAdded(ip string, prefix uint32) bool {
 	}
 	return result
 }
-func AddRoute(ip string, prefix uint32, nexthop string) error {
-	s := bgp.GetServer()
-	if IsRouteAdded(ip, prefix) {
-		log.Infoln("Detect route is existing ")
-		return nil
-	}
-	apipath := toAPIPath(ip, prefix, nexthop)
-	_, err := s.AddPath(context.Background(), &api.AddPathRequest{
-		Path: apipath,
-	})
-	return err
-}
 
-func deleteRoute(ip string, prefix uint32, nexthop string) error {
-	s := bgp.GetServer()
-	apipath := toAPIPath(ip, prefix, nexthop)
-	return s.DeletePath(context.Background(), &api.DeletePathRequest{
-		Path: apipath,
-	})
-}
+func ReconcileRoutes(ip string, nexthops []string) (toAdd []string, toDelete []string, err error) {
+	lookup := &api.TableLookupPrefix{
+		Prefix: ip,
+	}
+	listPathRequest := &api.ListPathRequest{
+		TableType: api.TableType_GLOBAL,
+		Family:    &api.Family{Afi: api.Family_AFI_IP, Safi: api.Family_SAFI_UNICAST},
+		Prefixes:  []*api.TableLookupPrefix{lookup},
+	}
+	origins := make(map[string]bool)
+	news := make(map[string]bool)
+	for _, item := range nexthops {
+		news[item] = true
+	}
+	fn := func(d *api.Destination) {
+		for _, path := range d.Paths {
+			attrInterfaces, _ := apiutil.UnmarshalPathAttributes()
+			nexthop := getNextHopFromPathAttributes(attrInterfaces)
+			origins[nexthop.String()] = true
+		}
+		//compare
+		for key := range origins {
+			if _, ok := news[key]; !ok {
+				toDelete = append(toDelete, key)
+			}
+		}
 
-func AddVIP(ip string, prefix uint32) error {
-	addr, err := netlink.ParseAddr(util.ToCommonString(ip, prefix))
-	if err != nil {
-		return err
-	}
-	if isAddrExist(addr) {
-		log.Info("detect vip in eth0, creating vip skipped")
-		return nil
-	}
-	return netlink.AddrAdd(mainLink, addr)
-}
-
-func DeleteVIP(ip string, prefix uint32) error {
-	addr, err := netlink.ParseAddr(util.ToCommonString(ip, prefix))
-	if err != nil {
-		return err
-	}
-	if !isAddrExist(addr) {
-		log.Info("detect no vip in eth0, deleting vip skipped")
-		return nil
-	}
-	return netlink.AddrDel(mainLink, addr)
-}
-
-func isAddrExist(find *netlink.Addr) bool {
-	addrs, err := netlink.AddrList(mainLink, unix.AF_INET)
-	if err != nil {
-		log.Errorf("Failed to get addrs of link,err:%s", err.Error())
-		return false
-	}
-	for _, addr := range addrs {
-		if addr.Equal(*find) {
-			return true
+		for key := range news {
+			if _, ok := origins[key]; !ok {
+				toAdd = append(toAdd, key)
+			}
 		}
 	}
-	return false
+
+	err = bgp.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	return
+}
+func AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
+	s := bgp.GetServer()
+	for _, nexthop := range nexthops {
+		apipath := toAPIPath(ip, prefix, nexthop)
+		_, err := s.AddPath(context.Background(), &api.AddPathRequest{
+			Path: apipath,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
+	s := bgp.GetServer()
+	for _, nexthop := range nexthops {
+		apipath := toAPIPath(ip, prefix, nexthop)
+		err := s.DeletePath(context.Background(), &api.DeletePathRequest{
+			Path: apipath,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getNextHopFromPathAttributes(attrs []bgp.PathAttributeInterface) net.IP {
+	for _, attr := range attrs {
+		switch a := attr.(type) {
+		case *bgp.PathAttributeNextHop:
+			return a.Value
+		case *bgp.PathAttributeMpReachNLRI:
+			return a.Nexthop
+		}
+	}
+	return nil
+}
+
+func AddRoute(ip string, prefix uint32, nexthops []string) error {
+	toAdd, toDelete, err := ReconcileRoutes(ip, nexthops)
+	if err != nil {
+		return err
+	}
+	err = AddMultiRoutes(ip, prefix, toAdd)
+	if err != nil {
+		return err
+	}
+	err = DeleteMultiRoutes(ip, prefix, toDelete)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeleteRoutes(ip string, nexthops []string) error {
+	return DeleteMultiRoutes(ip, 32, nexthops)
 }
