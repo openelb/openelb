@@ -3,12 +3,15 @@ package routes
 import (
 	"context"
 	"net"
+	"strconv"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	bgp "github.com/kubesphere/porter/pkg/bgp/serverd"
-	"github.com/magicsong/porter/pkg/bgp/apiutil"
+	"github.com/kubesphere/porter/pkg/bgp/apiutil"
+	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	api "github.com/osrg/gobgp/api"
+	bgp "github.com/osrg/gobgp/pkg/packet/bgp"
 	"github.com/vishvananda/netlink"
 )
 
@@ -34,12 +37,18 @@ func toAPIPath(ip string, prefix uint32, nexthop string) *api.Path {
 	})
 	attrs := []*any.Any{a1, a2}
 	return &api.Path{
-		Family: &api.Family{Afi: api.Family_AFI_IP, Safi: api.Family_SAFI_UNICAST},
-		Nlri:   nlri,
-		Pattrs: attrs,
+		Family:     &api.Family{Afi: api.Family_AFI_IP, Safi: api.Family_SAFI_UNICAST},
+		Nlri:       nlri,
+		Pattrs:     attrs,
+		Identifier: GenerateIdentifier(nexthop),
 	}
 }
 
+func GenerateIdentifier(nexthop string) uint32 {
+	index := strings.LastIndex(nexthop, ".")
+	n, _ := strconv.ParseUint(nexthop[index+1:], 0, 32)
+	return uint32(n)
+}
 func IsRouteAdded(ip string, prefix uint32) bool {
 	lookup := &api.TableLookupPrefix{
 		Prefix: ip,
@@ -53,7 +62,7 @@ func IsRouteAdded(ip string, prefix uint32) bool {
 	fn := func(d *api.Destination) {
 		result = true
 	}
-	err := bgp.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	err := bgpserver.GetServer().ListPath(context.Background(), listPathRequest, fn)
 	if err != nil {
 		panic(err)
 	}
@@ -74,9 +83,11 @@ func ReconcileRoutes(ip string, nexthops []string) (toAdd []string, toDelete []s
 	for _, item := range nexthops {
 		news[item] = true
 	}
+	found := false
 	fn := func(d *api.Destination) {
+		found = true
 		for _, path := range d.Paths {
-			attrInterfaces, _ := apiutil.UnmarshalPathAttributes()
+			attrInterfaces, _ := apiutil.UnmarshalPathAttributes(path.Pattrs)
 			nexthop := getNextHopFromPathAttributes(attrInterfaces)
 			origins[nexthop.String()] = true
 		}
@@ -86,7 +97,6 @@ func ReconcileRoutes(ip string, nexthops []string) (toAdd []string, toDelete []s
 				toDelete = append(toDelete, key)
 			}
 		}
-
 		for key := range news {
 			if _, ok := origins[key]; !ok {
 				toAdd = append(toAdd, key)
@@ -94,11 +104,14 @@ func ReconcileRoutes(ip string, nexthops []string) (toAdd []string, toDelete []s
 		}
 	}
 
-	err = bgp.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	err = bgpserver.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	if !found {
+		toAdd = nexthops
+	}
 	return
 }
 func AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
-	s := bgp.GetServer()
+	s := bgpserver.GetServer()
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
 		_, err := s.AddPath(context.Background(), &api.AddPathRequest{
@@ -112,7 +125,7 @@ func AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 }
 
 func DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
-	s := bgp.GetServer()
+	s := bgpserver.GetServer()
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
 		err := s.DeletePath(context.Background(), &api.DeletePathRequest{

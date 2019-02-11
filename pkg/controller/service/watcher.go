@@ -18,6 +18,8 @@ package service
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -83,12 +85,15 @@ func watchEndPoint(c *WatchManager) error {
 			svc := &corev1.Service{}
 			err := c.manager.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: e.MetaOld.GetNamespace(), Name: e.MetaOld.GetName()}, svc)
 			if err != nil {
+				if !errors.IsNotFound(err) {
+					log.Error(err, "Something wrong when watch Endpoints updating")
+				}
 				return false
 			}
 			if validate.IsTypeLoadBalancer(svc) && validate.HasPorterLBAnnotation(svc.GetAnnotations()) {
 				old := e.ObjectOld.(*corev1.Endpoints)
 				new := e.ObjectNew.(*corev1.Endpoints)
-				return validate.IsNodeChangeWhenEPUpdate(old, new)
+				return validate.IsNodeChangedWhenEndpointUpdated(old, new)
 			}
 			return false
 		},
@@ -96,6 +101,9 @@ func watchEndPoint(c *WatchManager) error {
 			svc := &corev1.Service{}
 			err := c.manager.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: e.Meta.GetNamespace(), Name: e.Meta.GetName()}, svc)
 			if err != nil {
+				if !errors.IsNotFound(err) {
+					log.Error(err, "Something wrong when watch Endpoints creating")
+				}
 				return false
 			}
 			if validate.IsTypeLoadBalancer(svc) {

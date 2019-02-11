@@ -29,7 +29,7 @@ func IsTypeLoadBalancer(obj runtime.Object) bool {
 	return false
 }
 
-func IsNodeChangeWhenEPUpdate(a *corev1.Endpoints, b *corev1.Endpoints) bool {
+func IsNodeChangedWhenEndpointUpdated(a *corev1.Endpoints, b *corev1.Endpoints) bool {
 	if len(a.Subsets) != len(b.Subsets) {
 		return true
 	}

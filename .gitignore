@@ -22,5 +22,6 @@ bin
 *.swp
 *.swo
 *~
+.vscode
 vendor
 deploy/release.yaml

@@ -30,18 +30,15 @@ spec:
           properties:
             address:
               type: string
+            disable:
+              type: boolean
           type: object
         status:
           properties:
-            enable:
-              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                of cluster Important: Run "make" to regenerate code after modifying
-                this file'
+            occupied:
               type: boolean
             portsUsage:
-              items:
-                type: uint16
-              type: array
+              type: object
           type: object
   version: v1alpha1
 status:
