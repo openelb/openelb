@@ -39,6 +39,6 @@ Porter使用了[gobgp](https://github.com/osrg/gobgp)来与外部路由器做路
 
 1. `neighbor-address`是路由器所在IP地址。
 2. `peer-as`是邻居所在自治域，必须与集群不同，而且还需要同路由器中配置的参数一致。 如果是私网，一般使用65000以上的自治域。
-3. `send-max`指定发送路由的上限
+3. `send-max`指定发送路由的上限，如果要实现ECMP功能，这个值必须大于1
 
 `porter`只使用了gobgp中的一小部分功能，如果有更多的需求，可以参考gobgp的配置文件说明<https://github.com/osrg/gobgp/blob/master/docs/sources/configuration.md>
