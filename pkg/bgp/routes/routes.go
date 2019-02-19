@@ -150,7 +150,11 @@ func getNextHopFromPathAttributes(attrs []bgp.PathAttributeInterface) net.IP {
 	return nil
 }
 
+<<<<<<< HEAD
 func AddRoutes(ip string, prefix uint32, nexthops []string) error {
+=======
+func AddRoute(ip string, prefix uint32, nexthops []string) error {
+>>>>>>> 553635169f63ad16aaf540318d2db46883576da8
 	toAdd, toDelete, err := ReconcileRoutes(ip, nexthops)
 	if err != nil {
 		return err
