@@ -66,3 +66,6 @@ release: test
 release-with-private-registry: test
 	./hack/deploy.sh ${IMG} --private
 	@echo "Done, the yaml is in deploy folder named 'release.yaml'"
+
+install-travis:
+	./hack/install_tools
