@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= kubespheredev/porter:0.0.1
+IMG_MANAGER ?= kubespheredev/porter-manager:0.0.1
+IMG_AGENT ?= kubespheredev/porter-agent:0.0.1
 
 all: test manager
 
@@ -40,9 +41,6 @@ vet:
 # Generate code
 generate:
 	go run vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i github.com/kubesphere/porter/pkg/apis/... -h hack/boilerplate.go.txt
-# Push the docker image
-docker-push:
-	docker push ${IMG}
 
 binary:
 	go build -o bin/manager ./cmd/manager/main.go
@@ -58,13 +56,18 @@ debug-log:
 clean-up:
 	./hack/cleanup.sh
 
-release: test
-	./hack/deploy.sh ${IMG}
+release: 
+	./hack/deploy.sh ${IMG_MANAGER} manager
+	./hack/deploy.sh ${IMG_AGENT} agent
 	kustomize build config/default -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
 release-with-private-registry: test
-	./hack/deploy.sh ${IMG} --private
+	./hack/deploy.sh ${IMG_MANAGER} manager --private
+	./hack/deploy.sh ${IMG_AGENT} agent --private
+
+	@echo "Building yamls"
+	kustomize build config/overlays/private_registry -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
 install-travis:

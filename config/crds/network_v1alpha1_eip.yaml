@@ -11,6 +11,8 @@ spec:
     kind: EIP
     plural: eips
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       properties:

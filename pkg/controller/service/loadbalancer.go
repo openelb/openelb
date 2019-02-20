@@ -42,6 +42,7 @@ func (r *ReconcileService) getEIPByString(ip string) *v1alpha1.EIP {
 	eipList := &v1alpha1.EIPList{}
 	err := r.List(context.Background(), &client.ListOptions{}, eipList)
 	if err != nil {
+		log.Error(err, "Faided to get EIP list")
 		return nil
 	}
 	for _, eip := range eipList.Items {
@@ -73,7 +74,8 @@ func (r *ReconcileService) createLB(serv *corev1.Service) error {
 	if err := routes.AddRoutes(ip, 32, nexthops); err != nil {
 		return err
 	}
-	log.Info("Routed added successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
+	log.Info("Routed added successfully", "ServiceName", serv.Name, "Namespace", serv.Namespace)
+	r.Event(serv, corev1.EventTypeNormal, "BGP Route Pulished", "Route to external-ip added successfully")
 	err = r.markEIPPorts(ip, serv.Spec.Ports, true)
 	if err != nil {
 		log.Error(nil, "failed to mark ports of ip used")
@@ -100,6 +102,7 @@ func (r *ReconcileService) createLB(serv *corev1.Service) error {
 	if !util.ContainsString(serv.Spec.ExternalIPs, ip) {
 		serv.Spec.ExternalIPs = append(serv.Spec.ExternalIPs, ip)
 	}
+	r.Event(serv, corev1.EventTypeNormal, "LB Created", fmt.Sprintf("Successfully assign EIP %s", ip))
 	log.Info(fmt.Sprintf("Pls visit %s:%d to check it out", ip, serv.Spec.Ports[0].Port))
 	return nil
 }
@@ -130,7 +133,7 @@ func (r *ReconcileService) deleteLB(serv *corev1.Service) error {
 func (r *ReconcileService) checkLB(serv *corev1.Service) bool {
 	ip, err := r.getExternalIP(serv)
 	if err != nil {
-		log.Error(err, "Failed to get ip", "ServiceName", serv.Name, "Namespace", serv.Namespace)
+		log.Info("Failed to get ip", "err", err.Error(), "ServiceName", serv.Name, "Namespace", serv.Namespace)
 		return false
 	}
 	return routes.IsRouteAdded(ip, 32)

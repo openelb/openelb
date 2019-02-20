@@ -19,10 +19,7 @@ sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/${binary}_image_pa
 if [ "$3" == "--private" ]; then
     echo "add pull registry to manifest"
     dockerconfig=`cat ~/.docker/config.json | base64 -w 0`
-    sed -i -e 's/dockerconfigjson:.*/dockerconfigjson: '"$dockerconfig"'/' ./config/overlays/private_registry/manager_secret.yaml
-    echo "Building yamls"
-    kustomize build config/overlays/private_registry -o deploy/porter.yaml
-    exit 0   
+    sed -i -e 's/dockerconfigjson:.*/dockerconfigjson: '"$dockerconfig"'/' ./config/overlays/private_registry/manager_secret.yaml 
 fi
 
 

@@ -108,8 +108,20 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 					RequeueAfter: 5 * time.Second,
 				}, nil
 			case portererror.EIPNotFoundError:
-				reconcileLog.Error(t, "Detect non-exist ips in field 'ExternalIPs'")
-				r.Event(svc, "Error", "Detect non-exist ips in field 'ExternalIPs", "Please clear field 'ExternalIPs' before using Porter")
+				reconcileLog.Error(nil, "Detect non-exist ips in field 'ExternalIPs'")
+				r.Event(svc, corev1.EventTypeWarning, "Detect non-exist externalIPs", "Clear field 'ExternalIPs' before using Porter")
+				svc.Spec.ExternalIPs = []string{}
+				err = r.Update(context.Background(), svc)
+				if err != nil {
+					reconcileLog.Error(nil, "Failed to clear field 'ExternalIPs'")
+					return reconcile.Result{}, err
+				}
+				svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{}
+				err = r.Status().Update(context.Background(), svc)
+				if err != nil {
+					reconcileLog.Error(nil, "Failed to clear field 'LoadBalancer Ingress'")
+					return reconcile.Result{}, err
+				}
 				return reconcile.Result{}, nil
 			default:
 				reconcileLog.Error(t, "Create LB for service failed")

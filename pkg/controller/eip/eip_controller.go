@@ -25,8 +25,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -59,9 +61,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
-
+	p := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			old := e.ObjectOld.(*networkv1alpha1.EIP)
+			new := e.ObjectNew.(*networkv1alpha1.EIP)
+			return old.Status.Occupied != new.Status.Occupied
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+	}
 	// Watch for changes to EIP
-	err = c.Watch(&source.Kind{Type: &networkv1alpha1.EIP{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &networkv1alpha1.EIP{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return err
 	}
