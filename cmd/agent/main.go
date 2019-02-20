@@ -18,11 +18,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/kubesphere/porter/pkg/apis"
-	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/controller"
+	"github.com/kubesphere/porter/pkg/controller/eip/nettool"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -30,29 +32,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-var bgpStartOption *bgpserver.StartOption
 var metricsAddr string
 
 func init() {
-	bgpStartOption = new(bgpserver.StartOption)
-	flag.StringVar(&bgpStartOption.ConfigFile, "f", "", "specifying a config file,required")
-	flag.StringVar(&bgpStartOption.ConfigType, "t", "toml", "specifying config type (toml, yaml, json)")
-	flag.StringVar(&bgpStartOption.GrpcHosts, "api-hosts", ":50051", "specify the hosts that gobgpd listens on")
-	flag.BoolVar(&bgpStartOption.GracefulRestart, "r", false, "flag restart-state in graceful-restart capability")
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8081", "The address the metric endpoint binds to.")
 }
 func main() {
 	flag.Parse()
-	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
-	//starting bgp server
-	log.Info("starting bgp server")
-	ready := make(chan interface{})
-	go bgpserver.Run(bgpStartOption, ready)
-	<-ready
-	log.Info("bgp server started successfully")
-	log.Info("setting up client for manager")
+	logf.SetLogger(logf.ZapLogger(false))
+	log.Info("setting up client for agent")
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "unable to set up client config")
@@ -60,12 +49,13 @@ func main() {
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
-	log.Info("setting up manager")
+	log.Info("setting up agent")
 	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: metricsAddr})
 	if err != nil {
-		log.Error(err, "unable to set up overall controller manager")
+		log.Error(err, "unable to set up overall agent")
 		os.Exit(1)
 	}
+	log.Info("Registering Components.")
 
 	// Setup Scheme for all resources
 	log.Info("setting up scheme")
@@ -73,13 +63,21 @@ func main() {
 		log.Error(err, "unable add APIs to scheme")
 		os.Exit(1)
 	}
+
 	// Setup all Controllers
 	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr); err != nil {
-		log.Error(err, "unable to register controllers to the manager")
+	if err := controller.AddToAgent(mgr); err != nil {
+		log.Error(err, "unable to register controllers to the agent")
 		os.Exit(1)
 	}
 
+	log.Info("Setting up ip route")
+	command := fmt.Sprintf("ip route replace local 0/0 dev lo table %d", nettool.AgentTable)
+	_, err = exec.Command("sh", "-c", command).Output()
+	if err != nil {
+		log.Error(err, "Failed to execute command: "+command)
+		os.Exit(1)
+	}
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {

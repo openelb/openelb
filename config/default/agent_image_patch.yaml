@@ -1,14 +1,12 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: DaemonSet
 metadata:
-  name: controller-manager
+  name: porter-agent
   namespace: system
 spec:
   template:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: magicsong/porter:8ecea89
-        name: manager
-
-
+      - image: magicsong/porter-agent:8ecea89
+        name: porter-agent

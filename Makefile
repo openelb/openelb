@@ -5,7 +5,7 @@ IMG ?= kubespheredev/porter:0.0.1
 all: test manager
 
 # Run tests
-test: fmt vet manifests
+test: fmt vet
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
@@ -39,8 +39,7 @@ vet:
 
 # Generate code
 generate:
-	go generate ./pkg/... ./cmd/...
-
+	go run vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i github.com/kubesphere/porter/pkg/apis/... -h hack/boilerplate.go.txt
 # Push the docker image
 docker-push:
 	docker push ${IMG}
@@ -48,19 +47,20 @@ docker-push:
 binary:
 	go build -o bin/manager ./cmd/manager/main.go
 
-debug:
+debug: vet
 	./hack/debug_in_cluster.sh
-debug-out-of-cluster:
-	./hack/debug_out_cluster.sh
+debug-out-of-cluster: vet
+	./hack/manager/debug_out_cluster.sh
 
 debug-log:
 	kubectl logs -f -n porter-system controller-manager-0 -c manager
 
 clean-up:
-	docker rmi $(docker images | grep "kubesphere/porter" | awk '{print $3}') 
+	./hack/cleanup.sh
 
 release: test
 	./hack/deploy.sh ${IMG}
+	kustomize build config/default -o deploy/release.yaml
 	@echo "Done, the yaml is in deploy folder named 'release.yaml'"
 
 release-with-private-registry: test

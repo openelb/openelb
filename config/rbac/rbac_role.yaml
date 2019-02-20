@@ -5,9 +5,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - ""
+  - network.kubesphere.io
   resources:
-  - services
+  - eips
   verbs:
   - get
   - list
@@ -17,6 +17,31 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - network.kubesphere.io
+  resources:
+  - eips/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
   - ""
   resources:
   - services/status
@@ -24,3 +49,19 @@ rules:
   - get
   - update
   - patch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
