@@ -60,12 +60,12 @@ clean-up:
 
 release: test
 	./hack/deploy.sh ${IMG}
-	kustomize build config/default -o deploy/release.yaml
-	@echo "Done, the yaml is in deploy folder named 'release.yaml'"
+	kustomize build config/default -o deploy/porter.yaml
+	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
 release-with-private-registry: test
 	./hack/deploy.sh ${IMG} --private
-	@echo "Done, the yaml is in deploy folder named 'release.yaml'"
+	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
 install-travis:
 	chmod +x ./hack/*.sh

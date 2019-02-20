@@ -21,7 +21,7 @@ if [ "$3" == "--private" ]; then
     dockerconfig=`cat ~/.docker/config.json | base64 -w 0`
     sed -i -e 's/dockerconfigjson:.*/dockerconfigjson: '"$dockerconfig"'/' ./config/overlays/private_registry/manager_secret.yaml
     echo "Building yamls"
-    kustomize build config/overlays/private_registry -o deploy/release.yaml
+    kustomize build config/overlays/private_registry -o deploy/porter.yaml
     exit 0   
 fi
 
