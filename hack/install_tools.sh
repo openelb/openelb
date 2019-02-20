@@ -17,10 +17,10 @@ sudo mv kubebuilder_${version}_linux_${arch} /usr/local/kubebuilder
 # update your PATH to include /usr/local/kubebuilder/bin
 export PATH=$PATH:/usr/local/kubebuilder/bin
 
-echo "install kustomize"
+# echo "install kustomize"
 
-wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 
-chmod u+x kustomize_1.0.11_linux_amd64
-sudo mv kustomize_1.0.11_linux_amd64 /usr/local/bin/kustomize
+# wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 
+# chmod u+x kustomize_1.0.11_linux_amd64
+# mv kustomize_1.0.11_linux_amd64 /home/travis/bin/kustomize
 
 echo "Tools install done"

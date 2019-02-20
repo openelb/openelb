@@ -16,7 +16,7 @@ var _ = Describe("BGP routes test", func() {
 			Expect(b).To(BeEquivalentTo(11))
 			Expect(c).To(BeEquivalentTo(133))
 		})
-		FIt("Should correctly add/delete all routes", func() {
+		It("Should correctly add/delete all routes", func() {
 			ip := "100.100.100.100"
 			nexthops := []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}
 			add, delete, err := routes.ReconcileRoutes(ip, nexthops)
