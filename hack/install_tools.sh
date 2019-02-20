@@ -12,15 +12,15 @@ curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${
 
 # extract the archive
 tar -zxvf kubebuilder_${version}_linux_${arch}.tar.gz
-sudo mv kubebuilder_${version}_linux_${arch} /usr/local/kubebuilder
+mv kubebuilder_${version}_linux_${arch} /home/travis/kubebuilder
 
 # update your PATH to include /usr/local/kubebuilder/bin
-export PATH=$PATH:/usr/local/kubebuilder/bin
+export PATH=$PATH:/home/travis/kubebuilder
 
 echo "install kustomize"
 
 wget https://github.com/kubernetes-sigs/kustomize/releases/download/v1.0.11/kustomize_1.0.11_linux_amd64 
 chmod u+x kustomize_1.0.11_linux_amd64
-sudo mv kustomize_1.0.11_linux_amd64 /usr/local/bin/kustomize
+mv kustomize_1.0.11_linux_amd64 /home/travis/bin/kustomize
 
 echo "Tools install done"
