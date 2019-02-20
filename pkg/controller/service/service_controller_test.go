@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -44,8 +43,6 @@ func TestReconcile(t *testing.T) {
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
-	cfg, err := config.GetConfig()
-	g.Expect(err).NotTo(gomega.HaveOccurred())
 	mgr, err := manager.New(cfg, manager.Options{})
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	c = mgr.GetClient()
