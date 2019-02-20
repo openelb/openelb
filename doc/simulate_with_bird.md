@@ -29,7 +29,7 @@
         add paths on; #这个参数开启之后，就可以收到porter发来的多个路由并同时存在而不会覆盖。
     }
      ```
-   上述参数给模拟路由器配置了一个邻居，邻居即是集群主节点，**这里假设了porter的controller部署在了主节点，如果不想限制porter部署在主节点，或者master不能部署pod，那么在这里需要按照上述配置，将所有可能的邻居节点按照上述规则添加到这个配置文件中。**修改该文件中的kernel部分，将其中的export all的注释取消，并开启ECMP功能。修改为：
+   上述参数给模拟路由器配置了一个邻居，邻居即是集群主节点，**这里假设了porter的controller部署在了主节点，如果不想限制porter部署在主节点，或者master不能部署pod，那么在这里需要按照上述配置，将所有可能的邻居节点按照上述规则添加到这个配置文件中**。修改该文件中的kernel部分，将其中的export all的注释取消，并开启ECMP功能。修改为：
    ```
    protocol kernel {
         scan time 60;
@@ -89,7 +89,7 @@
 
 1. 获取yaml文件
     ```
-    wget https://github.com/kubesphere/porter/releases/download/v0.0.1/release.yaml
+    wget https://github.com/kubesphere/porter/releases/download/v0.0.1/.yaml
     ```
 2. 修改yaml文件中的configmap `bgp-cfg`，请按照<https://github.com/kubesphere/porter/blob/master/doc/bgp_config.md>配置这个文件，并且需要和刚才模拟器配置相对应。
 3. 配置公网ip回路规则。和模拟路由器的问题一致，公网ip导流至集群中之后，ip包发出默认都是eth0，eth0会将此包丢弃，需要将此ip包导向模拟路由器。**这一步需要在k8s所有节点上配置，因为实际的服务可能部署在任何节点。**
@@ -102,10 +102,11 @@
    ```bash
    kubectl label nodes name_of_your_master dedicated=master #请先修改mastername
    ```
-   如果不想限制porter部署的节点，那么需要在上面配置交换机的时候，将所有节点都作为模拟路由器的邻居。并且删除release.yaml中的nodeselector:
+   如果不想限制porter部署的节点，那么需要在上面配置交换机的时候，将所有节点都作为模拟路由器的邻居。并且删除porter.yaml中的nodeselector:
    ```yaml
     nodeSelector:
         dedicated: master
+    ##如果不想限制porter控制器部署的节点，那么需要注释掉上面两行
    ```
 5. 安装porter到集群中，`kubectl apply -f release.yaml`
 6. 添加一个EIP到集群中。
@@ -119,7 +120,7 @@
     name: eip-sample
     spec:
     # Add fields here
-        address: 139.198.121.228
+        address: 139.198.121.228 #这里替换为你申请的EIP
         disable: false
     EOF 
    ```
