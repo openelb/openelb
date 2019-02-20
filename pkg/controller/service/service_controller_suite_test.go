@@ -17,10 +17,17 @@ limitations under the License.
 package service
 
 import (
+	stdlog "log"
+	"os"
+	"path/filepath"
 	"sync"
+	"testing"
 
+	"github.com/kubesphere/porter/pkg/apis"
 	"github.com/onsi/gomega"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -42,6 +49,7 @@ func TestMain(m *testing.M) {
 	t.Stop()
 	os.Exit(code)
 }
+
 // SetupTestReconcile returns a reconcile.Reconcile implementation that delegates to inner and
 // writes the request to requests after Reconcile is finished.
 func SetupTestReconcile(inner reconcile.Reconciler) (reconcile.Reconciler, chan reconcile.Request) {
