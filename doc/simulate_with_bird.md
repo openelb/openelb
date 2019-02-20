@@ -89,7 +89,7 @@
 
 1. 获取yaml文件
     ```
-    wget https://github.com/kubesphere/porter/releases/download/v0.0.1/.yaml
+    wget https://github.com/kubesphere/porter/releases/download/v0.0.1/porter.yaml
     ```
 2. 修改yaml文件中的configmap `bgp-cfg`，请按照<https://github.com/kubesphere/porter/blob/master/doc/bgp_config.md>配置这个文件，并且需要和刚才模拟器配置相对应。
 3. 配置公网ip回路规则。和模拟路由器的问题一致，公网ip导流至集群中之后，ip包发出默认都是eth0，eth0会将此包丢弃，需要将此ip包导向模拟路由器。**这一步需要在k8s所有节点上配置，因为实际的服务可能部署在任何节点。**
