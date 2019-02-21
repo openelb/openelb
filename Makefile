@@ -7,7 +7,7 @@ all: test manager
 
 # Run tests
 test: fmt vet
-	go test ./pkg/controller/... ./pkg/apis/... ./pkg/test/  -coverprofile cover.out
+	go test -v ./pkg/controller/... ./pkg/apis/... ./pkg/test/  -coverprofile cover.out
 
 # Build manager binary
 manager: fmt vet
