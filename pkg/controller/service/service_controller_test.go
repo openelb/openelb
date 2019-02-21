@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kubesphere/porter/pkg/validate"
+
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
@@ -77,8 +79,13 @@ func TestReconcile(t *testing.T) {
 	}
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Delete(context.TODO(), instance)
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
+	g.Eventually(requests, timeout).ShouldNot(gomega.Receive(gomega.Equal(expectedRequest)))
 
+	instance.Spec.Type = corev1.ServiceTypeLoadBalancer
+	instance.Annotations[validate.PorterAnnotationKey] = validate.PorterAnnotationKey
+	err = c.Update(context.TODO(), instance)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 	//create endpoints
 	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
 	err = c.Create(context.TODO(), endpoints)
