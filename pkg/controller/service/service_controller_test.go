@@ -82,6 +82,7 @@ func TestReconcile(t *testing.T) {
 	g.Eventually(requests, timeout).ShouldNot(gomega.Receive(gomega.Equal(expectedRequest)))
 
 	instance.Spec.Type = corev1.ServiceTypeLoadBalancer
+	instance.Annotations = make(map[string]string)
 	instance.Annotations[validate.PorterAnnotationKey] = validate.PorterAnnotationKey
 	err = c.Update(context.TODO(), instance)
 	g.Expect(err).NotTo(gomega.HaveOccurred())
