@@ -69,4 +69,9 @@ func TestReconcile(t *testing.T) {
 	defer c.Delete(context.TODO(), instance)
 	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 
+	endpoints := &corev1.EndPoints{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	err := c.Create(context.TODO(), endpoints)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), endpoints)
+	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 }
