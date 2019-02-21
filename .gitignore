@@ -23,4 +23,4 @@ bin
 *.swo
 *~
 .vscode
-deploy/release.yaml
+deploy/porter.yaml

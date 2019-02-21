@@ -37,7 +37,7 @@ type EIPStatus struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
+// +kubebuilder:subresource:status
 // EIP is the Schema for the eips API
 // +k8s:openapi-gen=true
 type EIP struct {
