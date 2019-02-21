@@ -38,9 +38,9 @@ func (defaultStrategy) Select(serv *corev1.Service, eips *v1alpha1.EIPList) (*v1
 	if len(eips.Items) == 0 {
 		return nil, errors.NewResourceNotEnoughError("eip")
 	}
-	for _, ip := range eips.Items {
-		if !ip.Spec.Disable && !ip.Status.Occupied {
-			return &ip, nil
+	for index := range eips.Items {
+		if !eips.Items[index].Spec.Disable && !eips.Items[index].Status.Occupied {
+			return &eips.Items[index], nil
 		}
 	}
 	return nil, fmt.Errorf("No enough EIP resource for allocation to Service: [%s]", serv.Name)
