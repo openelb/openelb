@@ -104,8 +104,7 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 			case portererror.ResourceNotEnoughError:
 				reconcileLog.Info(t.Error() + ", waiting for requeue")
 				return reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 5 * time.Second,
+					RequeueAfter: 15 * time.Second,
 				}, nil
 			case portererror.EIPNotFoundError:
 				reconcileLog.Error(nil, "Detect non-exist ips in field 'ExternalIPs'")

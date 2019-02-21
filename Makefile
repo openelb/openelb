@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter-manager:0.0.1
-IMG_AGENT ?= kubespheredev/porter-agent:0.0.1
+IMG_MANAGER ?= kubespheredev/porter-manager:v0.0.1
+IMG_AGENT ?= kubespheredev/porter-agent:v0.0.1
 
 all: test manager
 
