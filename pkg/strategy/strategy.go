@@ -40,7 +40,6 @@ func (defaultStrategy) Select(serv *corev1.Service, eips *v1alpha1.EIPList) (*v1
 	}
 	for index := range eips.Items {
 		if !eips.Items[index].Spec.Disable && !eips.Items[index].Status.Occupied {
-			fmt.Println(eips.Items[index].Spec.Address)
 			return &eips.Items[index], nil
 		}
 	}
