@@ -15,12 +15,12 @@ Porter 是 [KubeSphere](https://kubesphere.io/) 的一个子项目。
 
 下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
 
-![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/node-arch.png)
+![node architecture](doc/img/node-arch.png)
 
 ## 插件部署架构
 插件通过一个`Manager`监控集群中的Service的变化，广播相关路由。同时集群中所有节点都部署有一个Agent，每当有一个EIP被使用时，就会在主机上添加一个主机路由规则，将发完这个EIP的IP报文引流到本地。
 
-![deploy](https://github.com/kubesphere/porter/blob/master/doc/img/porter-deployment.png)
+![porter deployment](doc/img/porter-deployment.png)
 
 ## 插件逻辑
 
@@ -28,13 +28,13 @@ Porter 是 [KubeSphere](https://kubesphere.io/) 的一个子项目。
 
 Porter LB controller 是基于 [Kubernetes controller runtime](https://github.com/kubernetes-sigs/controller-runtime) 实现的 custom controller，通过 watch service 的变化自动变更路由信息。
 
-![architecture](https://github.com/kubesphere/porter/blob/master/doc/img/porter-arch.png)
+![porter architecture](doc/img/porter-arch.png)
 
 
 ## 部署插件
 
-1. [在物理部署的 k8s 集群上部署](https://github.com/kubesphere/porter/blob/master/doc/deploy_baremetal.md)
-2. [在青云上用模拟路由器的方式测试](https://github.com/kubesphere/porter/blob/master/doc/simulate_with_bird.md)
+1. [在物理部署的 k8s 集群上部署](doc/deploy_baremetal.md)
+2. [在青云上用模拟路由器的方式测试](doc/simulate_with_bird.md)
 
 ## 从代码构建新的插件
 
