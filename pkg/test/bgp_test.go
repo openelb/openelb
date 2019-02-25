@@ -29,6 +29,13 @@ var _ = Describe("BGP routes test", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(add).Should(HaveLen(0))
 			Expect(delete).Should(HaveLen(0))
+
+			//delete routes testing
+			Expect(routes.DeleteMultiRoutes(ip, 32, []string{"1.1.1.1"})).ShouldNot(HaveOccurred())
+			add, delete, err = routes.ReconcileRoutes(ip, nexthops)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(add).Should(HaveLen(1))
+			Expect(delete).Should(HaveLen(0))
 		})
 	})
 })
