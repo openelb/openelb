@@ -18,7 +18,7 @@ Porter 是 [KubeSphere](https://kubesphere.io/) 的一个子项目。
 ![node architecture](doc/img/node-arch.png)
 
 ## 插件部署架构
-插件通过一个`Manager`监控集群中的Service的变化，广播相关路由。同时集群中所有节点都部署有一个Agent，每当有一个EIP被使用时，就会在主机上添加一个主机路由规则，将发完这个EIP的IP报文引流到本地。
+插件通过一个`Manager`监控集群中的Service的变化，广播相关路由。同时集群中所有节点都部署有一个Agent，每当有一个EIP被使用时，就会在主机上添加一条主机路由规则，将发往这个EIP的IP报文引流到本地。
 
 ![porter deployment](doc/img/porter-deployment.png)
 
