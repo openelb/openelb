@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	"github.com/kubesphere/porter/pkg/apis"
@@ -32,6 +33,7 @@ import (
 
 var bgpStartOption *bgpserver.StartOption
 var metricsAddr string
+var ready bool
 
 func init() {
 	bgpStartOption = new(bgpserver.StartOption)
@@ -82,8 +84,21 @@ func main() {
 
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
+	ready = true
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
+}
+
+func addReadyProbe() {
+	http.HandleFunc("/started", func(w http.ResponseWriter, r *http.Request) {
+		if ready {
+			w.WriteHeader(200)
+			w.Write([]byte("Hello, World"))
+		} else {
+			w.WriteHeader(500)
+			w.Write([]byte("Not Ready"))
+		}
+	})
 }
