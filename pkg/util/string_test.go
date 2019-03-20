@@ -1,4 +1,4 @@
-package test
+package util_test
 
 import (
 	"github.com/kubesphere/porter/pkg/util"

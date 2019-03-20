@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/kubesphere/porter/pkg/util"
-
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
