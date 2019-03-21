@@ -17,17 +17,19 @@ package e2eutil
 import (
 	"context"
 	"fmt"
+	"io"
+	"strconv"
 	"testing"
 	"time"
 
-	"k8s.io/client-go/rest"
-
+	"github.com/kubesphere/porter/pkg/kubeutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -79,6 +81,37 @@ func WaitForDeletion(t *testing.T, dynclient client.Client, obj runtime.Object, 
 	return nil
 }
 
-func GetLogOfPod(rest *rest.RESTClient, namespace, name string, opt *corev1.PodLogOptions) (string, error) {
+func GetLogOfPod(rest *rest.RESTClient, namespace, name string, logOptions *corev1.PodLogOptions, out io.Writer) error {
+	req := rest.Get().Namespace(namespace).Name(name).SubResource("log").Param("follow", strconv.FormatBool(logOptions.Follow)).
+		Param("container", logOptions.Container).
+		Param("previous", strconv.FormatBool(logOptions.Previous)).
+		Param("timestamps", strconv.FormatBool(logOptions.Timestamps))
+	if logOptions.SinceSeconds != nil {
+		req.Param("sinceSeconds", strconv.FormatInt(*logOptions.SinceSeconds, 10))
+	}
+	if logOptions.SinceTime != nil {
+		req.Param("sinceTime", logOptions.SinceTime.Format(time.RFC3339))
+	}
+	if logOptions.LimitBytes != nil {
+		req.Param("limitBytes", strconv.FormatInt(*logOptions.LimitBytes, 10))
+	}
+	if logOptions.TailLines != nil {
+		req.Param("tailLines", strconv.FormatInt(*logOptions.TailLines, 10))
+	}
+	readCloser, err := req.Stream()
+	if err != nil {
+		return err
+	}
+	defer readCloser.Close()
+	_, err = io.Copy(out, readCloser)
+	return err
+}
 
+func GetServiceNodesIP(c client.Client, namespace, name string) ([]string, error) {
+	service := &corev1.Service{}
+	err := c.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, service)
+	if err != nil {
+		return nil, err
+	}
+	return kubeutil.GetServiceNodesIP(c, service)
 }

@@ -73,3 +73,8 @@ release-with-private-registry: test
 install-travis:
 	chmod +x ./hack/*.sh
 	./hack/install_tools.sh
+
+e2e-test: vet
+	./hack/e2e.sh
+e2e-restart:
+	./hack/e2e.sh --skip-build

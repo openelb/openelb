@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"runtime"
 	"testing"
@@ -44,14 +45,16 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Error in creating client")
 	testClient = c
 
-	restClient, err = rest.RESTClientFor(cfg)
-	Expect(err).NotTo(HaveOccurred(), "Error in creating rest client")
-
 	//waiting for controller up
 	err = e2eutil.WaitForController(c, testNamespace, "controller-manager", 5*time.Second, 2*time.Minute)
 	Expect(err).ShouldNot(HaveOccurred(), "timeout waiting for controller up: %s\n", err)
 	//waiting for bgp
 	fmt.Fprintf(GinkgoWriter, "Controller is up now")
+})
+
+var _ = AfterSuite(func() {
+	cmd := exec.Command("kubectl", "delete", "-f", workspace+"/deploy/porter.yaml")
+	Expect(cmd.Run()).ShouldNot(HaveOccurred())
 })
 
 func getWorkspace() string {

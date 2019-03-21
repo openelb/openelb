@@ -33,7 +33,7 @@ import (
 
 var bgpStartOption *bgpserver.StartOption
 var metricsAddr string
-var ready bool
+var readinessProbe bool
 
 func init() {
 	bgpStartOption = new(bgpserver.StartOption)
@@ -81,24 +81,25 @@ func main() {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
 	}
-
+	log.Info("Setting up readiness probe")
+	serverMuxA := http.NewServeMux()
+	serverMuxA.HandleFunc("/hello", serveReadinessHandler)
+	go http.ListenAndServe(":8081", serverMuxA)
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
-	ready = true
+	readinessProbe = true
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
 }
 
-func addReadyProbe() {
-	http.HandleFunc("/started", func(w http.ResponseWriter, r *http.Request) {
-		if ready {
-			w.WriteHeader(200)
-			w.Write([]byte("Hello, World"))
-		} else {
-			w.WriteHeader(500)
-			w.Write([]byte("Not Ready"))
-		}
-	})
+func serveReadinessHandler(w http.ResponseWriter, r *http.Request) {
+	if readinessProbe {
+		w.WriteHeader(200)
+		w.Write([]byte("Hello, World"))
+	} else {
+		w.WriteHeader(500)
+		w.Write([]byte("Not Ready"))
+	}
 }

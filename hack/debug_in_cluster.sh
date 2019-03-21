@@ -16,6 +16,5 @@ kustomize build config/default -o deploy/porter.yaml
 echo "Building yamls Done"
 
 echo "deploying for testing"
-kubectl apply -f config/crds
 kubectl apply -f deploy/porter.yaml
 echo "Done! Let's roll"
