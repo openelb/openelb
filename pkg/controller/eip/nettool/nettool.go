@@ -3,6 +3,7 @@ package nettool
 import (
 	"net"
 
+	"github.com/kubesphere/porter/pkg/util"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
@@ -15,7 +16,8 @@ type EIPRoute struct {
 }
 
 func init() {
-	link, _ = netlink.LinkByName("eth0")
+	interfaceName := util.GetDefaultInterfaceName()
+	link, _ = netlink.LinkByName(interfaceName)
 	AgentTable = 101
 }
 

@@ -36,14 +36,14 @@ fmt:
 
 # Run go vet against code
 vet:
-	go vet ./pkg/... ./cmd/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/...
 
 # Generate code
 generate:
 	go run vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i github.com/kubesphere/porter/pkg/apis/... -h hack/boilerplate.go.txt
 
 binary:
-	go build -o bin/manager ./cmd/manager/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager ./cmd/manager/main.go
 
 debug: vet
 	./hack/debug_in_cluster.sh
@@ -73,3 +73,8 @@ release-with-private-registry: test
 install-travis:
 	chmod +x ./hack/*.sh
 	./hack/install_tools.sh
+
+e2e-test: vet
+	./hack/e2e.sh
+e2e-restart:
+	./hack/e2e.sh --skip-build

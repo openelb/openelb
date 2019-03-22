@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	"github.com/kubesphere/porter/pkg/apis"
@@ -32,6 +33,7 @@ import (
 
 var bgpStartOption *bgpserver.StartOption
 var metricsAddr string
+var readinessProbe bool
 
 func init() {
 	bgpStartOption = new(bgpserver.StartOption)
@@ -79,11 +81,31 @@ func main() {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
 	}
-
+	log.Info("Setting up readiness probe")
+	serverMuxA := http.NewServeMux()
+	serverMuxA.HandleFunc("/hello", serveReadinessHandler)
+	go func() {
+		err := http.ListenAndServe(":8000", serverMuxA)
+		if err != nil {
+			log.Error(err, "Failed to start readiness probe")
+			os.Exit(1)
+		}
+	}()
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
+	readinessProbe = true
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
+	}
+}
+
+func serveReadinessHandler(w http.ResponseWriter, r *http.Request) {
+	if readinessProbe {
+		w.WriteHeader(200)
+		w.Write([]byte("Hello, World"))
+	} else {
+		w.WriteHeader(500)
+		w.Write([]byte("Not Ready"))
 	}
 }

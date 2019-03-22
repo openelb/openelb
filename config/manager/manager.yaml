@@ -50,6 +50,12 @@ spec:
         image: controller:latest
         imagePullPolicy: Always
         name: manager
+        readinessProbe:
+          httpGet:
+            path: /hello
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 3
         securityContext:
           capabilities:
             add: ["NET_ADMIN", "SYS_TIME"]
