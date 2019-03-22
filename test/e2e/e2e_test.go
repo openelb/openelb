@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubesphere/porter/pkg/kubeutil"
+
 	devopsv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
@@ -19,6 +21,33 @@ import (
 )
 
 var _ = Describe("E2e", func() {
+	serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
+	FIt("Should get right endpoints", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", workspace+"/config/samples/service.yaml")
+		Expect(cmd.Run()).ShouldNot(HaveOccurred())
+		defer func() {
+			cmd := exec.Command("kubectl", "delete", "-f", workspace+"/config/samples/service.yaml")
+			Expect(cmd.Run()).ShouldNot(HaveOccurred())
+			e2eutil.WaitForDeletion()
+		}()
+		Eventually(func() error {
+			service := &corev1.Service{}
+			err := testClient.Get(context.TODO(), serviceTypes, service)
+			if err != nil {
+				return err
+			}
+			ips, err := kubeutil.GetServiceNodesIP(testClient, service)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(GinkgoWriter, ips)
+			if len(ips) >= 2 {
+				return nil
+			}
+			return fmt.Errorf("Failed")
+		}).Should(Succeed())
+	})
+
 	It("Should work well when using samples", func() {
 		eip := &devopsv1alpha1.EIP{}
 		reader, err := os.Open(workspace + "/config/samples/network_v1alpha1_eip.yaml")
@@ -39,7 +68,9 @@ var _ = Describe("E2e", func() {
 			cmd := exec.Command("kubectl", "delete", "-f", workspace+"/config/samples/service.yaml")
 			Expect(cmd.Run()).ShouldNot(HaveOccurred())
 		}()
-		serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
+
+		//waiting for endpoints up
+
 		//Service should get its eip
 		Eventually(func() error {
 			service := &corev1.Service{}
@@ -83,7 +114,7 @@ var _ = Describe("E2e", func() {
 				} else {
 					return fmt.Errorf("No routes in Brid")
 				}
-			}, 30*time.Second, 2*time.Second).Should(Succeed())
+			}, time.Minute, 2*time.Second).Should(Succeed())
 		}
 	})
 	//install eip

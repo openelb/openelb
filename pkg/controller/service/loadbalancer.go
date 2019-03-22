@@ -76,6 +76,9 @@ func (r *ReconcileService) createLB(serv *corev1.Service) error {
 		return err
 	}
 	log.Info("Routed added successfully", "ServiceName", serv.Name, "Namespace", serv.Namespace)
+	for _, nexthop := range nexthops {
+		log.Info("Add Route to ", "ip", nexthop)
+	}
 	r.Event(serv, corev1.EventTypeNormal, "BGP Route Pulished", "Route to external-ip added successfully")
 	err = r.markEIPPorts(ip, serv.Spec.Ports, true)
 	if err != nil {
@@ -115,12 +118,21 @@ func (r *ReconcileService) deleteLB(serv *corev1.Service) error {
 	}
 	nodeIPs, err := r.getServiceNodesIP(serv)
 	if err != nil {
-		log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
-		return err
-	}
-	err = routes.DeleteRoutes(ip, nodeIPs)
-	if err != nil {
-		log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
+		if errors.IsNotFound(err) {
+			log.Info("Endpoints is disappearing,try to delete ip in global table")
+			err := routes.DeleteAllRoutesOfIP(ip)
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
+			return err
+		}
+	} else {
+		err = routes.DeleteRoutes(ip, nodeIPs)
+		if err != nil {
+			log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
+		}
 	}
 	err = r.markEIPPorts(ip, serv.Spec.Ports, false)
 	if err != nil {

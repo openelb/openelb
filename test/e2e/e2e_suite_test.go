@@ -53,6 +53,10 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
+	fmt.Fprintln(GinkgoWriter, "Printing logs in case of failure")
+	logcmd := exec.Command("kubectl", "logs", "-n", testNamespace, "controller-manager-0", "-c", "manager")
+	log, _ := logcmd.CombinedOutput()
+	fmt.Fprintln(GinkgoWriter, string(log))
 	cmd := exec.Command("kubectl", "delete", "-f", workspace+"/deploy/porter.yaml")
 	Expect(cmd.Run()).ShouldNot(HaveOccurred())
 })
