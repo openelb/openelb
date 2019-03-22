@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -58,16 +59,31 @@ var _ = Describe("E2e", func() {
 		if bird_ip != "" {
 			session, err := e2eutil.Connect("root", "", bird_ip, e2eutil.GetDefaultPrivateKeyFile(), 22, nil)
 			Expect(err).NotTo(HaveOccurred(), "Connect Bird using private key FAILED")
-			output, err := session.CombinedOutput("ip route")
-			Expect(err).NotTo(HaveOccurred(), "Exec ip route Failed")
-
-			ips, err := e2eutil.GetServiceNodesIP(testClient, serviceTypes.Namespace, serviceTypes.Name)
-			Expect(err).NotTo(HaveOccurred(), "Get service IPs Failed")
-			s := string(output)
-			for _, ip := range ips {
-				Expect(strings.Contains(s, fmt.Sprintf("nexthop via %s", ip))).Should(BeTrue(), "Output is %s", s)
-			}
-			Expect(strings.Contains(s, fmt.Sprintf("%s  proto bird", eip.Spec.Address))).Should(BeTrue())
+			defer session.Close()
+			stdinBuf, err := session.StdinPipe()
+			var outbt, errbt bytes.Buffer
+			session.Stdout = &outbt
+			session.Stderr = &errbt
+			err = session.Shell()
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to start ssh shell")
+			Eventually(func() error {
+				stdinBuf.Write([]byte("ip route\n"))
+				ips, err := e2eutil.GetServiceNodesIP(testClient, serviceTypes.Namespace, serviceTypes.Name)
+				if err != nil {
+					fmt.Fprintln(GinkgoWriter, "Get service IPs Failed")
+				}
+				s := outbt.String() + errbt.String()
+				for _, ip := range ips {
+					if !strings.Contains(s, fmt.Sprintf("nexthop via %s", ip)) {
+						return fmt.Errorf("No routes in Brid")
+					}
+				}
+				if strings.Contains(s, fmt.Sprintf("%s  proto bird", eip.Spec.Address)) {
+					return nil
+				} else {
+					return fmt.Errorf("No routes in Brid")
+				}
+			}, 30*time.Second, 2*time.Second).Should(Succeed())
 		}
 	})
 	//install eip

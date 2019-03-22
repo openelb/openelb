@@ -1,0 +1,20 @@
+pipeline {
+  agent {
+    docker {
+      image 'magicsong/golang1.11-s2ioperator:latest'
+      args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker'
+    }
+  }
+  stages {
+    stage('test') {
+      steps {
+        sh """
+            mkdir -p /go/src/github.com/kubesphere
+            ln -s `pwd` /go/src/github.com/kubesphere/porter
+            cd /go/src/github.com/kubesphere/porter
+            make e2e-test
+          """
+      }
+    }
+  }
+}

@@ -49,7 +49,7 @@ var _ = BeforeSuite(func() {
 	err = e2eutil.WaitForController(c, testNamespace, "controller-manager", 5*time.Second, 2*time.Minute)
 	Expect(err).ShouldNot(HaveOccurred(), "timeout waiting for controller up: %s\n", err)
 	//waiting for bgp
-	fmt.Fprintf(GinkgoWriter, "Controller is up now")
+	fmt.Fprintln(GinkgoWriter, "Controller is up now")
 })
 
 var _ = AfterSuite(func() {

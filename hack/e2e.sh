@@ -14,6 +14,7 @@ dest="./deploy/porter.yaml"
 tag=`git rev-parse --short HEAD`
 IMG=kubespheredev/porter:$tag
 TEST_NS=porter-test-$tag
+SKIP_BUILD=no
 
 while [[ $# -gt 0 ]]
 do
@@ -44,6 +45,7 @@ case $key in
     ;;
 esac
 done
+
 trap cleanup EXIT SIGINT SIGQUIT
 
 if [ $SKIP_BUILD != "yes" ];then
@@ -72,4 +74,4 @@ kubectl apply -f $dest
 
 export TEST_NS
 export BIRD_IP=192.168.98.5
-go test -v ./test/e2e/
+ginkgo -v ./test/e2e/

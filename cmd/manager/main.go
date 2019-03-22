@@ -84,7 +84,13 @@ func main() {
 	log.Info("Setting up readiness probe")
 	serverMuxA := http.NewServeMux()
 	serverMuxA.HandleFunc("/hello", serveReadinessHandler)
-	go http.ListenAndServe(":8081", serverMuxA)
+	go func() {
+		err := http.ListenAndServe(":8000", serverMuxA)
+		if err != nil {
+			log.Error(err, "Failed to start readiness probe")
+			os.Exit(1)
+		}
+	}()
 	// Start the Cmd
 	log.Info("Starting the Cmd.")
 	readinessProbe = true
