@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: porter-test-a50a1b9
+namespace: porter-test-fb41d66
 
 # Labels to add to all resources and selectors.
 #commonLabels:

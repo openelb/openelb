@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"testing"
 	"time"
 
 	"github.com/kubesphere/porter/pkg/kubeutil"
@@ -54,7 +53,7 @@ func WaitForController(c client.Client, namespace, name string, retryInterval, t
 	return err
 }
 
-func WaitForDeletion(t *testing.T, dynclient client.Client, obj runtime.Object, retryInterval, timeout time.Duration) error {
+func WaitForDeletion(dynclient client.Client, obj runtime.Object, retryInterval, timeout time.Duration) error {
 	key, err := client.ObjectKeyFromObject(obj)
 	if err != nil {
 		return err
@@ -71,13 +70,13 @@ func WaitForDeletion(t *testing.T, dynclient client.Client, obj runtime.Object, 
 		if err != nil {
 			return false, err
 		}
-		t.Logf("Waiting for %s %s to be deleted\n", kind, key)
+		fmt.Printf("Waiting for %s %s to be deleted\n", kind, key)
 		return false, nil
 	})
 	if err != nil {
 		return err
 	}
-	t.Logf("%s %s was deleted\n", kind, key)
+	fmt.Printf("%s %s was deleted\n", kind, key)
 	return nil
 }
 

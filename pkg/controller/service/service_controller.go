@@ -97,35 +97,34 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 	if needReconcile {
 		return reconcile.Result{}, nil
 	}
-	if len(svc.Status.LoadBalancer.Ingress) == 0 || !r.checkLB(svc) {
-		err := r.createLB(svc)
-		if err != nil {
-			switch t := err.(type) {
-			case portererror.ResourceNotEnoughError:
-				reconcileLog.Info(t.Error() + ", waiting for requeue")
-				return reconcile.Result{
-					RequeueAfter: 15 * time.Second,
-				}, nil
-			case portererror.EIPNotFoundError:
-				reconcileLog.Error(nil, "Detect non-exist ips in field 'ExternalIPs'")
-				r.Event(svc, corev1.EventTypeWarning, "Detect non-exist externalIPs", "Clear field 'ExternalIPs' before using Porter")
-				svc.Spec.ExternalIPs = []string{}
-				err = r.Update(context.Background(), svc)
-				if err != nil {
-					reconcileLog.Error(nil, "Failed to clear field 'ExternalIPs'")
-					return reconcile.Result{}, err
-				}
-				svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{}
-				err = r.Status().Update(context.Background(), svc)
-				if err != nil {
-					reconcileLog.Error(nil, "Failed to clear field 'LoadBalancer Ingress'")
-					return reconcile.Result{}, err
-				}
-				return reconcile.Result{}, nil
-			default:
-				reconcileLog.Error(t, "Create LB for service failed")
-				return reconcile.Result{}, t
+
+	err = r.createLB(svc)
+	if err != nil {
+		switch t := err.(type) {
+		case portererror.ResourceNotEnoughError:
+			reconcileLog.Info(t.Error() + ", waiting for requeue")
+			return reconcile.Result{
+				RequeueAfter: 15 * time.Second,
+			}, nil
+		case portererror.EIPNotFoundError:
+			reconcileLog.Error(nil, "Detect non-exist ips in field 'ExternalIPs'")
+			r.Event(svc, corev1.EventTypeWarning, "Detect non-exist externalIPs", "Clear field 'ExternalIPs' before using Porter")
+			svc.Spec.ExternalIPs = []string{}
+			err = r.Update(context.Background(), svc)
+			if err != nil {
+				reconcileLog.Error(nil, "Failed to clear field 'ExternalIPs'")
+				return reconcile.Result{}, err
 			}
+			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{}
+			err = r.Status().Update(context.Background(), svc)
+			if err != nil {
+				reconcileLog.Error(nil, "Failed to clear field 'LoadBalancer Ingress'")
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
+		default:
+			reconcileLog.Error(t, "Create LB for service failed")
+			return reconcile.Result{}, t
 		}
 	}
 	if !reflect.DeepEqual(svc, origin) {
