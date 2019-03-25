@@ -1,7 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter-manager:v0.0.1
-IMG_AGENT ?= kubespheredev/porter-agent:v0.0.1
+IMG_MANAGER ?= kubespheredev/porter-manager:v0.0.2
+IMG_AGENT ?= kubespheredev/porter-agent:v0.0.2
+NAMESPACE ?= porter-system
 
 all: test manager
 
@@ -59,6 +60,7 @@ clean-up:
 release: 
 	./hack/deploy.sh ${IMG_MANAGER} manager
 	./hack/deploy.sh ${IMG_AGENT} agent
+	sed -i '' -e  's/namespace: .*/namespace: '"${NAMESPACE}"'/' ./config/default/kustomization.yaml
 	kustomize build config/default -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
