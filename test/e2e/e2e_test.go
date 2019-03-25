@@ -95,6 +95,9 @@ var _ = Describe("E2e", func() {
 			Eventually(func() error {
 				stdinBuf.Write([]byte("ip route\n"))
 				ips, err := e2eutil.GetServiceNodesIP(testClient, serviceTypes.Namespace, serviceTypes.Name)
+				if err != nil {
+					return err
+				}
 				s := outbt.String() + errbt.String()
 				for _, ip := range ips {
 					if !strings.Contains(s, fmt.Sprintf("nexthop via %s", ip)) {

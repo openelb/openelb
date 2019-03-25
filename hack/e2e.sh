@@ -7,7 +7,7 @@ function cleanup(){
     set +e
     echo "Cleaning"
     kubectl delete ns $TEST_NS
-    #docker image rm $IMG
+    docker image rm $IMG
     exit $result
 }
 
