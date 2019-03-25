@@ -7,7 +7,9 @@ function cleanup(){
     set +e
     echo "Cleaning"
     kubectl delete ns $TEST_NS
-    docker image rm $IMG
+    if [ $SKIP_BUILD == "no" ]; then
+        docker image rm $IMG
+    fi
     exit $result
 }
 
