@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'magicsong/golang1.11-s2ioperator:latest'
+      image 'kubespheredev/porter-infra:latest'
       args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker'
     }
   }

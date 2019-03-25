@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubesphere/porter/pkg/kubeutil"
+
 	devopsv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
@@ -19,6 +21,28 @@ import (
 )
 
 var _ = Describe("E2e", func() {
+	serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
+	It("Should get right endpoints", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", workspace+"/config/samples/service.yaml")
+		Expect(cmd.Run()).ShouldNot(HaveOccurred())
+		service := &corev1.Service{}
+		Eventually(func() error {
+			err := testClient.Get(context.TODO(), serviceTypes, service)
+			return err
+		}, time.Second*20, time.Second).Should(Succeed())
+		defer deleteServiceGracefully(service)
+
+		Eventually(func() int {
+			ips, err := kubeutil.GetServiceNodesIP(testClient, service)
+			if err != nil {
+				fmt.Println("Falied to get ips using client")
+				return 0
+			}
+			fmt.Fprintln(GinkgoWriter, ips)
+			return len(ips)
+		}, time.Minute, time.Second*2).Should(BeNumerically(">=", 2))
+	})
+
 	It("Should work well when using samples", func() {
 		eip := &devopsv1alpha1.EIP{}
 		reader, err := os.Open(workspace + "/config/samples/network_v1alpha1_eip.yaml")
@@ -35,11 +59,13 @@ var _ = Describe("E2e", func() {
 		//apply service
 		cmd := exec.Command("kubectl", "apply", "-f", workspace+"/config/samples/service.yaml")
 		Expect(cmd.Run()).ShouldNot(HaveOccurred())
-		defer func() {
-			cmd := exec.Command("kubectl", "delete", "-f", workspace+"/config/samples/service.yaml")
-			Expect(cmd.Run()).ShouldNot(HaveOccurred())
-		}()
-		serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
+		service := &corev1.Service{}
+		Eventually(func() error {
+			err := testClient.Get(context.TODO(), serviceTypes, service)
+			return err
+		}, time.Second*20, time.Second).Should(Succeed())
+		defer deleteServiceGracefully(service)
+
 		//Service should get its eip
 		Eventually(func() error {
 			service := &corev1.Service{}
@@ -70,7 +96,7 @@ var _ = Describe("E2e", func() {
 				stdinBuf.Write([]byte("ip route\n"))
 				ips, err := e2eutil.GetServiceNodesIP(testClient, serviceTypes.Namespace, serviceTypes.Name)
 				if err != nil {
-					fmt.Fprintln(GinkgoWriter, "Get service IPs Failed")
+					return err
 				}
 				s := outbt.String() + errbt.String()
 				for _, ip := range ips {
@@ -83,8 +109,14 @@ var _ = Describe("E2e", func() {
 				} else {
 					return fmt.Errorf("No routes in Brid")
 				}
-			}, 30*time.Second, 2*time.Second).Should(Succeed())
+			}, time.Minute, 2*time.Second).Should(Succeed())
 		}
 	})
 	//install eip
 })
+
+func deleteServiceGracefully(service *corev1.Service) {
+	cmd := exec.Command("kubectl", "delete", "-f", workspace+"/config/samples/service.yaml")
+	Expect(cmd.Run()).ShouldNot(HaveOccurred())
+	Expect(e2eutil.WaitForDeletion(testClient, service, time.Second*5, time.Minute)).ShouldNot(HaveOccurred(), "Failed waiting for services deletion")
+}

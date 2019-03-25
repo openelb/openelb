@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *ReconcileService) getExternalIP(serv *corev1.Service) (string, error) {
+func (r *ReconcileService) getExternalIP(serv *corev1.Service, useField bool) (string, error) {
 	if len(serv.Spec.ExternalIPs) > 0 {
 		for _, ip := range serv.Spec.ExternalIPs {
 			if r.getEIPByString(ip) != nil {
@@ -25,6 +25,10 @@ func (r *ReconcileService) getExternalIP(serv *corev1.Service) (string, error) {
 			}
 		}
 		return "", portererror.NewEIPNotFoundError(strings.Join(serv.Spec.ExternalIPs, ";"))
+	} else {
+		if useField {
+			return "", portererror.NewEIPNotFoundError("")
+		}
 	}
 	eipList := &v1alpha1.EIPList{}
 	err := r.List(context.Background(), &client.ListOptions{}, eipList)
@@ -55,7 +59,7 @@ func (r *ReconcileService) getEIPByString(ip string) *v1alpha1.EIP {
 }
 
 func (r *ReconcileService) createLB(serv *corev1.Service) error {
-	ip, err := r.getExternalIP(serv)
+	ip, err := r.getExternalIP(serv, false)
 	if err != nil {
 		return err
 	}
@@ -76,6 +80,9 @@ func (r *ReconcileService) createLB(serv *corev1.Service) error {
 		return err
 	}
 	log.Info("Routed added successfully", "ServiceName", serv.Name, "Namespace", serv.Namespace)
+	for _, nexthop := range nexthops {
+		log.Info("Add Route to ", "ip", nexthop)
+	}
 	r.Event(serv, corev1.EventTypeNormal, "BGP Route Pulished", "Route to external-ip added successfully")
 	err = r.markEIPPorts(ip, serv.Spec.Ports, true)
 	if err != nil {
@@ -109,18 +116,31 @@ func (r *ReconcileService) createLB(serv *corev1.Service) error {
 }
 
 func (r *ReconcileService) deleteLB(serv *corev1.Service) error {
-	ip, err := r.getExternalIP(serv)
+	ip, err := r.getExternalIP(serv, true)
 	if err != nil {
+		if _, ok := err.(portererror.EIPNotFoundError); ok {
+			log.Info("Have not assign a ip, skip deleting LB")
+			return nil
+		}
 		return err
 	}
 	nodeIPs, err := r.getServiceNodesIP(serv)
 	if err != nil {
-		log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
-		return err
-	}
-	err = routes.DeleteRoutes(ip, nodeIPs)
-	if err != nil {
-		log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
+		if errors.IsNotFound(err) {
+			log.Info("Endpoints is disappearing,try to delete ip in global table")
+			err := routes.DeleteAllRoutesOfIP(ip)
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
+			return err
+		}
+	} else {
+		err = routes.DeleteRoutes(ip, nodeIPs)
+		if err != nil {
+			log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
+		}
 	}
 	err = r.markEIPPorts(ip, serv.Spec.Ports, false)
 	if err != nil {
@@ -129,15 +149,6 @@ func (r *ReconcileService) deleteLB(serv *corev1.Service) error {
 	}
 	log.Info("Routed deleted successful", "ServiceName", serv.Name, "Namespace", serv.Namespace)
 	return nil
-}
-
-func (r *ReconcileService) checkLB(serv *corev1.Service) bool {
-	ip, err := r.getExternalIP(serv)
-	if err != nil {
-		log.Info("Failed to get ip", "err", err.Error(), "ServiceName", serv.Name, "Namespace", serv.Namespace)
-		return false
-	}
-	return routes.IsRouteAdded(ip, 32)
 }
 
 func (r *ReconcileService) getServiceNodesIP(serv *corev1.Service) ([]string, error) {

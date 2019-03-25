@@ -12,18 +12,8 @@ import (
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	api "github.com/osrg/gobgp/api"
 	bgp "github.com/osrg/gobgp/pkg/packet/bgp"
-	"github.com/vishvananda/netlink"
 )
 
-var mainLink netlink.Link
-
-func init() {
-	link, err := netlink.LinkByName("eth0")
-	if err != nil {
-		panic(err)
-	}
-	mainLink = link
-}
 func toAPIPath(ip string, prefix uint32, nexthop string) *api.Path {
 	nlri, _ := ptypes.MarshalAny(&api.IPAddressPrefix{
 		Prefix:    ip,
@@ -168,4 +158,35 @@ func AddRoutes(ip string, prefix uint32, nexthops []string) error {
 
 func DeleteRoutes(ip string, nexthops []string) error {
 	return DeleteMultiRoutes(ip, 32, nexthops)
+}
+
+func DeleteAllRoutesOfIP(ip string) error {
+	lookup := &api.TableLookupPrefix{
+		Prefix: ip,
+	}
+	listPathRequest := &api.ListPathRequest{
+		TableType: api.TableType_GLOBAL,
+		Family:    &api.Family{Afi: api.Family_AFI_IP, Safi: api.Family_SAFI_UNICAST},
+		Prefixes:  []*api.TableLookupPrefix{lookup},
+	}
+	s := bgpserver.GetServer()
+	var errDelete error
+	fn := func(d *api.Destination) {
+		for _, path := range d.Paths {
+			errDelete = s.DeletePath(context.Background(), &api.DeletePathRequest{
+				Path: path,
+			})
+			if errDelete != nil {
+				return
+			}
+		}
+	}
+	err := bgpserver.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	if err != nil {
+		return err
+	}
+	if errDelete != nil {
+		return errDelete
+	}
+	return nil
 }
