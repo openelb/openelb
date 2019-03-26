@@ -34,8 +34,8 @@ case $key in
     shift # past argument
     shift # past value
     ;;
-    -l|--lib)
-    LIBPATH="$2"
+    -t|--tag)
+    tag="$2"
     shift # past argument
     shift # past value
     ;;

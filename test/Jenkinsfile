@@ -5,14 +5,43 @@ pipeline {
       args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker'
     }
   }
+  environment {
+    tag = sh(
+      script: 'git rev-parse --short HEAD',
+      returnStdout: true
+    ).trim()
+  }
   stages {
-    stage('test') {
-      steps {
+    stage('Prepare'){
+      steps{
         sh """
             mkdir -p /go/src/github.com/kubesphere
             ln -s `pwd` /go/src/github.com/kubesphere/porter
+        """
+      }
+    }
+    stage('Building Manager'){
+      steps{
+        sh """
             cd /go/src/github.com/kubesphere/porter
-            make e2e-test
+            ./hack/deploy.sh kubespheredev/porter:$tag manager
+        """
+      }
+    }
+    stage('Building Agent'){
+      steps{
+        sh """
+            cd /go/src/github.com/kubesphere/porter
+            ./hack/deploy.sh kubespheredev/porter-agent:$tag agent
+        """
+      }
+    }
+    stage('Test') {
+      steps {
+        echo "Using TAG $tag to run e2e"
+        sh """
+            cd /go/src/github.com/kubesphere/porter
+            make e2e-restart
           """
       }
     }
