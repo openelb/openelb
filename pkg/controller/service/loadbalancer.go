@@ -11,18 +11,15 @@ import (
 	"github.com/kubesphere/porter/pkg/bgp/routes"
 	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/strategy"
-	"github.com/kubesphere/porter/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *ReconcileService) getExternalIP(serv *corev1.Service, useField bool) (string, error) {
-	if len(serv.Spec.ExternalIPs) > 0 {
-		for _, ip := range serv.Spec.ExternalIPs {
-			if r.getEIPByString(ip) != nil {
-				return ip, nil
-			}
+	if len(serv.Status.LoadBalancer.Ingress) > 0 {
+		if r.getEIPByString(serv.Status.LoadBalancer.Ingress[0].IP) != nil {
+			return serv.Status.LoadBalancer.Ingress[0].IP, nil
 		}
 		return "", portererror.NewEIPNotFoundError(strings.Join(serv.Spec.ExternalIPs, ";"))
 	} else {
@@ -105,12 +102,8 @@ func (r *ReconcileService) createLB(serv *corev1.Service) error {
 			log.Error(nil, "failed to update LoadBalancer of service", "ServiceName", serv.Name, "Namespace", serv.Namespace)
 			return err
 		}
+		r.Event(serv, corev1.EventTypeNormal, "LB Created", fmt.Sprintf("Successfully assign EIP %s", ip))
 	}
-
-	if !util.ContainsString(serv.Spec.ExternalIPs, ip) {
-		serv.Spec.ExternalIPs = append(serv.Spec.ExternalIPs, ip)
-	}
-	r.Event(serv, corev1.EventTypeNormal, "LB Created", fmt.Sprintf("Successfully assign EIP %s", ip))
 	log.Info(fmt.Sprintf("Pls visit %s:%d to check it out", ip, serv.Spec.Ports[0].Port))
 	return nil
 }

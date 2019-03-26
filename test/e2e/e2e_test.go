@@ -9,9 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubesphere/porter/pkg/kubeutil"
-
 	devopsv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	"github.com/kubesphere/porter/pkg/kubeutil"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -73,10 +72,8 @@ var _ = Describe("E2e", func() {
 			if err != nil {
 				return err
 			}
-			if len(service.Spec.ExternalIPs) > 0 && len(service.Status.LoadBalancer.Ingress) > 0 {
-				if service.Spec.ExternalIPs[0] == eip.Spec.Address && service.Status.LoadBalancer.Ingress[0].IP == eip.Spec.Address {
-					return nil
-				}
+			if len(service.Status.LoadBalancer.Ingress) > 0 && service.Status.LoadBalancer.Ingress[0].IP == eip.Spec.Address {
+				return nil
 			}
 			return fmt.Errorf("Failed")
 		}, 2*time.Minute, time.Second).Should(Succeed())
