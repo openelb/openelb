@@ -48,10 +48,10 @@ Porter LB controller 是基于 [Kubernetes controller runtime](https://github.co
 ### 步骤
 
 1. `git clone https://github.com/kubesphere/porter.git`, 进入代码目录 
-2. `dep ensure --vendor-only`拉取依赖
-3. 按照上面教程的要求修改 config.toml (位于 `config/bgp/` 下） 
-4. （optional）根据自己需要修改代码
-5. （optional）根据自己的需求修改镜像的参数（位于 `config/manager` 下）
+2. 按照上面教程的要求修改 config.toml (位于 `config/bgp/` 下） 
+3. （optional）根据自己需要修改代码
+4. （optional）根据自己的需求修改镜像的参数（位于 `config/manager` 下）
+5. （optional）按照[模拟教程](doc/simulate_with_bird.md)部署一个Bird主机，修改`hack/e2e.sh`中的BirdIP，然后运行`make e2e-test`进行e2e测试
 6. 修改 Makefile中 的 IMG 名称，然后 `make release`，最终的 yaml 文件在 `deploy` 目录下
 7. `kubectl apply -f deploy/release.yaml` 部署插件
 
