@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter-manager:v0.0.2
-IMG_AGENT ?= kubespheredev/porter-agent:v0.0.2
+IMG_MANAGER ?= kubespheredev/porter:v0.0.3
+IMG_AGENT ?= kubespheredev/porter-agent:v0.0.3
 NAMESPACE ?= porter-system
 
 all: test manager
@@ -43,9 +43,6 @@ vet:
 generate:
 	go run vendor/k8s.io/code-generator/cmd/deepcopy-gen/main.go -O zz_generated.deepcopy -i github.com/kubesphere/porter/pkg/apis/... -h hack/boilerplate.go.txt
 
-binary:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager ./cmd/manager/main.go
-
 debug: vet
 	./hack/debug_in_cluster.sh
 debug-out-of-cluster: vet
@@ -57,7 +54,7 @@ debug-log:
 clean-up:
 	./hack/cleanup.sh
 
-release: test
+release:
 	./hack/deploy.sh ${IMG_MANAGER} manager
 	./hack/deploy.sh ${IMG_AGENT} agent
 	sed -i '' -e  's/namespace: .*/namespace: '"${NAMESPACE}"'/' ./config/default/kustomization.yaml
