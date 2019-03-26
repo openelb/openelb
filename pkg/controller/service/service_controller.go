@@ -78,7 +78,7 @@ type ReconcileService struct {
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Service instance
-	log.Info("Begin to reconclie for service")
+	log.Info("----------------Begin to reconclie for service-------------------")
 	svc := &corev1.Service{}
 	err := r.Get(context.TODO(), request.NamespacedName, svc)
 	if err != nil {
@@ -123,6 +123,10 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 			return reconcile.Result{}, nil
 		default:
+			if errors.IsNotFound(err) {
+				log.Info("Maybe sevice has been deleted, skipping reconciling")
+				return reconcile.Result{}, nil
+			}
 			reconcileLog.Error(t, "Create LB for service failed")
 			return reconcile.Result{}, t
 		}
