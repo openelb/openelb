@@ -25,3 +25,4 @@ bin
 .vscode
 deploy/porter.yaml
 *.bak
+.DS_Store
