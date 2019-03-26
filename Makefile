@@ -57,7 +57,7 @@ debug-log:
 clean-up:
 	./hack/cleanup.sh
 
-release: 
+release: test
 	./hack/deploy.sh ${IMG_MANAGER} manager
 	./hack/deploy.sh ${IMG_AGENT} agent
 	sed -i '' -e  's/namespace: .*/namespace: '"${NAMESPACE}"'/' ./config/default/kustomization.yaml
@@ -67,7 +67,7 @@ release:
 release-with-private-registry: test
 	./hack/deploy.sh ${IMG_MANAGER} manager --private
 	./hack/deploy.sh ${IMG_AGENT} agent --private
-
+	sed -i '' -e  's/namespace: .*/namespace: '"${NAMESPACE}"'/' ./config/default/kustomization.yaml
 	@echo "Building yamls"
 	kustomize build config/overlays/private_registry -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"

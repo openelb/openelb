@@ -9,7 +9,8 @@
 
 ## 创建路由器
 
-1. 在k8s所在的网络内创建一个主机，最小配置即可。进入主机安装bird，青云平台主机上默认只有bird 1.5，1.5不支持ECMP，要体验Porter的全部功能需要至少1.6，执行下面的脚本按照bird 1.6
+1. 在k8s所在的网络内创建一个主机，最小配置即可。进入主机安装bird，青云平台主机上默认只有bird 1.5，1.5不支持ECMP，要体验Porter的全部功能需要至少1.6，执行下面的脚本安装bird 1.6
+    ```
      $sudo add-apt-repository ppa:cz.nic-labs/bird ##这里引入了Bird 1.6
      $sudo apt-get update 
      $sudo apt-get install bird
@@ -81,7 +82,7 @@
     ```
     实际物理路由器不需要配置上述规则，因为路由器知道如何正确配置这个ip。**如果需要从多个ip地址访问测试ECMP，那么这些IP也需要相同的步骤**
     
-9. 这样模拟路由器就配置完成了，可以执行`birdc show protocol`查看连接信息。
+9.  这样模拟路由器就配置完成了，可以执行`birdc show protocol`查看连接信息。
 
 > 注：如果连接主机的方式是通过公网IP的方式，那么执行上述操作之后**有可能**会导致SSH连接断掉（当且仅当SSH的公网IP和你测试用的公网IP在青云网络中都会NAT成上述的139.198.254.4/32）。断掉之后可以使用青云网页上的VNC的方式。建议使用VPN的方式连接。下面在k8s集群中的操作会同样的影响。
 
@@ -121,7 +122,7 @@
     name: eip-sample
     spec:
     # Add fields here
-        address: 139.198.121.228 #这里替换为你申请的EIP
+        address: 139.198.121.228 #这里替换为你申请的EIP，私有环境可以换成任意的不冲突的IP
         disable: false
     EOF 
    ```
