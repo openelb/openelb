@@ -18,10 +18,12 @@ package eip
 
 import (
 	"context"
+	"time"
 
 	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -97,9 +99,8 @@ type ReconcileEIP struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the EIP instance
-	log.Info("Begin to reconclie for eip")
-	instance := &networkv1alpha1.EIP{}
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	log.Info("----------------Begin to reconclie for eip------------------")
+	instance, err := r.GetEIP(request.Namespace, request.Name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -112,7 +113,11 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 	needReturn, err := r.useFinalizerIfNeeded(instance)
 	if err != nil {
-		return reconcile.Result{Requeue: true}, err
+		if errors.IsResourceExpired(err) {
+			log.Info(err.Error())
+			err = nil
+		}
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 	}
 	if needReturn {
 		return reconcile.Result{}, nil
@@ -122,4 +127,10 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileEIP) GetEIP(namespace, name string) (instance *networkv1alpha1.EIP, err error) {
+	instance = &networkv1alpha1.EIP{}
+	err = r.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, instance)
+	return
 }

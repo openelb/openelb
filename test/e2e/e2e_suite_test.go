@@ -53,10 +53,13 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	fmt.Fprintln(GinkgoWriter, "Printing logs in case of failure")
-	logcmd := exec.Command("kubectl", "logs", "-n", testNamespace, "controller-manager-0", "-c", "manager")
-	log, _ := logcmd.CombinedOutput()
-	fmt.Fprintln(GinkgoWriter, string(log))
+	fmt.Fprintln(GinkgoWriter, "Begin to cleaning")
+	//check logs
+	log, err := e2eutil.CheckManagerLog(testNamespace, "controller-manager-0")
+	Expect(err).ShouldNot(HaveOccurred(), log)
+	log, err = e2eutil.CheckAgentLog(testNamespace, "porter-agent", testClient)
+	Expect(err).ShouldNot(HaveOccurred(), log)
+
 	cmd := exec.Command("kubectl", "delete", "-f", workspace+"/deploy/porter.yaml")
 	Expect(cmd.Run()).ShouldNot(HaveOccurred())
 })

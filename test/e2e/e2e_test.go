@@ -37,7 +37,7 @@ var _ = Describe("E2e", func() {
 				fmt.Println("Falied to get ips using client")
 				return 0
 			}
-			fmt.Fprintln(GinkgoWriter, ips)
+			//fmt.Fprintln(GinkgoWriter, ips)
 			return len(ips)
 		}, time.Minute, time.Second*2).Should(BeNumerically(">=", 2))
 	})
@@ -53,7 +53,10 @@ var _ = Describe("E2e", func() {
 		}
 		err = testClient.Create(context.TODO(), eip)
 		Expect(err).NotTo(HaveOccurred())
-		defer testClient.Delete(context.TODO(), eip)
+		defer func() {
+			Expect(testClient.Delete(context.TODO(), eip)).ShouldNot(HaveOccurred())
+			Expect(e2eutil.WaitForDeletion(testClient, eip, 5*time.Second, 1*time.Minute)).ShouldNot(HaveOccurred())
+		}()
 
 		//apply service
 		cmd := exec.Command("kubectl", "apply", "-f", workspace+"/config/samples/service.yaml")
@@ -62,7 +65,7 @@ var _ = Describe("E2e", func() {
 		Eventually(func() error {
 			err := testClient.Get(context.TODO(), serviceTypes, service)
 			return err
-		}, time.Second*20, time.Second).Should(Succeed())
+		}, time.Second*30, 5*time.Second).Should(Succeed())
 		defer deleteServiceGracefully(service)
 
 		//Service should get its eip
@@ -109,7 +112,6 @@ var _ = Describe("E2e", func() {
 			}, time.Minute, 2*time.Second).Should(Succeed())
 		}
 	})
-	//install eip
 })
 
 func deleteServiceGracefully(service *corev1.Service) {

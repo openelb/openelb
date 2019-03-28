@@ -19,9 +19,9 @@ package service
 import (
 	"context"
 	"reflect"
-	"time"
 
 	portererror "github.com/kubesphere/porter/pkg/errors"
+	"github.com/kubesphere/porter/pkg/machinery"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -104,17 +104,11 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 		case portererror.ResourceNotEnoughError:
 			reconcileLog.Info(t.Error() + ", waiting for requeue")
 			return reconcile.Result{
-				RequeueAfter: 15 * time.Second,
+				RequeueAfter: machinery.GetRequeueTime(svc),
 			}, nil
 		case portererror.EIPNotFoundError:
-			reconcileLog.Error(nil, "Detect non-exist ips in field 'ExternalIPs'")
+			reconcileLog.Info("Detect non-exist ips in field 'ExternalIPs'")
 			r.Event(svc, corev1.EventTypeWarning, "Detect non-exist externalIPs", "Clear field 'ExternalIPs' before using Porter")
-			svc.Spec.ExternalIPs = []string{}
-			err = r.Update(context.Background(), svc)
-			if err != nil {
-				reconcileLog.Error(nil, "Failed to clear field 'ExternalIPs'")
-				return reconcile.Result{}, err
-			}
 			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{}
 			err = r.Status().Update(context.Background(), svc)
 			if err != nil {
