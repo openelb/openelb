@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	devopsv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
 	"github.com/kubesphere/porter/pkg/kubeutil"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
@@ -43,7 +43,7 @@ var _ = Describe("E2e", func() {
 	})
 
 	It("Should work well when using samples", func() {
-		eip := &devopsv1alpha1.EIP{}
+		eip := &networkv1alpha1.EIP{}
 		reader, err := os.Open(workspace + "/config/samples/network_v1alpha1_eip.yaml")
 		Expect(err).NotTo(HaveOccurred(), "Cannot read sample yamls")
 		err = yaml.NewYAMLOrJSONDecoder(reader, 10).Decode(eip)

@@ -67,6 +67,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			old := e.ObjectOld.(*networkv1alpha1.EIP)
 			new := e.ObjectNew.(*networkv1alpha1.EIP)
+			if !e.MetaNew.GetDeletionTimestamp().IsZero() {
+				return true
+			}
 			return old.Status.Occupied != new.Status.Occupied
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -113,7 +116,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 	needReturn, err := r.useFinalizerIfNeeded(instance)
 	if err != nil {
-		if errors.IsResourceExpired(err) {
+		if errors.IsConflict(err) {
 			log.Info(err.Error())
 			err = nil
 		}

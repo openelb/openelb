@@ -45,11 +45,14 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Error in creating client")
 	testClient = c
 
+	fmt.Fprintln(GinkgoWriter, "cleaning up before running test")
+	Expect(e2eutil.CleanEIPList(c)).ShouldNot(HaveOccurred(), "Cleanup failed")
 	//waiting for controller up
 	err = e2eutil.WaitForController(c, testNamespace, "controller-manager", 5*time.Second, 2*time.Minute)
 	Expect(err).ShouldNot(HaveOccurred(), "timeout waiting for controller up: %s\n", err)
 	//waiting for bgp
 	fmt.Fprintln(GinkgoWriter, "Controller is up now")
+
 })
 
 var _ = AfterSuite(func() {
