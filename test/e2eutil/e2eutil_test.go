@@ -21,7 +21,7 @@ var _ = Describe("E2eutil", func() {
 			nil,
 		}
 		for index, ca := range cases {
-			Expect(ParseLog([]byte(ca))).To(Equal(expected[index]))
+			Expect(ParseLog(ca)).To(Equal(expected[index]))
 		}
 	})
 })
