@@ -8,7 +8,7 @@ all: test manager
 
 # Run tests
 test: fmt vet
-	go test -v ./pkg/controller/... ./pkg/apis/... ./pkg/test/  -coverprofile cover.out
+	go test -v ./pkg/controller/... ./pkg/apis/... ./pkg/test/  ./test/e2eutil/ -coverprofile cover.out
 
 # Build manager binary
 manager: fmt vet
@@ -75,5 +75,5 @@ install-travis:
 
 e2e-test: vet
 	./hack/e2e.sh
-e2e-restart:
+e2e-nobuild:
 	./hack/e2e.sh --skip-build

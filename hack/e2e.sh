@@ -5,7 +5,7 @@ set -e
 function cleanup(){
     result=$?
     set +e
-    echo "Cleaning"
+    echo "Cleaning Namespace"
     kubectl delete ns $TEST_NS
     if [ $SKIP_BUILD == "no" ]; then
         docker image rm $IMG
@@ -57,7 +57,7 @@ if [ $SKIP_BUILD != "yes" ];then
     ./hack/deploy.sh $IMG manager
     echo "Building manager Done"
     echo "Building agent"
-    IMG=magicsong/porter-agent:$tag
+    IMG=kubespheredev/porter-agent:$tag
     ./hack/deploy.sh $IMG agent
     echo "Building agent Done"
 fi

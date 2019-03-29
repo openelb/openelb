@@ -45,18 +45,24 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Error in creating client")
 	testClient = c
 
+	fmt.Fprintln(GinkgoWriter, "cleaning up before running test")
+	Expect(e2eutil.CleanEIPList(c)).ShouldNot(HaveOccurred(), "Cleanup failed")
 	//waiting for controller up
 	err = e2eutil.WaitForController(c, testNamespace, "controller-manager", 5*time.Second, 2*time.Minute)
 	Expect(err).ShouldNot(HaveOccurred(), "timeout waiting for controller up: %s\n", err)
 	//waiting for bgp
 	fmt.Fprintln(GinkgoWriter, "Controller is up now")
+
 })
 
 var _ = AfterSuite(func() {
-	fmt.Fprintln(GinkgoWriter, "Printing logs in case of failure")
-	logcmd := exec.Command("kubectl", "logs", "-n", testNamespace, "controller-manager-0", "-c", "manager")
-	log, _ := logcmd.CombinedOutput()
-	fmt.Fprintln(GinkgoWriter, string(log))
+	fmt.Fprintln(GinkgoWriter, "Begin to cleaning")
+	//check logs
+	log, err := e2eutil.CheckManagerLog(testNamespace, "controller-manager-0")
+	Expect(err).ShouldNot(HaveOccurred(), log)
+	log, err = e2eutil.CheckAgentLog(testNamespace, "porter-agent", testClient)
+	Expect(err).ShouldNot(HaveOccurred(), log)
+
 	cmd := exec.Command("kubectl", "delete", "-f", workspace+"/deploy/porter.yaml")
 	Expect(cmd.Run()).ShouldNot(HaveOccurred())
 })
