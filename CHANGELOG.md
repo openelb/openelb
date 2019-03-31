@@ -1,5 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
+## [ 0.1.0 ] - 2019-03-31
+
+### Added
+ - add portforward for nonstandard bgp port <https://github.com/kubesphere/porter/pull/37>
+ - add doc about setting up in real router <https://github.com/kubesphere/porter/pull/36>
+ - more tests
+
+
 ## [ 0.0.3 ] - 2019-03-26
 
 ### Added
