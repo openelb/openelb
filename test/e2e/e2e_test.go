@@ -32,11 +32,13 @@ var _ = Describe("E2e", func() {
 			nodeIP := pod.Status.HostIP
 			output, err := e2eutil.QuickConnectAndRun(nodeIP, "iptables -nL PREROUTING -t nat | grep "+noBGPPort)
 			Expect(err).NotTo(HaveOccurred(), "Error in listing NAT tables")
-			Expect(output).To(ConsistOf(birdIP, fmt.Sprintf("to:%s:%s", nodeIP, noBGPPort)))
+			Expect(output).To(ContainSubstring(birdIP))
+			Expect(output).To(ContainSubstring(fmt.Sprintf("to:%s:%s", nodeIP, noBGPPort)))
 			//check SNAT
 			output, err = e2eutil.QuickConnectAndRun(nodeIP, "iptables -nL POSTROUTING -t nat | grep "+noBGPPort)
 			Expect(err).NotTo(HaveOccurred(), "Error in listing NAT tables")
-			Expect(output).To(ConsistOf("MASQUERADE", nodeIP))
+			Expect(string(output)).To(ContainSubstring("MASQUERADE"))
+			Expect(string(output)).To(ContainSubstring(nodeIP))
 		}
 	})
 	It("Should get right endpoints", func() {
