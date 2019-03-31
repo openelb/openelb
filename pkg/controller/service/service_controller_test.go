@@ -77,6 +77,7 @@ func TestReconcile(t *testing.T) {
 		t.Logf("failed to create object, got an invalid object error: %v", err)
 		return
 	}
+	//TODO: error: 0-length response
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Delete(context.TODO(), instance)
 	g.Eventually(requests, timeout).ShouldNot(gomega.Receive(gomega.Equal(expectedRequest)))
