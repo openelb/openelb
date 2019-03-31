@@ -24,7 +24,10 @@ import (
 
 	"github.com/kubesphere/porter/pkg/bgp/config"
 	"github.com/kubesphere/porter/pkg/bgp/table"
+	"github.com/kubesphere/porter/pkg/nettool"
+	"github.com/kubesphere/porter/pkg/util"
 	api "github.com/osrg/gobgp/api"
+	"github.com/osrg/gobgp/pkg/packet/bgp"
 	"github.com/osrg/gobgp/pkg/server"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -95,6 +98,19 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 
 				if c == nil {
 					c = newConfig
+					//portforword if neccessary
+					if c.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
+						if len(c.Neighbors) < 1 {
+							log.Fatal("Must have at least one neighbor")
+						}
+						localip := util.GetOutboundIP()
+						for _, nei := range c.Neighbors {
+							err := nettool.AddPortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+							if err != nil {
+								log.Fatalf("Error in creating iptables, %s", err.Error())
+							}
+						}
+					}
 					if err := bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
 						Global: config.NewGlobalFromConfigStruct(&c.Global),
 					}); err != nil {

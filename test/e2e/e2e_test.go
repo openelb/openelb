@@ -21,6 +21,9 @@ import (
 
 var _ = Describe("E2e", func() {
 	serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
+	It("Should write iptables", func() {
+
+	})
 	It("Should get right endpoints", func() {
 		cmd := exec.Command("kubectl", "apply", "-f", workspace+"/config/samples/service.yaml")
 		Expect(cmd.Run()).ShouldNot(HaveOccurred())
