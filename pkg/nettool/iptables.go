@@ -2,6 +2,7 @@ package nettool
 
 import (
 	"fmt"
+	"strconv"
 
 	utildbus "k8s.io/kubernetes/pkg/util/dbus"
 	"k8s.io/kubernetes/pkg/util/iptables"
@@ -38,10 +39,17 @@ func AddPortForwardOfBGP(routerIP, localIP string, gobgpPort int32) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return addSNATRule(localIP, gobgpPort)
 }
 
 func DeletePortForwardOfBGP(routerIP, localIP string, gobgpPort int32) error {
 	rule := GenerateCretiriaAndAction(routerIP, localIP, gobgpPort)
 	return IPTablesRunner.DeleteRule(iptables.TableNAT, iptables.ChainPrerouting, rule...)
+}
+
+//example : iptables -t nat  -A POSTROUTING   -d 192.168.100.9 -p tcp --dport 80 -j  MASQUERADE
+func addSNATRule(localIP string, gobgpPort int32) error {
+	rule := []string{"-d", localIP, "-p", "tcp", "--dport", strconv.Itoa(int(gobgpPort)), "-j", "MASQUERADE"}
+	_, err := IPTablesRunner.EnsureRule(iptables.Append, iptables.TableNAT, iptables.ChainPostrouting, rule...)
+	return err
 }
