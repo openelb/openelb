@@ -10,3 +10,5 @@
         peer-as = 65001
     [neighbors.add-paths.config]
         send-max = 8
+[porter-config]
+    using-port-forward =true

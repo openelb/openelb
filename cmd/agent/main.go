@@ -24,7 +24,7 @@ import (
 
 	"github.com/kubesphere/porter/pkg/apis"
 	"github.com/kubesphere/porter/pkg/controller"
-	"github.com/kubesphere/porter/pkg/controller/eip/nettool"
+	"github.com/kubesphere/porter/pkg/nettool"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

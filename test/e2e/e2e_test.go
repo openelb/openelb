@@ -21,6 +21,26 @@ import (
 
 var _ = Describe("E2e", func() {
 	serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
+	var noBGPPort string = "17900"
+	var birdIP string = os.Getenv("BIRD_IP")
+
+	It("Should write iptables", func() {
+		//get master node
+		if birdIP != "" {
+			pod := &corev1.Pod{}
+			Expect(testClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: managerPodName}, pod)).ShouldNot(HaveOccurred())
+			nodeIP := pod.Status.HostIP
+			output, err := e2eutil.QuickConnectAndRun(nodeIP, "iptables -nL PREROUTING -t nat | grep "+noBGPPort)
+			Expect(err).NotTo(HaveOccurred(), "Error in listing NAT tables")
+			Expect(output).To(ContainSubstring(birdIP))
+			Expect(output).To(ContainSubstring(fmt.Sprintf("to:%s:%s", nodeIP, noBGPPort)))
+			//check SNAT
+			output, err = e2eutil.QuickConnectAndRun(nodeIP, "iptables -nL POSTROUTING -t nat | grep "+noBGPPort)
+			Expect(err).NotTo(HaveOccurred(), "Error in listing NAT tables")
+			Expect(string(output)).To(ContainSubstring("MASQUERADE"))
+			Expect(string(output)).To(ContainSubstring(nodeIP))
+		}
+	})
 	It("Should get right endpoints", func() {
 		cmd := exec.Command("kubectl", "apply", "-f", workspace+"/config/samples/service.yaml")
 		Expect(cmd.Run()).ShouldNot(HaveOccurred())
@@ -81,9 +101,8 @@ var _ = Describe("E2e", func() {
 			return fmt.Errorf("Failed")
 		}, 2*time.Minute, time.Second).Should(Succeed())
 		//check route in bird
-		bird_ip := os.Getenv("BIRD_IP")
-		if bird_ip != "" {
-			session, err := e2eutil.Connect("root", "", bird_ip, e2eutil.GetDefaultPrivateKeyFile(), 22, nil)
+		if birdIP != "" {
+			session, err := e2eutil.Connect("root", "", birdIP, e2eutil.GetDefaultPrivateKeyFile(), 22, nil)
 			Expect(err).NotTo(HaveOccurred(), "Connect Bird using private key FAILED")
 			defer session.Close()
 			stdinBuf, err := session.StdinPipe()

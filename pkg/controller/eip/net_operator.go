@@ -5,7 +5,7 @@ import (
 	"os"
 
 	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
-	"github.com/kubesphere/porter/pkg/controller/eip/nettool"
+	"github.com/kubesphere/porter/pkg/nettool"
 )
 
 func (r *ReconcileEIP) AddRule(instance *networkv1alpha1.EIP) error {

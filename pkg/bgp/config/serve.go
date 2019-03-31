@@ -21,6 +21,7 @@ type BgpConfigSet struct {
 	DefinedSets       DefinedSets        `mapstructure:"defined-sets"`
 	PolicyDefinitions []PolicyDefinition `mapstructure:"policy-definitions"`
 	DynamicNeighbors  []DynamicNeighbor  `mapstructure:"dynamic-neighbors"`
+	PorterConfig      PorterConfig       `mapstructure:"porter-config"`
 }
 
 func ReadConfigfileServe(path, format string, configCh chan *BgpConfigSet) {

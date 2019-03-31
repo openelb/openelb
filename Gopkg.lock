@@ -89,6 +89,12 @@
   version = "v1.6.12"
 
 [[projects]]
+  name = "github.com/godbus/dbus"
+  packages = ["."]
+  revision = "2ff6f7ffd60f0f2410b3105864bdd12c7894f844"
+  version = "v5.0.1"
+
+[[projects]]
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
@@ -777,6 +783,7 @@
     "pkg/util/uuid",
     "pkg/util/validation",
     "pkg/util/validation/field",
+    "pkg/util/version",
     "pkg/util/wait",
     "pkg/util/yaml",
     "pkg/version",
@@ -908,6 +915,24 @@
   revision = "ced9eb3070a5f1c548ef46e8dfe2a97c208d9f03"
 
 [[projects]]
+  name = "k8s.io/kubernetes"
+  packages = [
+    "pkg/util/dbus",
+    "pkg/util/iptables"
+  ]
+  revision = "641856db18352033a0d96dbc99153fa3b27298e5"
+  version = "v1.14.0"
+
+[[projects]]
+  branch = "master"
+  name = "k8s.io/utils"
+  packages = [
+    "exec",
+    "trace"
+  ]
+  revision = "21c4ce38f2a793ec01e925ddc31216500183b773"
+
+[[projects]]
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     "pkg/cache",
@@ -985,6 +1010,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "265c3e276b8627d8a372873cfa79109a1ba890dcb8db4d03e160cefa3beedf31"
+  inputs-digest = "6c3f82165d0d6a8d627faf3479261fbebe2bb0fb2f19f83ed8f449cfb3d685aa"
   solver-name = "gps-cdcl"
   solver-version = 1
