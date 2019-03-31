@@ -10,6 +10,18 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+func QuickConnectAndRun(host, cmd string) ([]byte, error) {
+	s, err := QuickConnectUsingDefaultSSHKey(host)
+	if err != nil {
+		return nil, err
+	}
+	return s.CombinedOutput(cmd)
+}
+
+func QuickConnectUsingDefaultSSHKey(host string) (*ssh.Session, error) {
+	return Connect("root", "", host, GetDefaultPrivateKeyFile(), 22, nil)
+}
+
 func Connect(user, password, host, key string, port int, cipherList []string) (*ssh.Session, error) {
 	var (
 		auth         []ssh.AuthMethod

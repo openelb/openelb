@@ -47,7 +47,7 @@ func DeletePortForwardOfBGP(routerIP, localIP string, gobgpPort int32) error {
 	return IPTablesRunner.DeleteRule(iptables.TableNAT, iptables.ChainPrerouting, rule...)
 }
 
-//example : iptables -t nat  -A POSTROUTING   -d 192.168.100.9 -p tcp --dport 80 -j  MASQUERADE
+//example : iptables -t nat  -A POSTROUTING   -d 192.168.98.2 -p tcp --dport 17900 -j  MASQUERADE
 func addSNATRule(localIP string, gobgpPort int32) error {
 	rule := []string{"-d", localIP, "-p", "tcp", "--dport", strconv.Itoa(int(gobgpPort)), "-j", "MASQUERADE"}
 	_, err := IPTablesRunner.EnsureRule(iptables.Append, iptables.TableNAT, iptables.ChainPostrouting, rule...)

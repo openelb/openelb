@@ -27,6 +27,11 @@ var (
 	restClient    *rest.RESTClient
 )
 
+const (
+	managerPodName = "controller-manager-0"
+	managerName    = "controller-manager"
+)
+
 func TestE2e(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "E2e Suite")
@@ -48,7 +53,7 @@ var _ = BeforeSuite(func() {
 	fmt.Fprintln(GinkgoWriter, "cleaning up before running test")
 	Expect(e2eutil.CleanEIPList(c)).ShouldNot(HaveOccurred(), "Cleanup failed")
 	//waiting for controller up
-	err = e2eutil.WaitForController(c, testNamespace, "controller-manager", 5*time.Second, 2*time.Minute)
+	err = e2eutil.WaitForController(c, testNamespace, managerName, 5*time.Second, 2*time.Minute)
 	Expect(err).ShouldNot(HaveOccurred(), "timeout waiting for controller up: %s\n", err)
 	//waiting for bgp
 	fmt.Fprintln(GinkgoWriter, "Controller is up now")
@@ -58,7 +63,7 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	fmt.Fprintln(GinkgoWriter, "Begin to cleaning")
 	//check logs
-	log, err := e2eutil.CheckManagerLog(testNamespace, "controller-manager-0")
+	log, err := e2eutil.CheckManagerLog(testNamespace, managerName)
 	Expect(err).ShouldNot(HaveOccurred(), log)
 	log, err = e2eutil.CheckAgentLog(testNamespace, "porter-agent", testClient)
 	Expect(err).ShouldNot(HaveOccurred(), log)
