@@ -24,9 +24,12 @@ var _ = Describe("E2e", func() {
 	var noBGPPort string = "17900"
 	var birdIP string = os.Getenv("BIRD_IP")
 
-	XIt("Should write iptables", func() {
+	It("Should write iptables", func() {
 		//get master node
 		//read config if we need test
+		if !testBGPConfig.PorterConfig.UsingPortForward {
+			return
+		}
 		if birdIP != "" {
 			pod := &corev1.Pod{}
 			Expect(testClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: managerPodName}, pod)).ShouldNot(HaveOccurred())

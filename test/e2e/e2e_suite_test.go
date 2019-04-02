@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kubesphere/porter/pkg/apis"
+	bgpconfig "github.com/kubesphere/porter/pkg/bgp/config"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,6 +26,7 @@ var (
 	workspace     string
 	testNamespace string
 	restClient    *rest.RESTClient
+	testBGPConfig *bgpconfig.BgpConfigSet
 )
 
 const (
@@ -52,6 +54,10 @@ var _ = BeforeSuite(func() {
 
 	fmt.Fprintln(GinkgoWriter, "cleaning up before running test")
 	Expect(e2eutil.CleanEIPList(c)).ShouldNot(HaveOccurred(), "Cleanup failed")
+	//read configmap
+	conf, err := bgpconfig.ReadConfigfile(workspace+"/config/bgp/config.toml", "toml")
+	Expect(err).ShouldNot(HaveOccurred(), "Read bgp config failed")
+	testBGPConfig = conf
 	//waiting for controller up
 	err = e2eutil.WaitForController(c, testNamespace, managerName, 5*time.Second, 2*time.Minute)
 	Expect(err).ShouldNot(HaveOccurred(), "timeout waiting for controller up: %s\n", err)

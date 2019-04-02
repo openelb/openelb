@@ -32,6 +32,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"gopkg.in/fsnotify.v1"
 )
 
 type StartOption struct {
@@ -70,7 +71,42 @@ func RunAlone(ready chan<- interface{}) {
 	ready <- 0
 	select {}
 }
-func Run(opts *StartOption, ready chan<- interface{}) {
+
+func WatchConfigMapChange(filepath string, sigCh chan os.Signal) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer watcher.Close()
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				log.Println("event:", event)
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Println("modified config:", event.Name)
+					sigCh <- syscall.SIGUSR1
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("error:", err)
+			}
+		}
+	}()
+
+	err = watcher.Add(filepath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	<-done
+}
+func Run(opts *StartOption, ready chan<- interface{}, sigReload chan os.Signal) {
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGTERM)
 	configCh := make(chan *config.BgpConfigSet)
@@ -83,7 +119,9 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 	if opts.ConfigFile == "" {
 		log.Fatalln("Configfile must be non-empty")
 	}
-	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh)
+	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh, sigReload)
+	//watch file change
+	go WatchConfigMapChange(opts.ConfigFile, sigReload)
 	loop := func() {
 		var c *config.BgpConfigSet
 		for {
