@@ -55,7 +55,7 @@ func RunAlone(ready chan<- interface{}) {
 	maxSize := 256 << 20
 	grpcOpts := []grpc.ServerOption{grpc.MaxRecvMsgSize(maxSize), grpc.MaxSendMsgSize(maxSize)}
 	log.Info("gobgpd started")
-	bgpServer = server.NewBgpServer(server.GrpcListenAddress("50052"), server.GrpcOption(grpcOpts))
+	bgpServer = server.NewBgpServer(server.GrpcListenAddress(":50052"), server.GrpcOption(grpcOpts))
 	go bgpServer.Serve()
 	if err := bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
 		Global: &api.Global{
