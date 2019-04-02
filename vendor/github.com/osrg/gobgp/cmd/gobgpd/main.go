@@ -26,6 +26,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/coreos/go-systemd/daemon"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/jessevdk/go-flags"
 	"github.com/kr/pretty"
@@ -56,6 +57,51 @@ func marshalRouteTargets(l []string) ([]*any.Any, error) {
 	return rtList, nil
 }
 
+func assignGlobalpolicy(bgpServer *server.BgpServer, a *config.ApplyPolicyConfig) {
+	toDefaultTable := func(r config.DefaultPolicyType) table.RouteType {
+		var def table.RouteType
+		switch r {
+		case config.DEFAULT_POLICY_TYPE_ACCEPT_ROUTE:
+			def = table.ROUTE_TYPE_ACCEPT
+		case config.DEFAULT_POLICY_TYPE_REJECT_ROUTE:
+			def = table.ROUTE_TYPE_REJECT
+		}
+		return def
+	}
+	toPolicies := func(r []string) []*table.Policy {
+		p := make([]*table.Policy, 0, len(r))
+		for _, n := range r {
+			p = append(p, &table.Policy{
+				Name: n,
+			})
+		}
+		return p
+	}
+
+	def := toDefaultTable(a.DefaultImportPolicy)
+	ps := toPolicies(a.ImportPolicyList)
+	bgpServer.SetPolicyAssignment(context.Background(), &api.SetPolicyAssignmentRequest{
+		Assignment: table.NewAPIPolicyAssignmentFromTableStruct(&table.PolicyAssignment{
+			Name:     table.GLOBAL_RIB_NAME,
+			Type:     table.POLICY_DIRECTION_IMPORT,
+			Policies: ps,
+			Default:  def,
+		}),
+	})
+
+	def = toDefaultTable(a.DefaultExportPolicy)
+	ps = toPolicies(a.ExportPolicyList)
+	bgpServer.SetPolicyAssignment(context.Background(), &api.SetPolicyAssignmentRequest{
+		Assignment: table.NewAPIPolicyAssignmentFromTableStruct(&table.PolicyAssignment{
+			Name:     table.GLOBAL_RIB_NAME,
+			Type:     table.POLICY_DIRECTION_EXPORT,
+			Policies: ps,
+			Default:  def,
+		}),
+	})
+
+}
+
 func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM)
@@ -74,6 +120,7 @@ func main() {
 		Dry             bool   `short:"d" long:"dry-run" description:"check configuration"`
 		PProfHost       string `long:"pprof-host" description:"specify the host that gobgpd listens on for pprof" default:"localhost:6060"`
 		PProfDisable    bool   `long:"pprof-disable" description:"disable pprof profiling"`
+		UseSdNotify     bool   `long:"sdnotify" description:"use sd_notify protocol"`
 		TLS             bool   `long:"tls" description:"enable TLS authentication for gRPC API"`
 		TLSCertFile     string `long:"tls-cert-file" description:"The TLS cert file"`
 		TLSKeyFile      string `long:"tls-key-file" description:"The TLS key file"`
@@ -160,6 +207,16 @@ func main() {
 	bgpServer := server.NewBgpServer(server.GrpcListenAddress(opts.GrpcHosts), server.GrpcOption(grpcOpts))
 	go bgpServer.Serve()
 
+	if opts.UseSdNotify {
+		if status, err := daemon.SdNotify(false, daemon.SdNotifyReady); !status {
+			if err != nil {
+				log.Warnf("Failed to send notification via sd_notify(): %s", err)
+			} else {
+				log.Warnf("The socket sd_notify() isn't available")
+			}
+		}
+	}
+
 	if opts.ConfigFile != "" {
 		go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh)
 	}
@@ -170,6 +227,9 @@ func main() {
 			select {
 			case <-sigCh:
 				bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
+				if opts.UseSdNotify {
+					daemon.SdNotify(false, daemon.SdNotifyStopping)
+				}
 				return
 			case newConfig := <-configCh:
 				var added, deleted, updated []config.Neighbor
@@ -196,6 +256,7 @@ func main() {
 							Version:              uint32(c.Zebra.Config.Version),
 							NexthopTriggerEnable: c.Zebra.Config.NexthopTriggerEnable,
 							NexthopTriggerDelay:  uint32(c.Zebra.Config.NexthopTriggerDelay),
+							MplsLabelRangeSize:   uint32(c.Zebra.Config.MplsLabelRangeSize),
 						}); err != nil {
 							log.Fatalf("failed to set zebra config: %s", err)
 						}
@@ -218,6 +279,8 @@ func main() {
 						if err := bgpServer.AddBmp(context.Background(), &api.AddBmpRequest{
 							Address:           c.Config.Address,
 							Port:              c.Config.Port,
+							SysName:           c.Config.SysName,
+							SysDescr:          c.Config.SysDescr,
 							Policy:            api.AddBmpRequest_MonitoringPolicy(c.Config.RouteMonitoringPolicy.ToInt()),
 							StatisticsTimeout: int32(c.Config.StatisticsTimeout),
 						}); err != nil {
@@ -275,6 +338,8 @@ func main() {
 						})
 					}
 
+					assignGlobalpolicy(bgpServer, &newConfig.Global.ApplyPolicy.Config)
+
 					added = newConfig.Neighbors
 					addedPg = newConfig.PeerGroups
 					if opts.GracefulRestart {
@@ -284,7 +349,6 @@ func main() {
 							}
 						}
 					}
-
 				} else {
 					addedPg, deletedPg, updatedPg = config.UpdatePeerGroupConfig(c, newConfig)
 					added, deleted, updated = config.UpdateNeighborConfig(c, newConfig)
@@ -305,51 +369,8 @@ func main() {
 					}
 					// global policy update
 					if !newConfig.Global.ApplyPolicy.Config.Equal(&c.Global.ApplyPolicy.Config) {
-						a := newConfig.Global.ApplyPolicy.Config
-						toDefaultTable := func(r config.DefaultPolicyType) table.RouteType {
-							var def table.RouteType
-							switch r {
-							case config.DEFAULT_POLICY_TYPE_ACCEPT_ROUTE:
-								def = table.ROUTE_TYPE_ACCEPT
-							case config.DEFAULT_POLICY_TYPE_REJECT_ROUTE:
-								def = table.ROUTE_TYPE_REJECT
-							}
-							return def
-						}
-						toPolicies := func(r []string) []*table.Policy {
-							p := make([]*table.Policy, 0, len(r))
-							for _, n := range r {
-								p = append(p, &table.Policy{
-									Name: n,
-								})
-							}
-							return p
-						}
-
-						def := toDefaultTable(a.DefaultImportPolicy)
-						ps := toPolicies(a.ImportPolicyList)
-						bgpServer.SetPolicyAssignment(context.Background(), &api.SetPolicyAssignmentRequest{
-							Assignment: table.NewAPIPolicyAssignmentFromTableStruct(&table.PolicyAssignment{
-								Name:     table.GLOBAL_RIB_NAME,
-								Type:     table.POLICY_DIRECTION_IMPORT,
-								Policies: ps,
-								Default:  def,
-							}),
-						})
-
-						def = toDefaultTable(a.DefaultExportPolicy)
-						ps = toPolicies(a.ExportPolicyList)
-						bgpServer.SetPolicyAssignment(context.Background(), &api.SetPolicyAssignmentRequest{
-							Assignment: table.NewAPIPolicyAssignmentFromTableStruct(&table.PolicyAssignment{
-								Name:     table.GLOBAL_RIB_NAME,
-								Type:     table.POLICY_DIRECTION_EXPORT,
-								Policies: ps,
-								Default:  def,
-							}),
-						})
-
+						assignGlobalpolicy(bgpServer, &newConfig.Global.ApplyPolicy.Config)
 						updatePolicy = true
-
 					}
 					c = newConfig
 				}

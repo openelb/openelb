@@ -35,13 +35,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type peerDownReason int
-
 const (
-	peerDownByLocal peerDownReason = iota
-	peerDownByLocalWithoutNotification
-	peerDownByRemote
-	peerDownByRemoteWithoutNotification
+	minConnectRetryInterval = 10
 )
 
 type fsmStateReasonType uint8
@@ -62,30 +57,18 @@ const (
 	fsmOpenMsgReceived
 	fsmOpenMsgNegotiated
 	fsmHardReset
+	fsmDeConfigured
 )
 
 type fsmStateReason struct {
 	Type            fsmStateReasonType
-	peerDownReason  peerDownReason
 	BGPNotification *bgp.BGPMessage
 	Data            []byte
 }
 
 func newfsmStateReason(typ fsmStateReasonType, notif *bgp.BGPMessage, data []byte) *fsmStateReason {
-	var reasonCode peerDownReason
-	switch typ {
-	case fsmDying, fsmInvalidMsg, fsmNotificationSent, fsmHoldTimerExpired, fsmIdleTimerExpired, fsmRestartTimerExpired:
-		reasonCode = peerDownByLocal
-	case fsmAdminDown:
-		reasonCode = peerDownByLocalWithoutNotification
-	case fsmNotificationRecv, fsmGracefulRestart, fsmHardReset:
-		reasonCode = peerDownByRemote
-	case fsmReadFailed, fsmWriteFailed:
-		reasonCode = peerDownByRemoteWithoutNotification
-	}
 	return &fsmStateReason{
 		Type:            typ,
-		peerDownReason:  reasonCode,
 		BGPNotification: notif,
 		Data:            data,
 	}
@@ -141,13 +124,13 @@ const (
 
 type fsmMsg struct {
 	MsgType     fsmMsgType
+	fsm         *fsm
 	MsgSrc      string
 	MsgData     interface{}
 	StateReason *fsmStateReason
 	PathList    []*table.Path
 	timestamp   time.Time
 	payload     []byte
-	Version     uint
 }
 
 type fsmOutgoingMsg struct {
@@ -187,13 +170,13 @@ type adminStateOperation struct {
 	Communication []byte
 }
 
-var fsmVersion uint
-
 type fsm struct {
 	gConf                *config.Global
 	pConf                *config.Neighbor
 	lock                 sync.RWMutex
 	state                bgp.FSMState
+	outgoingCh           *channels.InfiniteChannel
+	incomingCh           *channels.InfiniteChannel
 	reason               *fsmStateReason
 	conn                 net.Conn
 	connCh               chan net.Conn
@@ -209,8 +192,8 @@ type fsm struct {
 	policy               *table.RoutingPolicy
 	gracefulRestartTimer *time.Timer
 	twoByteAsTrans       bool
-	version              uint
 	marshallingOptions   *bgp.MarshallingOption
+	notification         chan *bgp.BGPMessage
 }
 
 func (fsm *fsm) bgpMessageStateUpdate(MessageType uint8, isIn bool) {
@@ -285,11 +268,12 @@ func newFSM(gConf *config.Global, pConf *config.Neighbor, policy *table.RoutingP
 	}
 	pConf.State.SessionState = config.IntToSessionStateMap[int(bgp.BGP_FSM_IDLE)]
 	pConf.Timers.State.Downtime = time.Now().Unix()
-	fsmVersion++
 	fsm := &fsm{
 		gConf:                gConf,
 		pConf:                pConf,
 		state:                bgp.BGP_FSM_IDLE,
+		outgoingCh:           channels.NewInfiniteChannel(),
+		incomingCh:           channels.NewInfiniteChannel(),
 		connCh:               make(chan net.Conn, 1),
 		opensentHoldTime:     float64(holdtimeOpensent),
 		adminState:           adminState,
@@ -299,7 +283,7 @@ func newFSM(gConf *config.Global, pConf *config.Neighbor, policy *table.RoutingP
 		peerInfo:             table.NewPeerInfo(gConf, pConf),
 		policy:               policy,
 		gracefulRestartTimer: time.NewTimer(time.Hour),
-		version:              fsmVersion,
+		notification:         make(chan *bgp.BGPMessage, 1),
 	}
 	fsm.gracefulRestartTimer.Stop()
 	return fsm
@@ -400,7 +384,6 @@ type fsmHandler struct {
 	msgCh            *channels.InfiniteChannel
 	stateReasonCh    chan fsmStateReason
 	incoming         *channels.InfiniteChannel
-	stateCh          chan *fsmMsg
 	outgoing         *channels.InfiniteChannel
 	holdTimerResetCh chan bool
 	sentNotification *bgp.BGPMessage
@@ -409,13 +392,12 @@ type fsmHandler struct {
 	wg               *sync.WaitGroup
 }
 
-func newFSMHandler(fsm *fsm, incoming *channels.InfiniteChannel, stateCh chan *fsmMsg, outgoing *channels.InfiniteChannel) *fsmHandler {
+func newFSMHandler(fsm *fsm, outgoing *channels.InfiniteChannel) *fsmHandler {
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &fsmHandler{
 		fsm:              fsm,
 		stateReasonCh:    make(chan fsmStateReason, 2),
-		incoming:         incoming,
-		stateCh:          stateCh,
+		incoming:         fsm.incomingCh,
 		outgoing:         outgoing,
 		holdTimerResetCh: make(chan bool, 2),
 		wg:               &sync.WaitGroup{},
@@ -509,13 +491,13 @@ func (h *fsmHandler) connectLoop(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	fsm := h.fsm
 
-	tick, addr, port, password, ttl, ttlMin, localAddress := func() (int, string, int, string, uint8, uint8, string) {
+	retry, addr, port, password, ttl, ttlMin, localAddress := func() (int, string, int, string, uint8, uint8, string) {
 		fsm.lock.RLock()
 		defer fsm.lock.RUnlock()
 
 		tick := int(fsm.pConf.Timers.Config.ConnectRetry)
-		if tick < minConnectRetry {
-			tick = minConnectRetry
+		if tick < minConnectRetryInterval {
+			tick = minConnectRetryInterval
 		}
 
 		addr := fsm.pConf.State.NeighborAddress
@@ -539,6 +521,7 @@ func (h *fsmHandler) connectLoop(ctx context.Context, wg *sync.WaitGroup) {
 		return tick, addr, port, password, ttl, ttlMin, fsm.pConf.Transport.Config.LocalAddress
 	}()
 
+	tick := minConnectRetryInterval
 	for {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		timer := time.NewTimer(time.Duration(r.Intn(tick)+tick) * time.Second)
@@ -574,7 +557,7 @@ func (h *fsmHandler) connectLoop(ctx context.Context, wg *sync.WaitGroup) {
 				},
 			}
 
-			conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(addr, fmt.Sprintf("%d", port)))
+			conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(addr, strconv.Itoa(port)))
 			select {
 			case <-ctx.Done():
 				log.WithFields(log.Fields{
@@ -603,22 +586,29 @@ func (h *fsmHandler) connectLoop(ctx context.Context, wg *sync.WaitGroup) {
 				}).Debugf("failed to connect: %s", err)
 			}
 		}
+		tick = retry
 	}
 }
 
 func (h *fsmHandler) active(ctx context.Context) (bgp.FSMState, *fsmStateReason) {
 	c, cancel := context.WithCancel(ctx)
 
+	fsm := h.fsm
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go h.connectLoop(c, &wg)
+
+	fsm.lock.RLock()
+	tryConnect := !fsm.pConf.Transport.Config.PassiveMode
+	fsm.lock.RUnlock()
+	if tryConnect {
+		wg.Add(1)
+		go h.connectLoop(c, &wg)
+	}
 
 	defer func() {
 		cancel()
 		wg.Wait()
 	}()
 
-	fsm := h.fsm
 	for {
 		select {
 		case <-ctx.Done():
@@ -960,10 +950,10 @@ func (h *fsmHandler) recvMessageWithError() (*fsmMsg, error) {
 			"error": err,
 		}).Warn("Session will be reset due to malformed BGP Header")
 		fmsg := &fsmMsg{
+			fsm:     h.fsm,
 			MsgType: fsmMsgBGPMessage,
 			MsgSrc:  h.fsm.pConf.State.NeighborAddress,
 			MsgData: err,
-			Version: h.fsm.version,
 		}
 		h.fsm.lock.RUnlock()
 		return fmsg, err
@@ -993,10 +983,10 @@ func (h *fsmHandler) recvMessageWithError() (*fsmMsg, error) {
 	}
 	h.fsm.lock.RLock()
 	fmsg := &fsmMsg{
+		fsm:       h.fsm,
 		MsgType:   fsmMsgBGPMessage,
 		MsgSrc:    h.fsm.pConf.State.NeighborAddress,
 		timestamp: now,
-		Version:   h.fsm.version,
 	}
 	h.fsm.lock.RUnlock()
 
@@ -1773,6 +1763,13 @@ func (h *fsmHandler) established(ctx context.Context) (bgp.FSMState, *fsmStateRe
 	for {
 		select {
 		case <-ctx.Done():
+			select {
+			case m := <-fsm.notification:
+				b, _ := m.Serialize(h.fsm.marshallingOptions)
+				h.conn.Write(b)
+			default:
+				// nothing to do
+			}
 			h.conn.Close()
 			return -1, newfsmStateReason(fsmDying, nil, nil)
 		case conn, ok := <-fsm.connCh:
@@ -1881,12 +1878,11 @@ func (h *fsmHandler) loop(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	if oldState == bgp.BGP_FSM_ESTABLISHED {
-		// The main goroutine sent the notificaiton due to
+		// The main goroutine sent the notification due to
 		// deconfiguration or something.
 		reason := fsm.reason
 		if fsm.h.sentNotification != nil {
 			reason.Type = fsmNotificationSent
-			reason.peerDownReason = peerDownByLocal
 			reason.BGPNotification = fsm.h.sentNotification
 		}
 		log.WithFields(log.Fields{
@@ -1898,18 +1894,15 @@ func (h *fsmHandler) loop(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 	fsm.lock.RUnlock()
 
-	// under zero means that the context was canceled.
-	if nextState >= bgp.BGP_FSM_IDLE {
-		fsm.lock.RLock()
-		h.stateCh <- &fsmMsg{
-			MsgType:     fsmMsgStateChange,
-			MsgSrc:      fsm.pConf.State.NeighborAddress,
-			MsgData:     nextState,
-			StateReason: reason,
-			Version:     h.fsm.version,
-		}
-		fsm.lock.RUnlock()
+	fsm.lock.RLock()
+	h.incoming.In() <- &fsmMsg{
+		fsm:         fsm,
+		MsgType:     fsmMsgStateChange,
+		MsgSrc:      fsm.pConf.State.NeighborAddress,
+		MsgData:     nextState,
+		StateReason: reason,
 	}
+	fsm.lock.RUnlock()
 	return nil
 }
 
@@ -1957,7 +1950,7 @@ func (h *fsmHandler) changeadminState(s adminState) error {
 			"State": fsm.state.String(),
 		}).Warn("cannot change to the same state")
 
-		return fmt.Errorf("cannot change to the same state.")
+		return fmt.Errorf("cannot change to the same state")
 	}
 	return nil
 }

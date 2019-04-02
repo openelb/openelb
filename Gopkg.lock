@@ -323,8 +323,8 @@
     "pkg/packet/rtr",
     "pkg/server"
   ]
-  revision = "4067827a0e086d6af98d0f6c71bec757748c46ba"
-  version = "v2.0.0"
+  revision = "805d02fdfbc5092ef7a676b1c3a63dfb32571b47"
+  version = "v2.3.0"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -1010,6 +1010,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6c3f82165d0d6a8d627faf3479261fbebe2bb0fb2f19f83ed8f449cfb3d685aa"
+  inputs-digest = "758bcfa8673ddeab5bf27f01a7ac93c33aaee5646865fbb6d945c777d48da076"
   solver-name = "gps-cdcl"
   solver-version = 1

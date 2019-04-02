@@ -1,7 +1,7 @@
 [global.config]
     as = 65000
     router-id = "192.168.98.2"
-    port = 17900
+    port = -1
 [global.use-multiple-paths.config]
     enabled = true
 [[neighbors]]
@@ -10,5 +10,15 @@
         peer-as = 65001
     [neighbors.add-paths.config]
         send-max = 8
-[porter-config]
-    using-port-forward =true
+    [neighbors.ebgp-multihop.config]
+        enabled = true
+
+    [[neighbors.afi-safis]]
+        [neighbors.afi-safis.config]
+        afi-safi-name = "ipv4-unicast"
+    [neighbors.graceful-restart.config]
+        enabled = true
+        restart-time = 120
+
+   [neighbors.afi-safis.mp-graceful-restart.config]
+        enabled = true
