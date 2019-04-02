@@ -24,15 +24,12 @@ import (
 	"github.com/osrg/gobgp/internal/pkg/table"
 	"github.com/osrg/gobgp/pkg/packet/bgp"
 
-	"github.com/eapache/channels"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	flopThreshold = time.Second * 30
 )
-
-var minConnectRetry = 10
 
 type peerGroup struct {
 	Conf             *config.PeerGroup
@@ -99,7 +96,6 @@ type peer struct {
 	tableId           string
 	fsm               *fsm
 	adjRibIn          *table.AdjRib
-	outgoing          *channels.InfiniteChannel
 	policy            *table.RoutingPolicy
 	localRib          *table.TableManager
 	prefixLimitWarned map[bgp.RouteFamily]bool
@@ -108,7 +104,6 @@ type peer struct {
 
 func newPeer(g *config.Global, conf *config.Neighbor, loc *table.TableManager, policy *table.RoutingPolicy) *peer {
 	peer := &peer{
-		outgoing:          channels.NewInfiniteChannel(),
 		localRib:          loc,
 		policy:            policy,
 		fsm:               newFSM(g, conf, policy),
@@ -530,8 +525,8 @@ func (peer *peer) handleUpdate(e *fsmMsg) ([]*table.Path, []bgp.RouteFamily, *bg
 	return nil, nil, nil
 }
 
-func (peer *peer) startFSMHandler(incoming *channels.InfiniteChannel, stateCh chan *fsmMsg) {
-	handler := newFSMHandler(peer.fsm, incoming, stateCh, peer.outgoing)
+func (peer *peer) startFSMHandler() {
+	handler := newFSMHandler(peer.fsm, peer.fsm.outgoingCh)
 	peer.fsm.lock.Lock()
 	peer.fsm.h = handler
 	peer.fsm.lock.Unlock()
@@ -555,30 +550,4 @@ func (peer *peer) PassConn(conn *net.TCPConn) {
 
 func (peer *peer) DropAll(rfList []bgp.RouteFamily) {
 	peer.adjRibIn.Drop(rfList)
-}
-
-func (peer *peer) stopFSM() error {
-	failed := false
-	peer.fsm.lock.RLock()
-	addr := peer.fsm.pConf.State.NeighborAddress
-	state := peer.fsm.state
-	peer.fsm.lock.RUnlock()
-	t1 := time.AfterFunc(time.Minute*5, func() {
-		log.WithFields(log.Fields{
-			"Topic": "Peer",
-		}).Warnf("Failed to free the fsm.h.t for %s", addr)
-		failed = true
-	})
-	peer.fsm.h.ctxCancel()
-	peer.fsm.h.wg.Wait()
-	t1.Stop()
-	if !failed {
-		log.WithFields(log.Fields{
-			"Topic": "Peer",
-			"Key":   addr,
-			"State": state,
-		}).Debug("freed fsm.h.t")
-		cleanInfiniteChannel(peer.outgoing)
-	}
-	return fmt.Errorf("Failed to free FSM for %s", addr)
 }

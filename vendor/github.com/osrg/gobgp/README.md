@@ -33,7 +33,9 @@ Try [a binary release](https://github.com/osrg/gobgp/releases/latest).
 - [Flowspec](docs/sources/flowspec.md)
 - [RPKI](docs/sources/rpki.md)
 - [Managing GoBGP with your favorite language with gRPC](docs/sources/grpc-client.md)
-- [Using GoBGP as a Go Native BGP library](docs/sources/lib.md)
+- Go Native BGP Library
+  - [Basics](docs/sources/lib.md)
+  - [BGP-LS](docs/sources/lib-ls.md)
 - [Graceful Restart](docs/sources/graceful-restart.md)
 - [Additional Paths](docs/sources/add-paths.md)
 - [Peer Group](docs/sources/peer-group.md)
@@ -49,7 +51,7 @@ Try [a binary release](https://github.com/osrg/gobgp/releases/latest).
 
 ## Community, discussion and support
 
-We have the [Slack](https://slackin-gobgp.mybluemix.net/) and [mailing
+We have the [Slack](https://slackin-gobgp.now.sh/) and [mailing
 list](https://lists.sourceforge.net/lists/listinfo/gobgp-devel) for
 questions, discussion, suggestions, etc.
 
