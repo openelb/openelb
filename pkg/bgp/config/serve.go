@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -24,11 +25,8 @@ type BgpConfigSet struct {
 	PorterConfig      PorterConfig       `mapstructure:"porter-config"`
 }
 
-func ReadConfigfile(path, format string) (*BgpConfigSet, error) {
+func ReadConfigfile(v *viper.Viper) (*BgpConfigSet, error) {
 	c := &BgpConfigSet{}
-	v := viper.New()
-	v.SetConfigFile(path)
-	v.SetConfigType(format)
 	var err error
 	if err = v.ReadInConfig(); err != nil {
 		return nil, err
@@ -42,15 +40,23 @@ func ReadConfigfile(path, format string) (*BgpConfigSet, error) {
 	return c, nil
 }
 
-func ReadConfigfileServe(path, format string, configCh chan *BgpConfigSet, sigReloadConfig chan os.Signal) {
+func ReadConfigfileServe(path, format string, configCh chan *BgpConfigSet) {
+	sigReloadConfig := make(chan os.Signal)
 	signal.Notify(sigReloadConfig, syscall.SIGHUP)
 
 	// Update config file type, if detectable
 	format = detectConfigFileType(path, format)
-
+	v := viper.New()
+	v.SetConfigFile(path)
+	v.SetConfigType(format)
+	v.WatchConfig()
+	v.OnConfigChange(func(e fsnotify.Event) {
+		log.WithField("file", e.Name).Warn("Config file changed")
+		sigReloadConfig <- syscall.SIGUSR1
+	})
 	cnt := 0
 	for {
-		c, err := ReadConfigfile(path, format)
+		c, err := ReadConfigfile(v)
 		if err != nil {
 			goto ERROR
 		}

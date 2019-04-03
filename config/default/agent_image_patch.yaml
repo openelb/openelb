@@ -8,5 +8,5 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: kubespheredev/porter-agent:0e9fba23
+      - image: magicsong/porter-agent:3d40fc8a
         name: porter-agent

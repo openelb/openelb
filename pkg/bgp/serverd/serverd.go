@@ -20,6 +20,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 
 	"github.com/kubesphere/porter/pkg/bgp/config"
@@ -86,7 +87,7 @@ func WatchConfigMapChange(filepath string, sigCh chan os.Signal) {
 				if !ok {
 					return
 				}
-				log.Println("event:", event)
+				log.Println("event:", event, "name", event.Name)
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified config:", event.Name)
 					sigCh <- syscall.SIGUSR1
@@ -100,13 +101,13 @@ func WatchConfigMapChange(filepath string, sigCh chan os.Signal) {
 		}
 	}()
 
-	err = watcher.Add(filepath)
+	err = watcher.Add(path.Dir(filepath))
 	if err != nil {
 		log.Fatalln(err)
 	}
 	<-done
 }
-func Run(opts *StartOption, ready chan<- interface{}, sigReload chan os.Signal) {
+func Run(opts *StartOption, ready chan<- interface{}) {
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGTERM)
 	configCh := make(chan *config.BgpConfigSet)
@@ -119,15 +120,16 @@ func Run(opts *StartOption, ready chan<- interface{}, sigReload chan os.Signal) 
 	if opts.ConfigFile == "" {
 		log.Fatalln("Configfile must be non-empty")
 	}
-	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh, sigReload)
-	//watch file change
-	go WatchConfigMapChange(opts.ConfigFile, sigReload)
+
+	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh)
 	loop := func() {
 		var c *config.BgpConfigSet
 		for {
 			select {
 			case <-sigCh:
 				bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
+				//clear iptables
+
 				return
 			case newConfig := <-configCh:
 				var added, deleted, updated []config.Neighbor
@@ -213,6 +215,20 @@ func Run(opts *StartOption, ready chan<- interface{}, sigReload chan os.Signal) 
 					}
 
 				} else {
+					//update config
+					if newConfig.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
+						if len(newConfig.Neighbors) < 1 {
+							log.Fatal("Must have at least one neighbor")
+						}
+						localip := util.GetOutboundIP()
+						for _, nei := range newConfig.Neighbors {
+							err := nettool.AddPortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+							if err != nil {
+								log.Fatalf("Error in creating iptables, %s", err.Error())
+							}
+						}
+					}
+
 					addedPg, deletedPg, updatedPg = config.UpdatePeerGroupConfig(c, newConfig)
 					added, deleted, updated = config.UpdateNeighborConfig(c, newConfig)
 					updatePolicy = config.CheckPolicyDifference(config.ConfigSetToRoutingPolicy(c), config.ConfigSetToRoutingPolicy(newConfig))
