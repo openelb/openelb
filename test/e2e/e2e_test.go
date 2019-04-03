@@ -24,7 +24,7 @@ var _ = Describe("E2e", func() {
 	var noBGPPort string = "17900"
 	var birdIP string = os.Getenv("BIRD_IP")
 
-	It("Should write iptables", func() {
+	It("Should write iptables when using portforword mode", func() {
 		//get master node
 		//read config if we need test
 		if !testBGPConfig.PorterConfig.UsingPortForward {

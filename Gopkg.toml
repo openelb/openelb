@@ -18,7 +18,7 @@ required = [
 
 [prune]
   go-tests = true
-
+  non-go = true
 
 # STANZAS BELOW ARE GENERATED AND MAY BE WRITTEN - DO NOT MODIFY BELOW THIS LINE.
 
@@ -42,3 +42,7 @@ version="v1.4.7"
 [[constraint]]
   name = "k8s.io/kubernetes"
   version = "1.14.0"
+
+[[constraint]]
+  name = "github.com/docker/docker"
+  version = "1.13.1"
