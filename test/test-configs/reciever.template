@@ -1,0 +1,12 @@
+[global.config]
+  as = {{.RouterAS}}
+  router-id = "{{.RouterIP}}"
+
+[[neighbors]]
+  [neighbors.config]
+    neighbor-address = "{{.ControllerIP}}"
+    peer-as = {{.ControllerAS}}
+  [neighbors.transport.config]
+    passive-mode = {{.IsPassiveMode}}
+  [neighbors.route-server.config]
+    route-server-client = true
