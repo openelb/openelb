@@ -1,17 +1,21 @@
 package e2e_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os/exec"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
+	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var templateTestCase e2eutil.TestCase
@@ -21,6 +25,7 @@ func init() {
 }
 
 var _ = Describe("e2e", func() {
+	serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
 	BeforeEach(func() {
 		templateTestCase = e2eutil.TestCase{
 			ControllerAS:           65000,
@@ -33,24 +38,30 @@ var _ = Describe("e2e", func() {
 			Namespace:              testNamespace,
 			K8sClient:              testClient,
 			RouterConfigPath:       "/root/bgp/test.toml",
+			DeployYamlPath:         workspace + "/deploy/porter.yaml",
 		}
 	})
-
 	It("Should write iptables when using portforword mode", func() {
 		thisTestCase := templateTestCase
 		thisTestCase.UsePortForward = true
 		thisTestCase.ControllerPort = 17900
 		thisTestCase.RouterIP = "192.168.98.8"
 
-		containerID, err := thisTestCase.StartRemoteRoute()
-		Expect(err).NotTo(HaveOccurred(), "Error in starting remote bgp")
-		defer Expect(e2eutil.StopGoBGPContainer(containerID)).ShouldNot(HaveOccurred(), "Failed to stop bgp")
+		containerIdCh := make(chan string)
+		defer close(containerIdCh)
+		errCh := make(chan error)
+		defer close(errCh)
+
+		go thisTestCase.StartRemoteRoute(containerIdCh, errCh)
+		Eventually(errCh, 10*time.Second).ShouldNot(Receive())
+		var containerID string
+		Eventually(containerIdCh, 10*time.Second).Should(Receive(&containerID))
+		thisTestCase.SetRouterContainerID(containerID)
+
+		defer Expect(thisTestCase.StopRouter()).ShouldNot(HaveOccurred(), "Failed to stop bgp")
 		//apply yaml
-		Expect(thisTestCase.DeployYaml(workspace+"/config/bgp/config.toml", workspace+"/deploy/porter.yaml")).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
-		defer Expect(e2eutil.KubectlDelete(workspace+"/deploy/porter.yaml")).ShouldNot(HaveOccurred(), "Failed to delete yaml")
-		//wating fotr up
-		Expect(thisTestCase.WaitForControllerUp()).ShouldNot(HaveOccurred(), "timeout waiting for controller up")
-		fmt.Fprintln(GinkgoWriter, "4")
+		Expect(thisTestCase.DeployYaml(workspace+"/config/bgp/config.toml")).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
+		defer Expect(e2eutil.KubectlDelete(thisTestCase.DeployYamlPath)).ShouldNot(HaveOccurred(), "Failed to delete yaml")
 
 		pod := &corev1.Pod{}
 		Expect(testClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: managerPodName}, pod)).ShouldNot(HaveOccurred())
@@ -64,6 +75,86 @@ var _ = Describe("e2e", func() {
 		Expect(err).NotTo(HaveOccurred(), "Error in listing NAT tables")
 		Expect(string(output)).To(ContainSubstring("MASQUERADE"))
 		Expect(string(output)).To(ContainSubstring(nodeIP))
+
+		//CheckLog
+		log, err := thisTestCase.GetRouterLog()
+		Expect(err).ShouldNot(HaveOccurred(), "Failed to get log of router")
+		Expect(log).ShouldNot(ContainSubstring("error"))
+	})
+	FIt("Should work well when using samples", func() {
+		thisTestCase := templateTestCase
+		thisTestCase.RouterIP = "192.168.98.8"
+		Expect(thisTestCase.StartRemoteRoute()).NotTo(HaveOccurred(), "Error in starting remote bgp")
+		defer Expect(thisTestCase.StopRouter()).ShouldNot(HaveOccurred(), "Faild to stop container")
+		//apply yaml
+		Expect(thisTestCase.DeployYaml(workspace+"/config/bgp/config.toml")).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
+		defer e2eutil.KubectlDelete(thisTestCase.DeployYamlPath)
+
+		//testing
+		eip := &networkv1alpha1.EIP{}
+		reader, err := os.Open(workspace + "/config/samples/network_v1alpha1_eip.yaml")
+		Expect(err).NotTo(HaveOccurred(), "Cannot read sample yamls")
+		err = yaml.NewYAMLOrJSONDecoder(reader, 10).Decode(eip)
+		Expect(err).NotTo(HaveOccurred(), "Cannot unmarshal yamls")
+		if eip.Namespace == "" {
+			eip.Namespace = "default"
+		}
+		err = testClient.Create(context.TODO(), eip)
+		Expect(err).NotTo(HaveOccurred())
+		defer func() {
+			Expect(testClient.Delete(context.TODO(), eip)).ShouldNot(HaveOccurred())
+			Expect(e2eutil.WaitForDeletion(testClient, eip, 5*time.Second, 1*time.Minute)).ShouldNot(HaveOccurred())
+		}()
+
+		//apply service
+		Expect(e2eutil.KubectlApply(workspace + "/config/samples/service.yaml")).ShouldNot(HaveOccurred())
+		service := &corev1.Service{}
+		Eventually(func() error {
+			err := testClient.Get(context.TODO(), serviceTypes, service)
+			return err
+		}, time.Second*30, 5*time.Second).Should(Succeed())
+		defer deleteServiceGracefully(service)
+
+		//Service should get its eip
+		Eventually(func() error {
+			service := &corev1.Service{}
+			err := testClient.Get(context.TODO(), serviceTypes, service)
+			if err != nil {
+				return err
+			}
+			if len(service.Status.LoadBalancer.Ingress) > 0 && service.Status.LoadBalancer.Ingress[0].IP == eip.Spec.Address {
+				return nil
+			}
+			return fmt.Errorf("Failed")
+		}, 2*time.Minute, time.Second).Should(Succeed())
+		//check route in bird
+		session, err := e2eutil.QuickConnectUsingDefaultSSHKey(thisTestCase.RouterIP)
+		Expect(err).NotTo(HaveOccurred(), "Connect Bird using private key FAILED")
+		defer session.Close()
+		stdinBuf, err := session.StdinPipe()
+		var outbt, errbt bytes.Buffer
+		session.Stdout = &outbt
+		session.Stderr = &errbt
+		err = session.Shell()
+		Expect(err).ShouldNot(HaveOccurred(), "Failed to start ssh shell")
+		Eventually(func() error {
+			stdinBuf.Write([]byte("gobgp global rib\n"))
+			ips, err := e2eutil.GetServiceNodesIP(testClient, serviceTypes.Namespace, serviceTypes.Name)
+			if err != nil {
+				return err
+			}
+			s := outbt.String() + errbt.String()
+			for _, ip := range ips {
+				if !strings.Contains(s, ip) {
+					return fmt.Errorf("No routes in GoBGP")
+				}
+			}
+			return nil
+		}, time.Minute, 2*time.Second).Should(Succeed())
+		log, err := e2eutil.CheckManagerLog(testNamespace, managerName)
+		Expect(err).ShouldNot(HaveOccurred(), log)
+		log, err = e2eutil.CheckAgentLog(testNamespace, "porter-agent", testClient)
+		Expect(err).ShouldNot(HaveOccurred(), log)
 	})
 })
 
@@ -185,7 +276,6 @@ var _ = Describe("e2e", func() {
 // })
 
 func deleteServiceGracefully(service *corev1.Service) {
-	cmd := exec.Command("kubectl", "delete", "-f", workspace+"/config/samples/service.yaml")
-	Expect(cmd.Run()).ShouldNot(HaveOccurred())
+	Expect(e2eutil.KubectlDelete(workspace + "/config/samples/service.yaml")).ShouldNot(HaveOccurred())
 	Expect(e2eutil.WaitForDeletion(testClient, service, time.Second*5, time.Minute)).ShouldNot(HaveOccurred(), "Failed waiting for services deletion")
 }

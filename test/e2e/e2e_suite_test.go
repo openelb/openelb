@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"os"
 	"path"
 	"runtime"
 	"testing"
@@ -32,9 +33,8 @@ func TestE2e(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	// testNamespace = os.Getenv("TEST_NS")
-	// Expect(testNamespace).ShouldNot(BeEmpty())
-	testNamespace = "porter-test-8cc68a84"
+	testNamespace = os.Getenv("TEST_NS")
+	Expect(testNamespace).ShouldNot(BeEmpty())
 	cfg, err := config.GetConfig()
 	Expect(err).ShouldNot(HaveOccurred(), "Error reading kubeconfig")
 	apis.AddToScheme(scheme.Scheme)

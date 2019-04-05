@@ -20,7 +20,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 
 	"github.com/kubesphere/porter/pkg/bgp/config"
@@ -33,7 +32,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"gopkg.in/fsnotify.v1"
 )
 
 type StartOption struct {
@@ -73,40 +71,6 @@ func RunAlone(ready chan<- interface{}) {
 	select {}
 }
 
-func WatchConfigMapChange(filepath string, sigCh chan os.Signal) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer watcher.Close()
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				log.Println("event:", event, "name", event.Name)
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("modified config:", event.Name)
-					sigCh <- syscall.SIGUSR1
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
-			}
-		}
-	}()
-
-	err = watcher.Add(path.Dir(filepath))
-	if err != nil {
-		log.Fatalln(err)
-	}
-	<-done
-}
 func Run(opts *StartOption, ready chan<- interface{}) {
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGTERM)
@@ -130,6 +94,18 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 				bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
 				//clear iptables
 
+				if c != nil && c.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
+					if len(c.Neighbors) < 1 {
+						log.Println("Skipping deleting iptables as there is no neighbors")
+					}
+					localip := util.GetOutboundIP()
+					for _, nei := range c.Neighbors {
+						err := nettool.DeletePortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+						if err != nil {
+							log.Fatalf("Error in deleting iptables, %s", err.Error())
+						}
+					}
+				}
 				return
 			case newConfig := <-configCh:
 				var added, deleted, updated []config.Neighbor

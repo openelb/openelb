@@ -1,6 +1,7 @@
 package e2eutil
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -31,12 +32,20 @@ type TestCase struct {
 	Namespace              string
 	K8sClient              client.Client
 	KustomizePath          string
+	routeContainerID       string
+	DeployYamlPath         string
+	stopRouter             chan struct{}
 }
+
+var routerContainerNotExist = fmt.Errorf("containerid is empty")
 
 func (t *TestCase) WaitForControllerUp() error {
 	return WaitForController(t.K8sClient, t.Namespace, managerName, 5*time.Second, 2*time.Minute)
 }
 
+func (t *TestCase) SetRouterContainerID(id string) {
+	t.routeContainerID = id
+}
 func WriteConfig(temppath, output string, t *TestCase) error {
 	temp, err := template.ParseFiles(temppath)
 	if err != nil {
@@ -51,28 +60,31 @@ func WriteConfig(temppath, output string, t *TestCase) error {
 	return temp.Execute(f, t)
 }
 
-func (t *TestCase) StartRemoteRoute() (string, error) {
+func (t *TestCase) StartRemoteRoute(id chan<- string, errCh chan<- error) {
 	//route config
 	routeGeneratedConfig := "/tmp/route.toml"
 	err := WriteConfig(t.RouterTemplatePath, routeGeneratedConfig, t)
 	if err != nil {
-		return "", err
+		errCh <- err
+		return
 	}
 	err = ScpFileToRemote(routeGeneratedConfig, t.RouterConfigPath, t.RouterIP)
 	if err != nil {
 		log.Printf("Error in transfer router config, error: %s", err.Error())
-		return "", err
+		errCh <- err
+		return
 	}
-	//start a container
-	containerid, err := RunGoBGPContainer(t.RouterConfigPath)
-	if err != nil {
-		log.Println("Failed to start remote router")
-		return "", err
-	}
-	return containerid, nil
+	//start a container this will block until container end
+	RunGoBGPContainer(t.RouterConfigPath, id, errCh)
 }
 
-func (t *TestCase) DeployYaml(userConfigPath, yamlPath string) error {
+func (t *TestCase) StopRouter() error {
+	if t.routeContainerID == "" {
+		return routerContainerNotExist
+	}
+	return StopGoBGPContainer(t.routeContainerID)
+}
+func (t *TestCase) DeployYaml(userConfigPath string) error {
 	//generate config
 	err := WriteConfig(t.ControllerTemplatePath, userConfigPath, t)
 	if err != nil {
@@ -80,10 +92,27 @@ func (t *TestCase) DeployYaml(userConfigPath, yamlPath string) error {
 		return err
 	}
 	//kustomize
-	err = KustomizeBuild(t.KustomizePath, yamlPath)
+	err = KustomizeBuild(t.KustomizePath, t.DeployYamlPath)
 	if err != nil {
 		log.Println("Kustomize failed")
 		return err
 	}
-	return KubectlApply(yamlPath)
+	err = KubectlApply(t.DeployYamlPath)
+	if err != nil {
+		log.Println("kubectl apply failed")
+		return err
+	}
+	err = t.WaitForControllerUp()
+	if err != nil {
+		log.Println("timeout waiting for controller up")
+		return err
+	}
+	return nil
+}
+
+func (t *TestCase) GetRouterLog() (string, error) {
+	if t.routeContainerID == "" {
+		return "", routerContainerNotExist
+	}
+	return GetContainerLog(t.routeContainerID)
 }

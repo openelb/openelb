@@ -123,7 +123,7 @@ func KubectlApply(filename string) error {
 
 func KubectlDelete(filename string) error {
 	ctx, cancle := context.WithTimeout(context.Background(), time.Second*20)
-	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", filename)
+	cmd := exec.CommandContext(ctx, "kubectl", "delete", "-f", filename)
 	defer cancle()
 	return cmd.Run()
 }

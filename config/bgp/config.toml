@@ -1,7 +1,7 @@
 [global.config]
     as = 65000
     router-id = "192.168.98.2"
-    port = 17900
+    port = 179
 [global.use-multiple-paths.config]
     enabled = true
 [[neighbors]]
@@ -23,4 +23,4 @@
    [neighbors.afi-safis.mp-graceful-restart.config]
         enabled = true
 [porter-config]
-    using-port-forward=true
+    using-port-forward=false

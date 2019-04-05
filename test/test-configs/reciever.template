@@ -1,12 +1,17 @@
 [global.config]
   as = {{.RouterAS}}
   router-id = "{{.RouterIP}}"
-
+[global.apply-policy.config]
+  default-import-policy = "accept-route"
+  default-export-policy = "accept-route"
 [[neighbors]]
   [neighbors.config]
     neighbor-address = "{{.ControllerIP}}"
     peer-as = {{.ControllerAS}}
   [neighbors.transport.config]
     passive-mode = {{.IsPassiveMode}}
+
+{{if .IsPassiveMode}}
   [neighbors.route-server.config]
     route-server-client = true
+{{end}}
