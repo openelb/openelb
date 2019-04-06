@@ -9,9 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubesphere/porter/pkg/util"
-
 	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	"github.com/kubesphere/porter/pkg/util"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

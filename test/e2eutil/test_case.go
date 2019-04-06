@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"text/template"
 	"time"
 
-	"github.com/kubesphere/test-infra/bazel-test-infra/external/go_sdk/src/html/template"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
