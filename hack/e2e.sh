@@ -69,6 +69,7 @@ else
 fi
 
 kubectl create ns  $TEST_NS
+kubectl apply -f ./config/crds/
 ###./hack/certs.sh --service webhook-server-service --namespace $TEST_NS --secret webhook-server-secret
 export TEST_NS
 ginkgo -v ./test/e2e/

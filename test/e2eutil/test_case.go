@@ -60,22 +60,26 @@ func WriteConfig(temppath, output string, t *TestCase) error {
 	return temp.Execute(f, t)
 }
 
-func (t *TestCase) StartRemoteRoute(id chan<- string, errCh chan<- error) {
+func (t *TestCase) StartRemoteRoute() error {
 	//route config
 	routeGeneratedConfig := "/tmp/route.toml"
 	err := WriteConfig(t.RouterTemplatePath, routeGeneratedConfig, t)
 	if err != nil {
-		errCh <- err
-		return
+		return err
 	}
 	err = ScpFileToRemote(routeGeneratedConfig, t.RouterConfigPath, t.RouterIP)
 	if err != nil {
 		log.Printf("Error in transfer router config, error: %s", err.Error())
-		errCh <- err
-		return
+		return err
 	}
 	//start a container this will block until container end
-	RunGoBGPContainer(t.RouterConfigPath, id, errCh)
+	id, err := RunGoBGPContainer(t.RouterConfigPath)
+	if err != nil {
+		log.Println("Failed to start gobgp container")
+		return err
+	}
+	t.routeContainerID = id
+	return nil
 }
 
 func (t *TestCase) StopRouter() error {
@@ -107,6 +111,7 @@ func (t *TestCase) DeployYaml(userConfigPath string) error {
 		log.Println("timeout waiting for controller up")
 		return err
 	}
+	log.Println("Controller is up now")
 	return nil
 }
 

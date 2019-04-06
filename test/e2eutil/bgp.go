@@ -3,6 +3,8 @@ package e2eutil
 import (
 	"io/ioutil"
 	"log"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -15,32 +17,35 @@ const (
 	BGPImageName = "magicsong/gobgp"
 )
 
-func RunGoBGPContainer(configPath string, containerID chan<- string, errCh chan<- error) {
-	ctx := context.TODO()
+func RunGoBGPContainer1(configPath string) (string, error) {
+	cmd := exec.Command("docker", "run", "-d", "-v", configPath+":/etc/gobgp/gobgp.conf", "--net=host", BGPImageName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+func RunGoBGPContainer(configPath string) (string, error) {
+	ctx := context.Background()
 	cli, err := client.NewEnvClient()
 	if err != nil {
-		errCh <- err
-		return
+		return "", err
 	}
 	hostConfig := &container.HostConfig{
 		NetworkMode: "host",
-		Binds:       []string{configPath + ":/etc/gobgp/gobgp.conf"},
+		Binds:       []string{"/root/bgp/test.toml:/etc/gobgp/gobgp.conf"},
 	}
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: BGPImageName,
 	}, hostConfig, nil, "")
 	if err != nil {
-		log.Println("Error in create container")
-		errCh <- err
-		return
+		return "", err
 	}
+
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		log.Println("Error in start container")
-		errCh <- err
-		return
+		return "", err
 	}
-	containerID <- resp.ID
-	cli.ContainerWait(ctx, resp.ID)
+	return resp.ID, nil
 }
 
 func GetContainerLog(containerID string) (string, error) {
@@ -72,8 +77,14 @@ func StopGoBGPContainer(containerID string) error {
 	timeout := time.Second * 20
 	err = cli.ContainerStop(ctx, containerID, &timeout)
 	if err != nil {
+		log.Println("Failed to stop container,err: ", err.Error())
 		return err
 	}
-	return nil
-	//return cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{Force: true})
+	return cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{Force: true})
+}
+
+func CheckBGPRoute() (string, error) {
+	cmd := exec.Command("gobgp", "global", "rib")
+	bytes, err := cmd.CombinedOutput()
+	return string(bytes), err
 }

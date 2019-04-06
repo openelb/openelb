@@ -3,33 +3,28 @@ package main
 import (
 	"fmt"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"golang.org/x/net/context"
+	"github.com/kubesphere/porter/test/e2eutil"
 )
 
+type S struct {
+	name string
+}
+
 func main() {
-	ctx := context.Background()
-	cli, err := client.NewEnvClient()
-	if err != nil {
-		panic(err)
-	}
-	imageName := "magicsong/gobgp"
-	hostConfig := &container.HostConfig{
-		NetworkMode: "host",
-		Binds:       []string{"/root/bgp/test.toml:/etc/gobgp/gobgp.conf"},
-	}
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: imageName,
-	}, hostConfig, nil, "")
+	s := S{name: "Hello"}
+	s.A()
+}
+
+func (s *S) Print() {
+	fmt.Println(s.name)
+}
+func (s *S) A() string {
+	id, err := e2eutil.RunGoBGPContainer("/root/bgp/test.toml")
 	if err != nil {
 		panic(err)
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
-	}
-
-	fmt.Println(resp.ID)
+	fmt.Println(id)
+	s.name = id
+	return id
 }

@@ -38,7 +38,6 @@ pipeline {
     }
     stage('Test') {
       steps {
-        echo "Using TAG $tag to run e2e"
         sh """
             cd /go/src/github.com/kubesphere/porter
             make e2e-nobuild
