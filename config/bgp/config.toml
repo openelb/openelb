@@ -1,12 +1,12 @@
 [global.config]
     as = 65000
     router-id = "192.168.98.2"
-    port = -1
+    port = 179
 [global.use-multiple-paths.config]
     enabled = true
 [[neighbors]]
     [neighbors.config]
-        neighbor-address = "192.168.98.5"
+        neighbor-address = "192.168.98.8"
         peer-as = 65001
     [neighbors.add-paths.config]
         send-max = 8
@@ -22,3 +22,5 @@
 
    [neighbors.afi-safis.mp-graceful-restart.config]
         enabled = true
+[porter-config]
+    using-port-forward=false

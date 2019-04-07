@@ -2,6 +2,7 @@
 
 set -e
 
+kubectl cluster-info
 function cleanup(){
     result=$?
     set +e
@@ -68,14 +69,10 @@ else
     sed -i  -e  's/namespace: .*/namespace: '"${TEST_NS}"'/' ./config/default/kustomization.yaml
 fi
 
-echo "Building yamls"
-kustomize build config/default -o deploy/porter.yaml
-echo "Building yamls Done"
 kubectl create ns  $TEST_NS
-kustomize build config/default -o $dest
-kubectl apply -f $dest
+kubectl apply -f ./config/crds/
 ###./hack/certs.sh --service webhook-server-service --namespace $TEST_NS --secret webhook-server-secret
-
 export TEST_NS
-export BIRD_IP=192.168.98.5
+
+echo "Current Namespace is $TEST_NS'"
 ginkgo -v ./test/e2e/

@@ -70,6 +70,7 @@ func RunAlone(ready chan<- interface{}) {
 	ready <- 0
 	select {}
 }
+
 func Run(opts *StartOption, ready chan<- interface{}) {
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGTERM)
@@ -83,6 +84,7 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 	if opts.ConfigFile == "" {
 		log.Fatalln("Configfile must be non-empty")
 	}
+
 	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh)
 	loop := func() {
 		var c *config.BgpConfigSet
@@ -90,6 +92,20 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 			select {
 			case <-sigCh:
 				bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
+				//clear iptables
+
+				if c != nil && c.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
+					if len(c.Neighbors) < 1 {
+						log.Println("Skipping deleting iptables as there is no neighbors")
+					}
+					localip := util.GetOutboundIP()
+					for _, nei := range c.Neighbors {
+						err := nettool.DeletePortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+						if err != nil {
+							log.Fatalf("Error in deleting iptables, %s", err.Error())
+						}
+					}
+				}
 				return
 			case newConfig := <-configCh:
 				var added, deleted, updated []config.Neighbor
@@ -175,6 +191,20 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 					}
 
 				} else {
+					//update config
+					if newConfig.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
+						if len(newConfig.Neighbors) < 1 {
+							log.Fatal("Must have at least one neighbor")
+						}
+						localip := util.GetOutboundIP()
+						for _, nei := range newConfig.Neighbors {
+							err := nettool.AddPortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+							if err != nil {
+								log.Fatalf("Error in creating iptables, %s", err.Error())
+							}
+						}
+					}
+
 					addedPg, deletedPg, updatedPg = config.UpdatePeerGroupConfig(c, newConfig)
 					added, deleted, updated = config.UpdateNeighborConfig(c, newConfig)
 					updatePolicy = config.CheckPolicyDifference(config.ConfigSetToRoutingPolicy(c), config.ConfigSetToRoutingPolicy(newConfig))

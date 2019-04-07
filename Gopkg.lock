@@ -8,6 +8,12 @@
   version = "v0.34.0"
 
 [[projects]]
+  name = "github.com/Microsoft/go-winio"
+  packages = ["."]
+  revision = "1a8911d1ed007260465c3bfbbc785ac6915a0bb8"
+  version = "v0.4.12"
+
+[[projects]]
   name = "github.com/appscode/jsonpatch"
   packages = ["."]
   revision = "7c0e3b262f30165a8ec3d0b4c6059fd92703bfb2"
@@ -36,6 +42,54 @@
   name = "github.com/dgryski/go-farm"
   packages = ["."]
   revision = "3adb47b1fb0f6d9efcc5051a6c62e2e413ac85a9"
+
+[[projects]]
+  name = "github.com/docker/distribution"
+  packages = [
+    "digestset",
+    "reference"
+  ]
+  revision = "2461543d988979529609e8cb6fca9ca190dc48da"
+  version = "v2.7.1"
+
+[[projects]]
+  name = "github.com/docker/docker"
+  packages = [
+    "api/types",
+    "api/types/blkiodev",
+    "api/types/container",
+    "api/types/events",
+    "api/types/filters",
+    "api/types/mount",
+    "api/types/network",
+    "api/types/reference",
+    "api/types/registry",
+    "api/types/strslice",
+    "api/types/swarm",
+    "api/types/time",
+    "api/types/versions",
+    "api/types/volume",
+    "client",
+    "pkg/tlsconfig"
+  ]
+  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
+  version = "v1.13.1"
+
+[[projects]]
+  name = "github.com/docker/go-connections"
+  packages = [
+    "nat",
+    "sockets",
+    "tlsconfig"
+  ]
+  revision = "7395e3f8aa162843a74ed6d48e79627d9792ac55"
+  version = "v0.4.0"
+
+[[projects]]
+  name = "github.com/docker/go-units"
+  packages = ["."]
+  revision = "47565b4f722fb6ceae66b95f853feed578a4a51c"
+  version = "v0.3.3"
 
 [[projects]]
   name = "github.com/eapache/channels"
@@ -310,6 +364,12 @@
   version = "v1.4.3"
 
 [[projects]]
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
+  version = "v1.0.0-rc1"
+
+[[projects]]
   name = "github.com/osrg/gobgp"
   packages = [
     "api",
@@ -522,7 +582,9 @@
     "http2",
     "http2/hpack",
     "idna",
+    "internal/socks",
     "internal/timeseries",
+    "proxy",
     "trace"
   ]
   revision = "ed066c81e75eba56dd9bd2139ade88125b855585"
@@ -1010,6 +1072,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "758bcfa8673ddeab5bf27f01a7ac93c33aaee5646865fbb6d945c777d48da076"
+  inputs-digest = "c1971a9f3a3bee4978af2d9db5ca55f574f31c5ce2cdf4f04425dbc7c0f2fdd2"
   solver-name = "gps-cdcl"
   solver-version = 1

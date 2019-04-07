@@ -33,11 +33,11 @@ manifests:
 
 # Run go fmt against code
 fmt:
-	go fmt ./pkg/... ./cmd/...
+	go fmt ./pkg/... ./cmd/... ./test/...
 
 # Run go vet against code
 vet:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/... ./test/...
 
 # Generate code
 generate:

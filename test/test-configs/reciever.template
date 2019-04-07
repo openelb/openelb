@@ -1,0 +1,21 @@
+[global.config]
+  as = {{.RouterAS}}
+  router-id = "{{.RouterIP}}"
+[global.apply-policy.config]
+  default-import-policy = "accept-route"
+  default-export-policy = "accept-route"
+[global.use-multiple-paths.config]
+  enabled = true
+[[neighbors]]
+  [neighbors.config]
+    neighbor-address = "{{.ControllerIP}}"
+    peer-as = {{.ControllerAS}}
+  [neighbors.transport.config]
+    passive-mode = {{.IsPassiveMode}}
+  [neighbors.add-paths.config]
+      send-max = 8
+      receive = true
+{{if .IsPassiveMode}}
+  [neighbors.route-server.config]
+    route-server-client = true
+{{end}}

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -113,4 +114,21 @@ func GetServiceNodesIP(c client.Client, namespace, name string) ([]string, error
 		return nil, err
 	}
 	return kubeutil.GetServiceNodesIP(c, service)
+}
+
+func KubectlApply(filename string) error {
+	cmd := exec.Command("kubectl", "apply", "-f", filename)
+	return cmd.Run()
+}
+
+func KubectlDelete(filename string) error {
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second*20)
+	cmd := exec.CommandContext(ctx, "kubectl", "delete", "-f", filename)
+	defer cancle()
+	return cmd.Run()
+}
+
+func KustomizeBuild(kmpath, dst string) error {
+	cmd := exec.Command("kustomize", "build", kmpath, "-o", dst)
+	return cmd.Run()
 }

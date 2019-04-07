@@ -1,10 +1,12 @@
 package e2eutil_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"fmt"
+	"os"
 
 	. "github.com/kubesphere/porter/test/e2eutil"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("E2eutil", func() {
@@ -23,5 +25,26 @@ var _ = Describe("E2eutil", func() {
 		for index, ca := range cases {
 			Expect(ParseLog(ca)).To(Equal(expected[index]))
 		}
+	})
+	It("Should be able to copy file to remote", func() {
+		remote := os.Getenv("TEST_REMOTE_HOST")
+		if remote == "" {
+			fmt.Fprintln(GinkgoWriter, "Skipping testing scp")
+			return
+		}
+		source := "/tmp/scp.file"
+		str := "HelloWorld"
+		f, err := os.Create(source)
+		Expect(err).ShouldNot(HaveOccurred(), "Error in create test file")
+		defer func() {
+			f.Close()
+			os.Remove(source)
+		}()
+		_, err = f.WriteString(str)
+		f.Sync()
+		Expect(ScpFileToRemote(source, source, remote)).ShouldNot(HaveOccurred())
+		output, err := QuickConnectAndRun(remote, "cat "+source)
+		Expect(err).ShouldNot(HaveOccurred(), "Error in cat remote file")
+		Expect(output).To(Equal([]byte(str)))
 	})
 })

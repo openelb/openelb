@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os/exec"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -102,4 +103,9 @@ func Connect(user, password, host, key string, port int, cipherList []string) (*
 func GetDefaultPrivateKeyFile() string {
 	home := homedir.HomeDir()
 	return home + "/.ssh/id_rsa"
+}
+
+func ScpFileToRemote(source, dst, host string) error {
+	cmd := exec.Command("scp", source, fmt.Sprintf("root@%s:%s", host, dst))
+	return cmd.Run()
 }
