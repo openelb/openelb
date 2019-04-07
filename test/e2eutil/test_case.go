@@ -7,6 +7,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/kubesphere/porter/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,6 +36,7 @@ type TestCase struct {
 	routeContainerID       string
 	DeployYamlPath         string
 	stopRouter             chan struct{}
+	isLocal                bool
 }
 
 var routerContainerNotExist = fmt.Errorf("containerid is empty")
@@ -60,17 +62,26 @@ func WriteConfig(temppath, output string, t *TestCase) error {
 	return temp.Execute(f, t)
 }
 
+func (t *TestCase) CheckNetwork() {
+	ip := util.GetOutboundIP()
+	if ip == t.RouterIP {
+		t.isLocal = true
+	}
+}
 func (t *TestCase) StartRemoteRoute() error {
 	//route config
+	t.CheckNetwork()
 	routeGeneratedConfig := "/tmp/route.toml"
 	err := WriteConfig(t.RouterTemplatePath, routeGeneratedConfig, t)
 	if err != nil {
 		return err
 	}
-	err = ScpFileToRemote(routeGeneratedConfig, t.RouterConfigPath, t.RouterIP)
-	if err != nil {
-		log.Printf("Error in transfer router config, error: %s", err.Error())
-		return err
+	if !t.isLocal {
+		err = ScpFileToRemote(routeGeneratedConfig, t.RouterConfigPath, t.RouterIP)
+		if err != nil {
+			log.Printf("Error in transfer router config, error: %s", err.Error())
+			return err
+		}
 	}
 	//start a container this will block until container end
 	id, err := RunGoBGPContainer(t.RouterConfigPath)

@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -17,14 +16,6 @@ const (
 	BGPImageName = "magicsong/gobgp"
 )
 
-func RunGoBGPContainer1(configPath string) (string, error) {
-	cmd := exec.Command("docker", "run", "-d", "-v", configPath+":/etc/gobgp/gobgp.conf", "--net=host", BGPImageName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(output)), nil
-}
 func RunGoBGPContainer(configPath string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewEnvClient()

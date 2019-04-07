@@ -2,7 +2,7 @@ pipeline {
   agent {
     docker {
       image 'kubespheredev/porter-infra:latest'
-      args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker'
+      args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp'
     }
   }
   environment {
