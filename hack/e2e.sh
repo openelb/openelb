@@ -2,6 +2,7 @@
 
 set -e
 
+kubectl cluster-info
 function cleanup(){
     result=$?
     set +e
@@ -72,4 +73,6 @@ kubectl create ns  $TEST_NS
 kubectl apply -f ./config/crds/
 ###./hack/certs.sh --service webhook-server-service --namespace $TEST_NS --secret webhook-server-secret
 export TEST_NS
+
+echo "Current Namespace is $TEST_NS'"
 ginkgo -v ./test/e2e/
