@@ -67,6 +67,10 @@ func (t *TestCase) CheckNetwork() {
 	if ip == t.RouterIP {
 		t.isLocal = true
 	}
+	jenkinsIP := os.Getenv("JENKINS_IP")
+	if jenkinsIP == t.RouterIP {
+		t.isLocal = true
+	}
 }
 func (t *TestCase) StartRemoteRoute() error {
 	//route config
