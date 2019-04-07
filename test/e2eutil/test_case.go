@@ -72,6 +72,9 @@ func (t *TestCase) CheckNetwork() {
 		t.isLocal = true
 	}
 }
+func (t *TestCase) IsLocal() bool {
+	return t.isLocal
+}
 func (t *TestCase) StartRemoteRoute() error {
 	//route config
 	t.CheckNetwork()

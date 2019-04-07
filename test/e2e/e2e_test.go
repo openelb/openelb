@@ -10,7 +10,6 @@ import (
 	"time"
 
 	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
-	"github.com/kubesphere/porter/pkg/util"
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -118,8 +117,7 @@ var _ = Describe("e2e", func() {
 			return fmt.Errorf("Failed")
 		}, 2*time.Minute, time.Second).Should(Succeed())
 		//check route in bird
-		localip := util.GetOutboundIP()
-		if localip == thisTestCase.RouterIP {
+		if thisTestCase.IsLocal() {
 			Eventually(func() error {
 				s, err := e2eutil.CheckBGPRoute()
 				if err != nil {
