@@ -8,7 +8,7 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: kubespheredev/porter:cc1afae4
+      - image: kubespheredev/porter:df370794
         name: manager
 
 
