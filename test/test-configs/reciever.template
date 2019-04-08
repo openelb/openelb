@@ -15,7 +15,3 @@
   [neighbors.add-paths.config]
       send-max = 8
       receive = true
-{{if .IsPassiveMode}}
-  [neighbors.route-server.config]
-    route-server-client = true
-{{end}}

@@ -18,7 +18,7 @@ spec:
       containers:
         - name: porter-agent
           image: magicsong/porter-agent:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               cpu: 100m
