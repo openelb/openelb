@@ -250,9 +250,9 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 	Expect(err).ShouldNot(HaveOccurred(), "Failed to get log of router")
 	Expect(log).ShouldNot(ContainSubstring("error"))
 
-	log, err = CheckManagerLog(t.Namespace, managerPodName, t.Name)
+	log, err = CheckManagerLog(t.Namespace, managerPodName, fmt.Sprintf("%s/test/manager_%s.porterlog", workspace, t.Name))
 	Expect(err).ShouldNot(HaveOccurred(), log)
-	log, err = CheckAgentLog(t.Namespace, "porter-agent", t.Name, t.K8sClient)
+	log, err = CheckAgentLog(t.Namespace, "porter-agent", fmt.Sprintf("%s/test/agent_%s", workspace, t.Name), t.K8sClient)
 	Expect(err).ShouldNot(HaveOccurred(), log)
 }
 

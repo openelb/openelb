@@ -54,11 +54,11 @@ func checkLog(namespace, name, containerName, logFilename string) (string, error
 func writeLogToTempFile(log []byte, filename string) {
 	ioutil.WriteFile(filename, log, 0664)
 }
-func CheckManagerLog(namespace, name, testCaseName string) (string, error) {
-	return checkLog(namespace, name, "manager", "/tmp/"+testCaseName+"_manager.porterlog")
+func CheckManagerLog(namespace, name, logfileName string) (string, error) {
+	return checkLog(namespace, name, "manager", logfileName)
 }
 
-func CheckAgentLog(namespace, name, testCaseName string, dynclient client.Client) (string, error) {
+func CheckAgentLog(namespace, name, logfileName string, dynclient client.Client) (string, error) {
 	podlist := &corev1.PodList{}
 	label := make(map[string]string)
 	label["app"] = name
@@ -67,7 +67,7 @@ func CheckAgentLog(namespace, name, testCaseName string, dynclient client.Client
 		return "Failed to get podlist of agent", err
 	}
 	for _, pod := range podlist.Items {
-		log, err := checkLog(namespace, pod.Name, "", "/tmp/"+testCaseName+"_"+pod.Spec.NodeName+"_agent.porterlog")
+		log, err := checkLog(namespace, pod.Name, "", logfileName+"_"+pod.Spec.NodeName+".porterlog")
 		if err != nil {
 			return pod.Spec.NodeName + "\n" + log, err
 		}

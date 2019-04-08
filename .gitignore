@@ -25,3 +25,6 @@ bin
 deploy/porter.yaml
 *.bak
 .DS_Store
+
+# log
+*.portlog
