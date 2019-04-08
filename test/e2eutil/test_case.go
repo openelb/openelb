@@ -27,6 +27,7 @@ const (
 type DeployFunc func() error
 type TestFunc func()
 type TestCase struct {
+	Name           string
 	ControllerAS   int
 	ControllerIP   string
 	ControllerPort int
@@ -249,9 +250,9 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 	Expect(err).ShouldNot(HaveOccurred(), "Failed to get log of router")
 	Expect(log).ShouldNot(ContainSubstring("error"))
 
-	log, err = CheckManagerLog(t.Namespace, managerName)
+	log, err = CheckManagerLog(t.Namespace, managerName, t.Name)
 	Expect(err).ShouldNot(HaveOccurred(), log)
-	log, err = CheckAgentLog(t.Namespace, "porter-agent", t.K8sClient)
+	log, err = CheckAgentLog(t.Namespace, "porter-agent", t.Name, t.K8sClient)
 	Expect(err).ShouldNot(HaveOccurred(), log)
 }
 

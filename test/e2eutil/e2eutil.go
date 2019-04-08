@@ -118,7 +118,11 @@ func GetServiceNodesIP(c client.Client, namespace, name string) ([]string, error
 
 func KubectlApply(filename string) error {
 	cmd := exec.Command("kubectl", "apply", "-f", filename)
-	return cmd.Run()
+	str, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("kubectl apply failed, error :%s\n", str)
+	}
+	return err
 }
 
 func KubectlDelete(filename string) error {

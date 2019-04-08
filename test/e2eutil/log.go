@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os/exec"
 	"strings"
 
@@ -27,7 +28,7 @@ func ParseLog(log string) *LogInfo {
 	return logInfo
 }
 
-func checkLog(namespace, name, containerName string) (string, error) {
+func checkLog(namespace, name, containerName, logFilename string) (string, error) {
 	params := []string{"logs", "-n", namespace, name}
 	if containerName != "" {
 		params = append(params, "-c", containerName)
@@ -46,13 +47,18 @@ func checkLog(namespace, name, containerName string) (string, error) {
 			}
 		}
 	}
+	writeLogToTempFile(log, logFilename)
 	return string(log), nil
 }
-func CheckManagerLog(namespace, name string) (string, error) {
-	return checkLog(namespace, name, "manager")
+
+func writeLogToTempFile(log []byte, filename string) {
+	ioutil.WriteFile(filename, log, 0664)
+}
+func CheckManagerLog(namespace, name, testCaseName string) (string, error) {
+	return checkLog(namespace, name, "manager", "/tmp/"+testCaseName+"_manager.porterlog")
 }
 
-func CheckAgentLog(namespace, name string, dynclient client.Client) (string, error) {
+func CheckAgentLog(namespace, name, testCaseName string, dynclient client.Client) (string, error) {
 	podlist := &corev1.PodList{}
 	label := make(map[string]string)
 	label["app"] = name
@@ -61,7 +67,7 @@ func CheckAgentLog(namespace, name string, dynclient client.Client) (string, err
 		return "Failed to get podlist of agent", err
 	}
 	for _, pod := range podlist.Items {
-		log, err := checkLog(namespace, pod.Name, "")
+		log, err := checkLog(namespace, pod.Name, "", "/tmp/"+testCaseName+"_"+pod.Spec.NodeName+"_agent.porterlog")
 		if err != nil {
 			return pod.Spec.NodeName + "\n" + log, err
 		}
