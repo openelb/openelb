@@ -16,8 +16,9 @@ func init() {
 	workspace = getWorkspace() + "/../.."
 }
 
-func GetDefaultTestCase() *e2eutil.TestCase {
+func GetDefaultTestCase(name string) *e2eutil.TestCase {
 	t := new(e2eutil.TestCase)
+	t.Name = name
 	t.ControllerAS = 65000
 	t.RouterAS = 65001
 	t.ControllerPort = 179
@@ -36,7 +37,7 @@ func GetDefaultTestCase() *e2eutil.TestCase {
 var _ = Describe("e2e", func() {
 	//serviceTypes := types.NamespacedName{Namespace: "default", Name: "mylbapp"}
 	It("Should write iptables when using portforword mode", func() {
-		thisTestCase := GetDefaultTestCase()
+		thisTestCase := GetDefaultTestCase("portforward")
 		thisTestCase.UsePortForward = true
 		thisTestCase.ControllerPort = 17900
 		thisTestCase.RouterIP = "192.168.98.8"
@@ -66,12 +67,12 @@ var _ = Describe("e2e", func() {
 		Expect(log).ShouldNot(ContainSubstring("error"))
 	})
 	It("Should work well when using samples", func() {
-		thisTestCase := GetDefaultTestCase()
+		thisTestCase := GetDefaultTestCase("sample")
 		thisTestCase.RouterIP = "192.168.98.8"
 		thisTestCase.StartDefaultTest(workspace)
 	})
 	It("Should work well in passive mode when using samples", func() {
-		thisTestCase := GetDefaultTestCase()
+		thisTestCase := GetDefaultTestCase("passivemode")
 		thisTestCase.RouterIP = "192.168.98.8"
 		thisTestCase.IsPassiveMode = true
 		thisTestCase.StartDefaultTest(workspace)

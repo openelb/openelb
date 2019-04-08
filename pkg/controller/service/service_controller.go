@@ -78,7 +78,6 @@ type ReconcileService struct {
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Service instance
-	log.Info("----------------Begin to reconclie for service-------------------")
 	svc := &corev1.Service{}
 	err := r.Get(context.TODO(), request.NamespacedName, svc)
 	if err != nil {
@@ -88,8 +87,10 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	origin := svc.DeepCopy()
 	reconcileLog := log.WithValues("Service Name", svc.GetName(), "Namespace", svc.GetNamespace())
+	reconcileLog.Info("----------------Begin to reconclie for service")
+	origin := svc.DeepCopy()
+
 	needReconcile, err := r.useFinalizerIfNeeded(svc)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
