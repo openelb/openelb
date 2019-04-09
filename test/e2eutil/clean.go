@@ -2,9 +2,12 @@ package e2eutil
 
 import (
 	"context"
+	"time"
 
 	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,4 +34,20 @@ func CleanEIPList(dynclient client.Client) error {
 	}
 	return nil
 
+}
+
+func EnsureNamespaceClean(nsname string, k8sclient client.Client) error {
+	ns := &corev1.Namespace{}
+	err := k8sclient.Get(context.Background(), types.NamespacedName{Name: nsname}, ns)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	err = k8sclient.Delete(context.TODO(), ns)
+	if err != nil {
+		return err
+	}
+	return WaitForDeletion(k8sclient, ns, 10*time.Second, 30*time.Second)
 }

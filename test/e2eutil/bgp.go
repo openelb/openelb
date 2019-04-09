@@ -1,6 +1,7 @@
 package e2eutil
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -74,8 +75,15 @@ func StopGoBGPContainer(containerID string) error {
 	return cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{Force: true})
 }
 
-func CheckBGPRoute() (string, error) {
-	cmd := exec.Command("gobgp", "global", "rib")
-	bytes, err := cmd.CombinedOutput()
+func checkBGPRoute(isLocal bool, ip ...string) (string, error) {
+	if isLocal {
+		cmd := exec.Command("gobgp", "global", "rib")
+		bytes, err := cmd.CombinedOutput()
+		return string(bytes), err
+	}
+	if len(ip) == 0 {
+		return "", fmt.Errorf("must supply router ip if the router is not local")
+	}
+	bytes, err := QuickConnectAndRun(ip[0], "source .bash_profile && gobgp global rib")
 	return string(bytes), err
 }

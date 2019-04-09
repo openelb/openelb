@@ -1,7 +1,6 @@
 package e2eutil
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -47,6 +46,8 @@ type TestCase struct {
 	DeployYamlPath         string
 	stopRouter             chan struct{}
 	isLocal                bool
+
+	InjectTest TestFunc
 }
 
 var routerContainerNotExist = fmt.Errorf("containerid is empty")
@@ -159,6 +160,7 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 	Expect(t.DeployYaml()).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
 	defer func() {
 		Expect(KubectlDelete(t.DeployYamlPath)).ShouldNot(HaveOccurred(), "Failed to delete yaml")
+		//Expect(EnsureNamespaceClean(t.Namespace, t.K8sClient)).ShouldNot(HaveOccurred())
 	}()
 
 	//testing
@@ -200,50 +202,30 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 		return fmt.Errorf("Failed")
 	}, 2*time.Minute, time.Second).Should(Succeed())
 	//check route in bird
-	if t.IsLocal() {
-		Eventually(func() error {
-			s, err := CheckBGPRoute()
-			if err != nil {
-				return err
+	Eventually(func() error {
+		ips, err := GetServiceNodesIP(t.K8sClient, serviceTypes.Namespace, serviceTypes.Name)
+		if err != nil {
+			return err
+		}
+		if len(ips) < 2 {
+			return fmt.Errorf("Service Not Ready")
+		}
+		s, err := t.CheckBGPRoute()
+		if err != nil {
+			log.Printf("current mode: %v,err: %s", t.IsLocal(), s)
+			return err
+		}
+		for _, ip := range ips {
+			if !strings.Contains(s, ip) {
+				return fmt.Errorf("No routes in GoBGP")
 			}
-			ips, err := GetServiceNodesIP(t.K8sClient, serviceTypes.Namespace, serviceTypes.Name)
-			if err != nil {
-				return err
-			}
-			if len(ips) < 2 {
-				return fmt.Errorf("Service Not Ready")
-			}
-			for _, ip := range ips {
-				if !strings.Contains(s, ip) {
-					return fmt.Errorf("No routes in GoBGP")
-				}
-			}
-			return nil
-		}, time.Minute, 5*time.Second).Should(Succeed())
-	} else {
-		session, err := QuickConnectUsingDefaultSSHKey(t.RouterIP)
-		Expect(err).NotTo(HaveOccurred(), "Connect Bird using private key FAILED")
-		defer session.Close()
-		stdinBuf, err := session.StdinPipe()
-		var outbt, errbt bytes.Buffer
-		session.Stdout = &outbt
-		session.Stderr = &errbt
-		err = session.Shell()
-		Expect(err).ShouldNot(HaveOccurred(), "Failed to start ssh shell")
-		Eventually(func() error {
-			stdinBuf.Write([]byte("gobgp global rib\n"))
-			ips, err := GetServiceNodesIP(t.K8sClient, serviceTypes.Namespace, serviceTypes.Name)
-			if err != nil {
-				return err
-			}
-			s := outbt.String() + errbt.String()
-			for _, ip := range ips {
-				if !strings.Contains(s, ip) {
-					return fmt.Errorf("No routes in GoBGP")
-				}
-			}
-			return nil
-		}, time.Minute, 5*time.Second).Should(Succeed())
+		}
+		return nil
+	}, time.Minute, 5*time.Second).Should(Succeed())
+	//inject test
+
+	if t.InjectTest != nil {
+		t.InjectTest()
 	}
 	//CheckLog
 	log, err := t.GetRouterLog()
@@ -259,4 +241,12 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 func (t *TestCase) DeleteServiceGracefully(service *corev1.Service, yaml string) {
 	Expect(KubectlDelete(yaml)).ShouldNot(HaveOccurred())
 	Expect(WaitForDeletion(t.K8sClient, service, time.Second*5, time.Minute)).ShouldNot(HaveOccurred(), "Failed waiting for services deletion")
+}
+
+func (t *TestCase) CheckBGPRoute() (string, error) {
+	if t.isLocal {
+		return checkBGPRoute(true)
+	} else {
+		return checkBGPRoute(false, t.RouterIP)
+	}
 }

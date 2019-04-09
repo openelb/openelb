@@ -3,11 +3,15 @@ package e2e_test
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/kubesphere/porter/test/e2eutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -46,7 +50,10 @@ var _ = Describe("e2e", func() {
 		defer thisTestCase.StopRouter()
 		//apply yaml
 		Expect(thisTestCase.DeployYaml()).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
-		defer e2eutil.KubectlDelete(thisTestCase.DeployYamlPath)
+		defer func() {
+			Expect(e2eutil.KubectlDelete(thisTestCase.DeployYamlPath)).ShouldNot(HaveOccurred(), "Failed to delete yaml")
+			//Expect(e2eutil.EnsureNamespaceClean(thisTestCase.Namespace, thisTestCase.K8sClient)).ShouldNot(HaveOccurred())
+		}()
 
 		pod := &corev1.Pod{}
 		Expect(testClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: managerPodName}, pod)).ShouldNot(HaveOccurred())
@@ -69,6 +76,31 @@ var _ = Describe("e2e", func() {
 	It("Should work well when using samples", func() {
 		thisTestCase := GetDefaultTestCase("sample")
 		thisTestCase.RouterIP = "192.168.98.8"
+		thisTestCase.InjectTest = func() {
+			incre := -1
+			checkFn := func() {
+				deploy := &appsv1.Deployment{}
+				err := thisTestCase.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mylbapp", Namespace: "default"}, deploy)
+				Expect(err).ShouldNot(HaveOccurred())
+				rep := *(deploy.Spec.Replicas)
+				rep += int32(incre)
+				deploy.Spec.Replicas = &rep
+				err = thisTestCase.K8sClient.Update(context.TODO(), deploy)
+				Expect(err).ShouldNot(HaveOccurred())
+				Eventually(func() int {
+					s, err := thisTestCase.CheckBGPRoute()
+					if err == nil {
+						s = strings.TrimSpace(s)
+						return len(strings.Split(s, "\n")) - 1
+					}
+					log.Println("Failed to get route in bgp, err: " + err.Error())
+					return 0
+				}, time.Second*30, time.Second*5).Should(BeEquivalentTo(rep))
+			}
+			checkFn()
+			incre = 1
+			checkFn()
+		}
 		thisTestCase.StartDefaultTest(workspace)
 	})
 	It("Should work well in passive mode when using samples", func() {
