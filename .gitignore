@@ -27,4 +27,4 @@ deploy/porter.yaml
 .DS_Store
 
 # log
-*.portlog
+*.porterlog
