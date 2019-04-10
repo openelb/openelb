@@ -50,16 +50,12 @@ pipeline {
   post {
         always {
             echo 'Clean images'
-            try {
-              archiveArtifacts artifacts: 'deploy/*.yaml', fingerprint: true
-              archiveArtifacts artifacts: 'test/*.porterlog', fingerprint: true
-              sh """
-                docker rmi kubespheredev/porter:$tag
-                docker rmi kubespheredev/porter-agent:$tag
-              """
-            } catch (err){
-              echo err
-            }
+            archiveArtifacts artifacts: 'deploy/*.yaml', fingerprint: true
+            archiveArtifacts artifacts: 'test/*.porterlog', fingerprint: true
+            sh """
+              docker rmi kubespheredev/porter:$tag
+              docker rmi kubespheredev/porter-agent:$tag
+            """
         }
     }
 }
