@@ -9,7 +9,8 @@ function cleanup(){
     echo "Cleaning Namespace"
     kubectl delete ns $TEST_NS > /dev/null
     if [ $SKIP_BUILD == "no" ]; then
-        docker image rm $IMG
+        docker  rmi kubespheredev/porter:$IMG
+        docker  rmi kubespheredev/porter-agent:$IMG
     fi
     exit $result
 }
