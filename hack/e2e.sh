@@ -9,7 +9,8 @@ function cleanup(){
     echo "Cleaning Namespace"
     kubectl delete ns $TEST_NS > /dev/null
     if [ $SKIP_BUILD == "no" ]; then
-        docker image rm $IMG
+        docker  rmi kubespheredev/porter:$IMG
+        docker  rmi kubespheredev/porter-agent:$IMG
     fi
     exit $result
 }
@@ -20,6 +21,9 @@ tag=`git rev-parse --short HEAD`
 IMG=kubespheredev/porter:$tag
 TEST_NS=porter-test-$tag
 SKIP_BUILD=no
+
+##cleanning before running
+kubectl get ns $TEST_NS 2>&1 | grep "not found" || kubectl delete ns $TEST_NS
 
 while [[ $# -gt 0 ]]
 do

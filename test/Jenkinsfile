@@ -51,11 +51,13 @@ pipeline {
         always {
             echo 'Clean images'
             archiveArtifacts artifacts: 'deploy/*.yaml', fingerprint: true
-            archiveArtifacts artifacts: 'test/*.porterlog', fingerprint: true
             sh """
               docker rmi kubespheredev/porter:$tag
               docker rmi kubespheredev/porter-agent:$tag
             """
+        }
+        failure{
+            archiveArtifacts artifacts: 'test/*.porterlog', fingerprint: true
         }
     }
 }
