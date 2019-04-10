@@ -52,7 +52,7 @@ var _ = Describe("e2e", func() {
 		Expect(thisTestCase.DeployYaml()).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
 		defer func() {
 			Expect(e2eutil.KubectlDelete(thisTestCase.DeployYamlPath)).ShouldNot(HaveOccurred(), "Failed to delete yaml")
-			//Expect(e2eutil.EnsureNamespaceClean(thisTestCase.Namespace, thisTestCase.K8sClient)).ShouldNot(HaveOccurred())
+			Expect(e2eutil.EnsureNamespaceClean(thisTestCase.Namespace, thisTestCase.K8sClient)).ShouldNot(HaveOccurred())
 		}()
 
 		pod := &corev1.Pod{}

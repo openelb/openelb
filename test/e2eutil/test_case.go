@@ -160,7 +160,7 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 	Expect(t.DeployYaml()).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
 	defer func() {
 		Expect(KubectlDelete(t.DeployYamlPath)).ShouldNot(HaveOccurred(), "Failed to delete yaml")
-		//Expect(EnsureNamespaceClean(t.Namespace, t.K8sClient)).ShouldNot(HaveOccurred())
+		Expect(EnsureNamespaceClean(t.Namespace, t.K8sClient)).ShouldNot(HaveOccurred())
 	}()
 
 	//testing
