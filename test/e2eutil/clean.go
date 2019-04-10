@@ -37,7 +37,7 @@ func CleanEIPList(dynclient client.Client) error {
 
 }
 
-func EnsureNamespaceClean(nsname string, k8sclient client.Client) error {
+func EnsureNamespaceClean(nsname string) error {
 	return wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
 		cmd := exec.Command("kubectl", "get", "all", "-n", nsname)
 		str, err := cmd.CombinedOutput()
