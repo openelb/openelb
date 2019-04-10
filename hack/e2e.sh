@@ -21,6 +21,9 @@ IMG=kubespheredev/porter:$tag
 TEST_NS=porter-test-$tag
 SKIP_BUILD=no
 
+##cleanning before running
+kubectl get ns $TEST_NS 2>&1 | grep "not found" || kubectl delete ns $TEST_NS
+
 while [[ $# -gt 0 ]]
 do
 key="$1"
