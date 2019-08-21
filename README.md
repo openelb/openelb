@@ -3,58 +3,64 @@
 
 # Porter
 
-`Porter` 是一款适用于物理机部署 Kubernetes 的负载均衡器，该负载均衡器使用物理交换机实现，利用 BGP 和 ECMP 从而达到性能最优和高可用性。我们知道在云上部署的 Kubernetes 环境下，通常云服务厂商会提供 cloud LB 插件暴露 Kubernetes 服务到外网，但在物理机部署环境下由于没有云环境，服务暴露给外网非常不方便，Porter 是一个提供用户在物理环境暴露服务和在云上暴露服务一致性体验的插件。该插件提供两大功能模块：
+> English | [中文](README_zh.md)
 
-1. LB controller 和 agent: controller 负责同步 BGP 路由到物理交换机；agent 以 DaemonSet 方式部署到节点上负责维护引流规则；
-2. EIP service，包括 EIP pool 管理和 EIP controller，controller 会负责更新服务的 EIP 信息。
+`Porter` is a load balancer which is designed for a bare metal Kubernetes cluster. It's implemented by physical switch, and uses BGP and ECMP to achieve optimal performance and high availability. As we know, In the cloud-enabled Kubernetes cluster, the cloud provider usually provides the LB plugin to assign EIP and expose the service externally. However, the service is  hard to expose externally in a bare metal cluster because of lacking a cloud Load Balancer. In short, Porter allows you to create Kubernetes services of type “LoadBalancer” in bare metal clusters, which makes you have consistency experiences on the cloud. This plugin has two components which provide following core features: 
 
-Porter 是 [KubeSphere](https://kubesphere.io/) 的一个子项目。
+1. LB Controller & Agent: The controller is responsible for synchronizing BGP routes to the physical switch; The agent is deployed to each node as DaemonSet to maintain the drainage rules;
+
+2. The EIP service, including the EIP pools management and EIP controller, is responsible for dynamically updating the EIP information of the service.
+
+> Note: Porter is a subproject of [KubeSphere](https://github.com/kubesphere/kubesphere).
 
 
-## 物理部署架构
+## Principle
 
-下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
+The following figure desribes the principle of Porter. Suppose there is a distributed service on node1 (192.168.0.2) and node2 (192.168.0.6). The service needs to be accessed through EIP `1.1.1.1`. After deploying the [Example Service](https://github.com/kubesphere/porter/blob/master/config/samples/service.yaml), Porter will automatically synchronize routing information to the leaf switch, and then synchronize to the spine and border switch, thus external users can access the service through EIP `1.1.1.1`.
 
 ![node architecture](doc/img/node-arch.png)
 
-## 插件部署架构
-插件通过一个`Manager`监控集群中的Service的变化，广播相关路由。同时集群中所有节点都部署有一个Agent，每当有一个EIP被使用时，就会在主机上添加一条主机路由规则，将发往这个EIP的IP报文引流到本地。
+## Deployment Architecture
+
+The plugin monitors the changes of the service in the cluster through a `Manager` and broadcasts related routes. At the same time, all the nodes in the cluster are deployed with an agent. Whenever an EIP is used, a host routing rule will be added to the host, diverting the IP packets sent to the EIP to the local device.
 
 ![porter deployment](doc/img/porter-deployment.png)
 
-## 插件逻辑
+## Logic
 
-该插件以服务的形式部署在 Kubernetes 集群中时，会与集群的边界路由器（三层交换机）建立 BGP 连接。每当集群中创建了带有特定注记（一个 annotation 为 lb.kubesphere.io/v1apha1: porter，见[示例](config/sample/service.yaml)）的服务时，就会为该服务动态分配 EIP (用户也可以自己指定 EIP)，LB controller 创建路由，并通过 BGP 将路由传导到公网（私网）中，使得外部能够访问这个服务。
+When Porter is deployed as a service in Kubernetes cluster, it establishes a BGP connection with the cluster's border router (Layer 3 switch). When a service with a specific annotation (an annotation is `lb.kubesphere.io/v1apha1: porter`, see [Example Service](https://github.com/kubesphere/porter/blob/master/config/samples/service.yaml)) has been created in the cluster, the service is dynamically assigned EIP (user can also specify EIP by itself). The LB controller creates a route and forwards the route to the public network (or private network) through BGP, so that the service can be accessed externally.
 
-Porter LB controller 是基于 [Kubernetes controller runtime](https://github.com/kubernetes-sigs/controller-runtime) 实现的 custom controller，通过 watch service 的变化自动变更路由信息。
+The Porter LB controller is a custom controller based on the [Kubernetes controller runtime](https://github.com/kubernetes-sigs/controller-runtime) that automatically changes routing information by watching changes of the service.
 
 ![porter architecture](doc/img/porter-arch.png)
 
+## Installation
 
-## 部署插件
+1. [Deploy Porter on Bare Metal Kubernetes Cluster](doc/deploy_baremetal.md)
+2. [Test Porter on QingCloud with a Simulate Router](doc/simulate_with_bird.md)
 
-1. [在物理部署的 k8s 集群上部署](doc/deploy_baremetal.md)
-2. [在青云上用模拟路由器的方式测试](doc/simulate_with_bird.md)
+## Build 
 
-## 从代码构建新的插件
+### Prerequisites
 
-### 软件需求
+1. Go 1.11, the plugin uses [gobgp](https://github.com/osrg/gobgp) to create BGP client, and godgp requires Go 1.11.
+2. Docker
+3. Kustomize，it uses [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) to dynamically generate the k8s yaml files needed for the cluster.
+4. If you need to push the plugin image to the remote private repository, you need to execute `docker login` in advance.
 
-1. go 1.11，插件使用了 [gobgp](https://github.com/osrg/gobgp) 创建 BGP 服务端，gobgp 需要 go 1.11
-2. docker，无版本限制
-3. kustomize，插件使用了 [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) 动态生成集群所需的 k8s yaml 文件
-4. 如果插件会推送到远端私有仓库，需要提前执行 `docker login`
+### Steps
 
-### 步骤
+1. Execute `git clone https://github.com/kubesphere/porter.git`, then enter into the folder.
+2. Following with the above guides to modify the config.toml (Under `config/bgp/`). 
+3. (Optional）Modify the code according to your needs.
+4. (Optional）Modify the parameters of the image according to your needs (Under `config/manager`).
+5. (Optional）Follow the [Simulation Tutorial](doc/simulate_with_bird.md) to deploy a Bird node, then modify the BirdIP in `hack/e2e.sh`, and run `make e2e-test` for e2e testing.
+6. Modify the IMG name in the Makefile, then run `make release`, and the final yaml file is under `/deploy`.
+7. Execute `kubectl apply -f deploy/release.yaml` to deploy porter as a plugin.
 
-1. `git clone https://github.com/kubesphere/porter.git`, 进入代码目录 
-2. 按照上面教程的要求修改 config.toml (位于 `config/bgp/` 下） 
-3. （optional）根据自己需要修改代码
-4. （optional）根据自己的需求修改镜像的参数（位于 `config/manager` 下）
-5. （optional）按照[模拟教程](doc/simulate_with_bird.md)部署一个Bird主机，修改`hack/e2e.sh`中的BirdIP，然后运行`make e2e-test`进行e2e测试
-6. 修改 Makefile中 的 IMG 名称，然后 `make release`，最终的 yaml 文件在 `deploy` 目录下
-7. `kubectl apply -f deploy/release.yaml` 部署插件
-
-## 开源许可
+## Licence
 
 **Porter** is licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE) for the full license text.
+
+
+
