@@ -2,7 +2,7 @@ pipeline {
   agent {
     docker {
       image 'kubespheredev/porter-infra:0.0.1'
-      args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp --net=host'
+      args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp --net=host -v gomod-porter:/go'
     }
   }
   environment {
@@ -13,19 +13,9 @@ pipeline {
     JENKINS_IP = '192.168.98.8'
   }
   stages {
-    stage('Prepare'){
-      steps{
-        echo "PATH is: $PATH"
-        sh """
-            mkdir -p /go/src/github.com/kubesphere
-            ln -s `pwd` /go/src/github.com/kubesphere/porter
-        """
-      }
-    }
     stage('Building Manager'){
       steps{
         sh """
-            cd /go/src/github.com/kubesphere/porter
             ./hack/deploy.sh kubespheredev/porter:$tag manager
         """
       }
@@ -33,7 +23,6 @@ pipeline {
     stage('Building Agent'){
       steps{
         sh """
-            cd /go/src/github.com/kubesphere/porter
             ./hack/deploy.sh kubespheredev/porter-agent:$tag agent
         """
       }
@@ -41,7 +30,6 @@ pipeline {
     stage('Test') {
       steps {
         sh """
-            cd /go/src/github.com/kubesphere/porter
             make e2e-nobuild
           """
       }

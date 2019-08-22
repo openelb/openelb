@@ -6,15 +6,15 @@ import (
 	"strings"
 	"time"
 
-	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func CleanEIPList(dynclient client.Client) error {
-	eiplist := &networkv1alpha1.EIPList{}
-	err := dynclient.List(context.TODO(), nil, eiplist)
+	eiplist := &networkv1alpha1.EipList{}
+	err := dynclient.List(context.TODO(), eiplist)
 	if err != nil {
 		if errors.IsNotFound(err) || errors.IsUnexpectedObjectError(err) {
 			return nil

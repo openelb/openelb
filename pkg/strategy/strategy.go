@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/errors"
-
-	"github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -18,7 +17,7 @@ const (
 )
 
 type EIPSelectStrategy interface {
-	Select(*corev1.Service, *v1alpha1.EIPList) (*v1alpha1.EIP, error)
+	Select(*corev1.Service, *v1alpha1.EipList) (*v1alpha1.Eip, error)
 }
 
 func GetStrategy(name EIPSelectStrategyType) (EIPSelectStrategy, error) {
@@ -34,7 +33,7 @@ func GetStrategy(name EIPSelectStrategyType) (EIPSelectStrategy, error) {
 
 type defaultStrategy struct{}
 
-func (defaultStrategy) Select(serv *corev1.Service, eips *v1alpha1.EIPList) (*v1alpha1.EIP, error) {
+func (defaultStrategy) Select(serv *corev1.Service, eips *v1alpha1.EipList) (*v1alpha1.Eip, error) {
 	if len(eips.Items) == 0 {
 		return nil, errors.NewResourceNotEnoughError("eip")
 	}
@@ -49,7 +48,7 @@ func (defaultStrategy) Select(serv *corev1.Service, eips *v1alpha1.EIPList) (*v1
 type portBasedStrategy struct {
 }
 
-func (portBasedStrategy) Select(serv *corev1.Service, eips *v1alpha1.EIPList) (*v1alpha1.EIP, error) {
+func (portBasedStrategy) Select(serv *corev1.Service, eips *v1alpha1.EipList) (*v1alpha1.Eip, error) {
 	if len(eips.Items) == 0 {
 		return nil, errors.NewResourceNotEnoughError("eip")
 	}

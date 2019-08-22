@@ -22,66 +22,64 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/kubesphere/porter/pkg/apis"
-	"github.com/kubesphere/porter/pkg/controller"
+	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
+	"github.com/kubesphere/porter/controllers/eip"
 	"github.com/kubesphere/porter/pkg/nettool"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var metricsAddr string
+var (
+	metricsAddr string
+
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+)
 
 func init() {
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = networkv1alpha1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8081", "The address the metric endpoint binds to.")
 }
+
 func main() {
 	flag.Parse()
-	log := logf.Log.WithName("entrypoint")
-	logf.SetLogger(logf.ZapLogger(false))
-	log.Info("setting up client for agent")
-	cfg, err := config.GetConfig()
+	ctrl.SetLogger(zap.Logger(true))
+	setupLog.Info("setting up client for agent")
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             scheme,
+		MetricsBindAddress: metricsAddr,
+	})
 	if err != nil {
-		log.Error(err, "unable to set up client config")
+		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	// Create a new Cmd to provide shared dependencies and start components
-	log.Info("setting up agent")
-	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: metricsAddr})
-	if err != nil {
-		log.Error(err, "unable to set up overall agent")
+	if err = (&eip.EipReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("Eip"),
+		EventRecorder: mgr.GetEventRecorderFor("eip"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Eip")
 		os.Exit(1)
 	}
-	log.Info("Registering Components.")
-
-	// Setup Scheme for all resources
-	log.Info("setting up scheme")
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "unable add APIs to scheme")
-		os.Exit(1)
-	}
-
-	// Setup all Controllers
-	log.Info("Setting up controller")
-	if err := controller.AddToAgent(mgr); err != nil {
-		log.Error(err, "unable to register controllers to the agent")
-		os.Exit(1)
-	}
-
-	log.Info("Setting up ip route")
+	setupLog.Info("Setting up ip route")
 	command := fmt.Sprintf("ip route replace local 0/0 dev lo table %d", nettool.AgentTable)
 	_, err = exec.Command("sh", "-c", command).Output()
 	if err != nil {
-		log.Error(err, "Failed to execute command: "+command)
+		setupLog.Error(err, "Failed to execute command: "+command)
 		os.Exit(1)
 	}
 	// Start the Cmd
-	log.Info("Starting the Cmd.")
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "unable to run the manager")
+	setupLog.Info("Starting the Cmd.")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
 }

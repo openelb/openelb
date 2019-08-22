@@ -37,7 +37,7 @@ func GetServiceNodesIP(c client.Client, serv *corev1.Service) ([]string, error) 
 
 func GetNodeIPMap(c client.Client) (map[string]string, error) {
 	nodeList := &corev1.NodeList{}
-	err := c.List(context.TODO(), &client.ListOptions{}, nodeList)
+	err := c.List(context.TODO(), nodeList)
 	if err != nil {
 		return nil, err
 	}

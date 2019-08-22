@@ -1,3 +1,7 @@
-version: "0.1"
+version: "2"
 domain: kubesphere.io
 repo: github.com/kubesphere/porter
+resources:
+- group: network
+  version: v1alpha1
+  kind: Eip
