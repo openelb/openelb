@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package controllerruntime alias' common functions and types to improve discoverability and reduce
-// the number of imports for simple Controllers.
 package controllerruntime
 
 import (
@@ -24,11 +22,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 // Builder builds an Application ControllerManagedBy (e.g. Operator) and returns a manager.Manager to start it.
@@ -49,7 +47,7 @@ type Manager = manager.Manager
 // Options are the arguments for creating a new Manager
 type Options = manager.Options
 
-// Builder builds a new Scheme for mapping go types to Kubernetes GroupVersionKinds.
+// SchemeBuilder builds a new Scheme for mapping go types to Kubernetes GroupVersionKinds.
 type SchemeBuilder = scheme.Builder
 
 // GroupVersion contains the "group" and the "version", which uniquely identifies the API.
@@ -96,6 +94,9 @@ var (
 	// NewControllerManagedBy returns a new controller builder that will be started by the provided Manager
 	NewControllerManagedBy = builder.ControllerManagedBy
 
+	// NewWebhookManagedBy returns a new webhook builder that will be started by the provided Manager
+	NewWebhookManagedBy = builder.WebhookManagedBy
+
 	// NewManager returns a new Manager for creating Controllers.
 	NewManager = manager.New
 
@@ -126,10 +127,4 @@ var (
 
 	// SetLogger sets a concrete logging implementation for all deferred Loggers.
 	SetLogger = log.SetLogger
-
-	// ZapLogger is a Logger implementation.
-	// If development is true, a Zap development config will be used
-	// (stacktraces on warnings, no sampling), otherwise a Zap production
-	// config will be used (stacktraces on errors, sampling).
-	ZapLogger = log.ZapLogger
 )

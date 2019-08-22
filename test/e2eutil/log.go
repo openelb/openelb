@@ -62,7 +62,7 @@ func CheckAgentLog(namespace, name, logfileName string, dynclient client.Client)
 	podlist := &corev1.PodList{}
 	label := make(map[string]string)
 	label["app"] = name
-	err := dynclient.List(context.TODO(), client.MatchingLabels(label).InNamespace(namespace), podlist)
+	err := dynclient.List(context.TODO(), podlist, client.MatchingLabels(label), client.InNamespace(namespace))
 	if err != nil {
 		return "Failed to get podlist of agent", err
 	}

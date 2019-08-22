@@ -53,11 +53,11 @@ func normalise(input string) string {
 	var val interface{}
 	err := yaml.Unmarshal([]byte(input), &val)
 	if err != nil {
-		panic(err) // unreachable since Match already calls Unmarshal
+		panic(err) // guarded by Match
 	}
 	output, err := yaml.Marshal(val)
 	if err != nil {
-		panic(err) // untested section, unreachable since we Unmarshal above
+		panic(err) // guarded by Unmarshal
 	}
 	return strings.TrimSpace(string(output))
 }

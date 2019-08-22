@@ -21,21 +21,30 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/kubesphere/porter/pkg/apis"
+	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
+	"github.com/kubesphere/porter/controllers/lb"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
-	"github.com/kubesphere/porter/pkg/controller"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var bgpStartOption *bgpserver.StartOption
 var metricsAddr string
 var readinessProbe bool
+var enableLeaderElection bool
+
+var (
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+)
 
 func init() {
+	_ = corev1.AddToScheme(scheme)
+	_ = networkv1alpha1.AddToScheme(scheme)
+
 	bgpStartOption = new(bgpserver.StartOption)
 	flag.StringVar(&bgpStartOption.ConfigFile, "f", "", "specifying a config file,required")
 	flag.StringVar(&bgpStartOption.ConfigType, "t", "toml", "specifying config type (toml, yaml, json)")
@@ -46,56 +55,50 @@ func init() {
 }
 func main() {
 	flag.Parse()
-	logf.SetLogger(logf.ZapLogger(false))
-	log := logf.Log.WithName("entrypoint")
+	ctrl.SetLogger(zap.Logger(true))
+
 	//starting bgp server
-	log.Info("starting bgp server")
+	setupLog.Info("starting bgp server")
 	ready := make(chan interface{})
 	go bgpserver.Run(bgpStartOption, ready)
 	<-ready
-	log.Info("bgp server started successfully")
-	log.Info("setting up client for manager")
-	cfg, err := config.GetConfig()
+	setupLog.Info("bgp server started successfully")
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             scheme,
+		MetricsBindAddress: metricsAddr,
+		LeaderElection:     enableLeaderElection,
+	})
 	if err != nil {
-		log.Error(err, "unable to set up client config")
+		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	// Create a new Cmd to provide shared dependencies and start components
-	log.Info("setting up manager")
-	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: metricsAddr})
-	if err != nil {
-		log.Error(err, "unable to set up overall controller manager")
-		os.Exit(1)
-	}
-
-	// Setup Scheme for all resources
-	log.Info("setting up scheme")
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "unable add APIs to scheme")
-		os.Exit(1)
-	}
 	// Setup all Controllers
-	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr); err != nil {
-		log.Error(err, "unable to register controllers to the manager")
+	setupLog.Info("Setting up controller")
+	if err = (&lb.ServiceReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("lb"),
+		EventRecorder: mgr.GetEventRecorderFor("service"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "lb")
 		os.Exit(1)
 	}
-	log.Info("Setting up readiness probe")
+	setupLog.Info("Setting up readiness probe")
 	serverMuxA := http.NewServeMux()
 	serverMuxA.HandleFunc("/hello", serveReadinessHandler)
 	go func() {
 		err := http.ListenAndServe(":8000", serverMuxA)
 		if err != nil {
-			log.Error(err, "Failed to start readiness probe")
+			setupLog.Error(err, "Failed to start readiness probe")
 			os.Exit(1)
 		}
 	}()
 	// Start the Cmd
-	log.Info("Starting the Cmd.")
+	setupLog.Info("Starting the Cmd.")
 	readinessProbe = true
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "unable to run the manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
 }

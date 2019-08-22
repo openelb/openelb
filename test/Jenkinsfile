@@ -13,19 +13,9 @@ pipeline {
     JENKINS_IP = '192.168.98.8'
   }
   stages {
-    stage('Prepare'){
-      steps{
-        echo "PATH is: $PATH"
-        sh """
-            mkdir -p /go/src/github.com/kubesphere
-            ln -s `pwd` /go/src/github.com/kubesphere/porter
-        """
-      }
-    }
     stage('Building Manager'){
       steps{
         sh """
-            cd /go/src/github.com/kubesphere/porter
             ./hack/deploy.sh kubespheredev/porter:$tag manager
         """
       }
@@ -33,7 +23,6 @@ pipeline {
     stage('Building Agent'){
       steps{
         sh """
-            cd /go/src/github.com/kubesphere/porter
             ./hack/deploy.sh kubespheredev/porter-agent:$tag agent
         """
       }
@@ -41,7 +30,6 @@ pipeline {
     stage('Test') {
       steps {
         sh """
-            cd /go/src/github.com/kubesphere/porter
             make e2e-nobuild
           """
       }

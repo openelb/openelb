@@ -182,16 +182,6 @@ func Fingerprint128(s []byte) (lo, hi uint64) {
 	return h.lo, h.hi
 }
 
-// Fingerprint64 is a 64-bit fingerprint function for byte-slices
-func Fingerprint64(s []byte) uint64 {
-	return naHash64(s)
-}
-
-// Fingerprint32 is a 32-bit fingerprint function for byte-slices
-func Fingerprint32(s []byte) uint32 {
-	return Hash32(s)
-}
-
 // Hash128 is a 128-bit hash function for byte-slices
 func Hash128(s []byte) (lo, hi uint64) {
 	return Fingerprint128(s)

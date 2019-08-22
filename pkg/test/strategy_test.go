@@ -1,7 +1,7 @@
 package test
 
 import (
-	"github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	"github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/strategy"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -9,27 +9,27 @@ import (
 )
 
 var _ = Describe("Strategy Test", func() {
-	var eiplist *v1alpha1.EIPList
+	var eiplist *v1alpha1.EipList
 	var service *corev1.Service
 	BeforeEach(func() {
-		eips := []v1alpha1.EIP{}
-		eips = append(eips, v1alpha1.EIP{
-			Spec: v1alpha1.EIPSpec{
+		eips := []v1alpha1.Eip{}
+		eips = append(eips, v1alpha1.Eip{
+			Spec: v1alpha1.EipSpec{
 				Address: "1.1.1.1",
 			},
 		},
-			v1alpha1.EIP{
-				Spec: v1alpha1.EIPSpec{
+			v1alpha1.Eip{
+				Spec: v1alpha1.EipSpec{
 					Address: "1.1.1.2",
 				},
 			},
-			v1alpha1.EIP{
-				Spec: v1alpha1.EIPSpec{
+			v1alpha1.Eip{
+				Spec: v1alpha1.EipSpec{
 					Address: "1.1.1.3",
 				},
 			})
 
-		eiplist = &v1alpha1.EIPList{Items: eips}
+		eiplist = &v1alpha1.EipList{Items: eips}
 		eiplist.Items[0].Status.PortsUsage = make(map[int32]string)
 		eiplist.Items[1].Status.PortsUsage = make(map[int32]string)
 		eiplist.Items[2].Status.PortsUsage = make(map[int32]string)
