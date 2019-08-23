@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/kubesphere/porter/pkg/apis"
+	"github.com/kubesphere/porter/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -37,7 +37,7 @@ var _ = BeforeSuite(func() {
 	Expect(testNamespace).ShouldNot(BeEmpty())
 	cfg, err := config.GetConfig()
 	Expect(err).ShouldNot(HaveOccurred(), "Error reading kubeconfig")
-	apis.AddToScheme(scheme.Scheme)
+	v1alpha1.AddToScheme(scheme.Scheme)
 	c, err := client.New(cfg, client.Options{})
 	Expect(err).NotTo(HaveOccurred(), "Error in creating client")
 	testClient = c

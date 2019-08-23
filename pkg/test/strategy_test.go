@@ -30,9 +30,9 @@ var _ = Describe("Strategy Test", func() {
 			})
 
 		eiplist = &v1alpha1.EipList{Items: eips}
-		eiplist.Items[0].Status.PortsUsage = make(map[int32]string)
-		eiplist.Items[1].Status.PortsUsage = make(map[int32]string)
-		eiplist.Items[2].Status.PortsUsage = make(map[int32]string)
+		eiplist.Items[0].Status.PortsUsage = make(map[string]string)
+		eiplist.Items[1].Status.PortsUsage = make(map[string]string)
+		eiplist.Items[2].Status.PortsUsage = make(map[string]string)
 
 		service = &corev1.Service{}
 		service.Spec.Ports = append(service.Spec.Ports, corev1.ServicePort{Port: 1111})
@@ -64,13 +64,13 @@ var _ = Describe("Strategy Test", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*eip).To(Equal(eiplist.Items[0]))
 
-			eiplist.Items[0].Status.PortsUsage[1111] = "yes"
-			eiplist.Items[1].Status.PortsUsage[2222] = "yes"
+			eiplist.Items[0].Status.PortsUsage["1111"] = "yes"
+			eiplist.Items[1].Status.PortsUsage["2222"] = "yes"
 			eip, err = selector.Select(service, eiplist)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(*eip).To(Equal(eiplist.Items[2]))
 
-			eiplist.Items[2].Status.PortsUsage[3333] = "yes"
+			eiplist.Items[2].Status.PortsUsage["3333"] = "yes"
 			_, err = selector.Select(service, eiplist)
 			Expect(err.Error()).To(HavePrefix("No suitable ip has empty ports"))
 		})

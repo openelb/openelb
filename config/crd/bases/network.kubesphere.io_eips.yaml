@@ -1,20 +1,19 @@
+
+---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: eips.network.kubesphere.io
 spec:
   group: network.kubesphere.io
   names:
-    kind: EIP
+    kind: Eip
     plural: eips
-  scope: Namespaced
-  subresources:
-    status: {}
+  scope: ""
   validation:
     openAPIV3Schema:
+      description: Eip is the Schema for the eips API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -29,6 +28,7 @@ spec:
         metadata:
           type: object
         spec:
+          description: EipSpec defines the desired state of EIP
           properties:
             address:
               type: string
@@ -36,13 +36,21 @@ spec:
               type: boolean
           type: object
         status:
+          description: EipStatus defines the observed state of EIP
           properties:
             occupied:
               type: boolean
             portsUsage:
+              additionalProperties:
+                type: string
               type: object
           type: object
+      type: object
   version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
 status:
   acceptedNames:
     kind: ""

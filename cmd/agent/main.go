@@ -18,13 +18,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
-	"os/exec"
 
 	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/controllers/eip"
-	"github.com/kubesphere/porter/pkg/nettool"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -67,13 +64,6 @@ func main() {
 		EventRecorder: mgr.GetEventRecorderFor("eip"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Eip")
-		os.Exit(1)
-	}
-	setupLog.Info("Setting up ip route")
-	command := fmt.Sprintf("ip route replace local 0/0 dev lo table %d", nettool.AgentTable)
-	_, err = exec.Command("sh", "-c", command).Output()
-	if err != nil {
-		setupLog.Error(err, "Failed to execute command: "+command)
 		os.Exit(1)
 	}
 	// Start the Cmd

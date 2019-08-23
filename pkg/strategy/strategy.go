@@ -3,6 +3,7 @@ package strategy
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/errors"
@@ -60,7 +61,8 @@ func (portBasedStrategy) Select(serv *corev1.Service, eips *v1alpha1.EipList) (*
 			chosen := false
 			ports := make([]int32, 0, len(ip.Status.PortsUsage))
 			for key := range ip.Status.PortsUsage {
-				ports = append(ports, key)
+				k, _ := strconv.Atoi(key)
+				ports = append(ports, int32(k))
 			}
 			for _, port := range serv.Spec.Ports {
 				index := sort.Search(len(ports), func(i int) bool {

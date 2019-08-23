@@ -1,0 +1,8 @@
+namespace: porter-system
+
+bases:
+- ../default
+
+patchesStrategicMerge:
+- agent_image_patch.yaml
+- manager_image_patch.yaml

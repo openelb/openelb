@@ -7,8 +7,9 @@ binary=$2
 
 sedopt="-i -e"
 if [ "$(uname)" == "Darwin" ]; then
-    sedopt="-i .bak -e"
+    sedopt="-i '' -e"
 fi 
+
 echo "[1] Building binary for $binary"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-w" -a -o  bin/${binary}/$binary cmd/${binary}/main.go
 
@@ -17,9 +18,6 @@ docker build -f deploy/${binary}/Dockerfile -t ${IMG} bin/$binary/
 
 echo "[3] Docker image build done, try to push to registry"
 docker push $IMG
-
-echo "[4] updating kustomize image patch file for $binary resource"
-sed $sedopt 's@image: .*@image: '"${IMG}"'@' ./config/default/${binary}_image_patch.yaml
 
 if [ "$3" == "--private" ]; then
     echo "add pull registry to manifest"

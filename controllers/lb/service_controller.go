@@ -38,6 +38,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
+
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
 	client.Client
@@ -46,9 +51,32 @@ type ServiceReconciler struct {
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	ctl, _ := ctrl.NewControllerManagedBy(mgr).Build(r)
-	//endpoints
+	//service
 	p := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
+				if validate.HasPorterLBAnnotation(e.MetaNew.GetAnnotations()) || validate.HasPorterLBAnnotation(e.MetaOld.GetAnnotations()) {
+					return e.ObjectOld != e.ObjectNew
+				}
+			}
+			return false
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			if validate.IsTypeLoadBalancer(e.Object) {
+				return validate.HasPorterLBAnnotation(e.Meta.GetAnnotations())
+			}
+			return false
+		},
+	}
+	// Watch for changes to Service
+	//return ctl.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForObject{}, p)
+	ctl, err := ctrl.NewControllerManagedBy(mgr).For(&corev1.Service{}).WithEventFilter(p).Build(r)
+	if err != nil {
+		r.Log.Error(err, "Failed to build controller")
+		return err
+	}
+	//endpoints
+	p = predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			svc := &corev1.Service{}
 			err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.MetaOld.GetNamespace(), Name: e.MetaOld.GetName()}, svc)
@@ -80,35 +108,9 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
-	err := ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, p)
-	if err != nil {
-		return err
-	}
-	//service
-	p = predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
-				if validate.HasPorterLBAnnotation(e.MetaNew.GetAnnotations()) || validate.HasPorterLBAnnotation(e.MetaOld.GetAnnotations()) {
-					return e.ObjectOld != e.ObjectNew
-				}
-			}
-			return false
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			if validate.IsTypeLoadBalancer(e.Object) {
-				return validate.HasPorterLBAnnotation(e.Meta.GetAnnotations())
-			}
-			return false
-		},
-	}
-	// Watch for changes to Service
-	return ctl.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForObject{}, p)
+	return ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, p)
 }
 
-// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=services/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
-// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("porter", req.NamespacedName)
