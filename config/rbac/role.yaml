@@ -1,3 +1,5 @@
+
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -5,49 +7,11 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - network.kubesphere.io
-  resources:
-  - eips
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - eips/status
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
   - ""
   resources:
   - events
   verbs:
   - create
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - services/status
-  verbs:
-  - get
-  - update
   - patch
 - apiGroups:
   - ""
@@ -65,3 +29,43 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - eips
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - eips/status
+  verbs:
+  - get
+  - patch
+  - update

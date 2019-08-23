@@ -9,7 +9,7 @@ import (
 	"text/template"
 	"time"
 
-	networkv1alpha1 "github.com/kubesphere/porter/pkg/apis/network/v1alpha1"
+	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/util"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -164,7 +164,7 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 	}()
 
 	//testing
-	eip := &networkv1alpha1.EIP{}
+	eip := &networkv1alpha1.Eip{}
 	reader, err := os.Open(workspace + "/config/samples/network_v1alpha1_eip.yaml")
 	Expect(err).NotTo(HaveOccurred(), "Cannot read sample yamls")
 	err = yaml.NewYAMLOrJSONDecoder(reader, 10).Decode(eip)

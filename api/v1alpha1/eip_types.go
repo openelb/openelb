@@ -27,8 +27,8 @@ type EipSpec struct {
 
 // EipStatus defines the observed state of EIP
 type EipStatus struct {
-	PortsUsage map[int32]string `json:"portsUsage,omitempty"`
-	Occupied   bool             `json:"occupied,omitempty"`
+	PortsUsage map[string]string `json:"portsUsage,omitempty"`
+	Occupied   bool              `json:"occupied,omitempty"`
 }
 
 // +kubebuilder:object:root=true

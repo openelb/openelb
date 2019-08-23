@@ -32,6 +32,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+// +kubebuilder:rbac:groups=network.kubesphere.io,resources=eips,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=network.kubesphere.io,resources=eips/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+
 // EipReconciler reconciles a Eip object
 type EipReconciler struct {
 	client.Client
@@ -39,9 +43,6 @@ type EipReconciler struct {
 	record.EventRecorder
 }
 
-// +kubebuilder:rbac:groups=network.kubesphere.io,resources=eips,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=network.kubesphere.io,resources=eips/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	_ = r.Log.WithValues("eip", req.NamespacedName)
