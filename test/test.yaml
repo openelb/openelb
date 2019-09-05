@@ -1,0 +1,47 @@
+apiVersion: network.kubesphere.io/v1alpha1
+kind: Eip
+metadata:
+    labels:
+        controller-tools.k8s.io: "1.0"
+    name: eip-sample
+spec:
+    address: 10.11.11.11 #这里替换为你申请的EIP
+    disable: false
+  
+---
+kind: Service
+apiVersion: v1
+metadata:
+    name:  mylbapp
+    annotations:
+        lb.kubesphere.io/v1alpha1: porter
+spec:
+    selector:
+        app:  mylbapp
+    type:  LoadBalancer 
+    ports:
+    - name:  http
+      port:  8088
+      targetPort:  80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mylbapp
+  name: mylbapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mylbapp
+  template:
+    metadata:
+      labels:
+        app: mylbapp
+    spec:
+      containers:
+      - image: nginx:alpine
+        name: nginx
+        ports:
+        - containerPort: 80

@@ -5,11 +5,9 @@ metadata:
   namespace: system
   labels:
     control-plane: porter-manager
-    controller-tools.k8s.io: "1.0"
 spec:
   selector:
     control-plane: porter-manager
-    controller-tools.k8s.io: "1.0"
   ports:
   - port: 443
 ---
@@ -20,17 +18,17 @@ metadata:
   namespace: system
   labels:
     control-plane: porter-manager
-    controller-tools.k8s.io: "1.0"
+    app: porter-manager
 spec:
   selector:
     matchLabels:
       control-plane: porter-manager
-      controller-tools.k8s.io: "1.0"
+      app: porter-manager
   template:
     metadata:
       labels:
         control-plane: porter-manager
-        controller-tools.k8s.io: "1.0"
+        app: porter-manager
     spec:
       hostNetwork: true
       nodeSelector:
@@ -106,3 +104,10 @@ metadata:
 # kind: ServiceAccount
 # metadata:
 #   name: porter-service-account
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bgp-cfg
+  namespace: system

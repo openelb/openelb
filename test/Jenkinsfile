@@ -38,7 +38,7 @@ pipeline {
   post {
         always {
             echo 'Clean images'
-            archiveArtifacts artifacts: 'deploy/*.yaml', fingerprint: true
+            archiveArtifacts artifacts: '/tmp/*.yaml', fingerprint: true
             sh """
               docker rmi kubespheredev/porter:$tag
               docker rmi kubespheredev/porter-agent:$tag

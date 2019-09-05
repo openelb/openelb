@@ -81,14 +81,13 @@
     apiVersion: network.kubesphere.io/v1alpha1
     kind: EIP
     metadata:
-    labels:
-        controller-tools.k8s.io: "1.0"
-    name: eip-sample
+        labels:
+            controller-tools.k8s.io: "1.0"
+        name: eip-sample
     spec:
-    # Add fields here
         address: 10.11.11.11 #这里替换为你申请的EIP
         disable: false
-    EOF 
+    EOF
     ```
 
 2. 部署测试Service. Service必须要添加如下一个annotations，type也要指定为LoadBalancer,如下：
@@ -97,17 +96,17 @@
     kind: Service
     apiVersion: v1
     metadata:
-    name:  mylbapp
-    annotations:
-        lb.kubesphere.io/v1alpha1: porter
+        name:  mylbapp
+        annotations:
+            lb.kubesphere.io/v1alpha1: porter
     spec:
         selector:
             app:  mylbapp
         type:  LoadBalancer 
         ports:
         - name:  http
-            port:  8088
-            targetPort:  80
+        port:  8088
+        targetPort:  80
     ```
 
     可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/config/sample/service.yaml)

@@ -8,6 +8,6 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: magicsong/porter-agent:cbb87f59
+      - image: magicsong/porter-agent:fca0c6a4
         name: porter-agent
         imagePullPolicy: Always

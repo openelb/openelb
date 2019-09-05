@@ -81,7 +81,7 @@ func (r *ServiceReconciler) createLB(serv *corev1.Service) error {
 	r.Event(serv, corev1.EventTypeNormal, "BGP Route Pulished", "Route to external-ip added successfully")
 	err = r.markEIPPorts(ip, serv.Spec.Ports, true)
 	if err != nil {
-		r.Log.Error(nil, "failed to mark ports of ip used")
+		r.Log.Error(err, "failed to mark ports of ip used")
 		return err
 	}
 	exist := false
@@ -148,6 +148,9 @@ func (r *ServiceReconciler) getServiceNodesIP(serv *corev1.Service) ([]string, e
 
 func (r *ServiceReconciler) markEIPPorts(ip string, ports []corev1.ServicePort, used bool) error {
 	eip := r.getEIPByString(ip)
+	if eip == nil {
+		return fmt.Errorf("Cannot find the eip %s", ip)
+	}
 	eip.Status.Occupied = used
 	return r.Status().Update(context.Background(), eip)
 }

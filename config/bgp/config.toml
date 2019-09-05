@@ -1,7 +1,7 @@
 [global.config]
     as = 65000
     router-id = "192.168.98.2"
-    port = 179
+    port = 17900
 [global.use-multiple-paths.config]
     enabled = true
 [[neighbors]]
