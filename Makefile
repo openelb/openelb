@@ -74,9 +74,9 @@ install-travis:
 	./hack/install_tools.sh
 
 e2e-test: vet
-	./hack/test
+	./hack/test.sh
 e2e-nobuild:
-	./hack/test --skip-build
+	./hack/test.sh --skip-build
 
 docker-ut:
 	docker run --rm -v "${PWD}":/usr/src/github.com/kubesphere/porter -w /usr/src/github.com/kubesphere/porter golang:1.11-alpine  go test -v ./pkg/nettool/

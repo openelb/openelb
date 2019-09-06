@@ -18,8 +18,8 @@ function cleanup(){
 
 dest="./deploy/porter.yaml"
 tag=`git rev-parse --short HEAD`
-MANAGER_IMG=magicsong/porter:$tag
-AGENT_IMG=magicsong/porter-agent:$tag
+MANAGER_IMG=kubespheredev/porter:$tag
+AGENT_IMG=kubespheredev/porter-agent:$tag
 TEST_NS=porter-test-$tag
 SKIP_BUILD=no
 MODE=test
