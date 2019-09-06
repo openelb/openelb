@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'magicsong/porter-infra:0.0.1'
+      image 'magicsong/porter-infra:v0.0.1'
       args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp --net=host -v gomod-porter:/go'
     }
   }
