@@ -10,6 +10,7 @@ spec:
     control-plane: porter-manager
   ports:
   - port: 443
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,7 +33,7 @@ spec:
     spec:
       hostNetwork: true
       nodeSelector:
-        dedicated: master
+        node-role.kubernetes.io/master: ""
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"

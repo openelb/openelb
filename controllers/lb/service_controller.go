@@ -18,7 +18,6 @@ package lb
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/go-logr/logr"
 	"github.com/kubesphere/porter/pkg/constant"
@@ -48,6 +47,10 @@ type ServiceReconciler struct {
 	client.Client
 	Log logr.Logger
 	record.EventRecorder
+}
+
+func (r *ServiceReconciler) getNewerService(serv *corev1.Service) error {
+	return r.Get(context.TODO(), types.NamespacedName{Namespace: serv.Namespace, Name: serv.Name}, serv)
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -126,7 +129,6 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 	r.Log.Info("----------------Begin to reconclie for service")
-	origin := svc.DeepCopy()
 
 	needReconcile, err := r.useFinalizerIfNeeded(svc)
 	if err != nil {
@@ -145,15 +147,8 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				RequeueAfter: machinery.GetRequeueTime(svc),
 			}, nil
 		case portererror.EIPNotFoundError:
-			r.Log.Info("Detect non-exist ips in field 'ExternalIPs'")
-			r.Event(svc, corev1.EventTypeWarning, "Detect non-exist externalIPs", "Clear field 'ExternalIPs' before using Porter")
-			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{}
-			err = r.Status().Update(context.Background(), svc)
-			if err != nil {
-				r.Log.Error(nil, "Failed to clear field 'LoadBalancer Ingress'")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
+			r.Log.Info("Detect unknown ips in annotations")
+			return ctrl.Result{}, err
 		default:
 			if errors.IsNotFound(err) {
 				r.Log.Info("Maybe sevice has been deleted, skipping reconciling")
@@ -161,13 +156,6 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 			r.Log.Error(t, "Create LB for service failed")
 			return ctrl.Result{}, t
-		}
-	}
-	if !reflect.DeepEqual(svc, origin) {
-		err := r.Update(context.Background(), svc)
-		if err != nil {
-			r.Log.Error(nil, "update service instance failed")
-			return ctrl.Result{}, err
 		}
 	}
 	return ctrl.Result{}, nil

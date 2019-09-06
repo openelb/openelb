@@ -139,3 +139,9 @@ func KubectlDelete(filename string) error {
 	log.Println(string(output))
 	return err
 }
+
+func DeleteNamespace(c client.Client, ns string) error {
+	namespace := &corev1.Namespace{}
+	namespace.Name = ns
+	return c.Delete(context.TODO(), namespace)
+}
