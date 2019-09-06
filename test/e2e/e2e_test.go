@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -26,15 +28,17 @@ func GetDefaultTestCase(name string) *e2eutil.TestCase {
 	t.ControllerAS = 65000
 	t.RouterAS = 65001
 	t.ControllerPort = 179
-	t.DeployYamlPath = workspace + "/deploy/porter.yaml"
+	t.ControllerIP = os.Getenv("MASTER_IP")
+	t.DeployYamlPath = os.Getenv("YAML_PATH")
 	t.K8sClient = testClient
-	t.KustomizePath = workspace + "/config/default/"
+	t.KustomizePath = workspace + "/config/dev/"
 	t.Namespace = testNamespace
 	t.RouterConfigPath = "/root/bgp/test.toml"
 	t.RouterTemplatePath = workspace + "/test/test-configs/reciever.template"
 	t.ControllerTemplatePath = workspace + "/test/test-configs/sender.template"
-	t.ControllerIP = "192.168.98.2"
-	t.KustomizeConfigPath = workspace + "/config/bgp/config.toml"
+	t.ControllerConfigPath = "/tmp/config.toml"
+	t.ControllerName = managerName
+	t.TestDeploymentName = testDeployName
 	return t
 }
 
@@ -51,13 +55,12 @@ var _ = Describe("e2e", func() {
 		//apply yaml
 		Expect(thisTestCase.DeployYaml()).ShouldNot(HaveOccurred(), "Failed to deploy yaml")
 		defer func() {
-			Expect(e2eutil.KubectlDelete(thisTestCase.DeployYamlPath)).ShouldNot(HaveOccurred(), "Failed to delete yaml")
-			Expect(e2eutil.EnsureNamespaceClean(thisTestCase.Namespace)).ShouldNot(HaveOccurred())
+			Expect(thisTestCase.DeleteController()).ShouldNot(HaveOccurred(), "Failed to delete controller")
 		}()
 
-		pod := &corev1.Pod{}
-		Expect(testClient.Get(context.TODO(), types.NamespacedName{Namespace: testNamespace, Name: managerPodName}, pod)).ShouldNot(HaveOccurred())
-		nodeIP := pod.Status.HostIP
+		podlist := &corev1.PodList{}
+		Expect(testClient.List(context.TODO(), podlist, client.InNamespace(thisTestCase.Namespace), client.MatchingLabels{"app": "porter-manager"})).ShouldNot(HaveOccurred())
+		nodeIP := podlist.Items[0].Status.HostIP
 		output, err := e2eutil.QuickConnectAndRun(nodeIP, "iptables -nL PREROUTING -t nat | grep "+strconv.Itoa(thisTestCase.ControllerPort))
 		Expect(err).NotTo(HaveOccurred(), "Error in listing NAT tables")
 		Expect(output).To(ContainSubstring(thisTestCase.RouterIP))
@@ -73,14 +76,15 @@ var _ = Describe("e2e", func() {
 		Expect(err).ShouldNot(HaveOccurred(), "Failed to get log of router")
 		Expect(log).ShouldNot(ContainSubstring("error"))
 	})
+
 	It("Should work well when using samples", func() {
 		thisTestCase := GetDefaultTestCase("sample")
-		thisTestCase.RouterIP = "192.168.98.8"
+		thisTestCase.RouterIP = os.Getenv("ROUTER_IP")
 		thisTestCase.InjectTest = func() {
 			incre := -1
 			checkFn := func() {
 				deploy := &appsv1.Deployment{}
-				err := thisTestCase.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mylbapp", Namespace: "default"}, deploy)
+				err := thisTestCase.K8sClient.Get(context.TODO(), types.NamespacedName{Name: testDeployName, Namespace: testNamespace}, deploy)
 				Expect(err).ShouldNot(HaveOccurred())
 				rep := *(deploy.Spec.Replicas)
 				rep += int32(incre)

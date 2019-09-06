@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'kubespheredev/porter-infra:0.0.1'
+      image 'magicsong/porter-infra:v0.0.1'
       args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp --net=host -v gomod-porter:/go'
     }
   }
@@ -37,8 +37,6 @@ pipeline {
   }
   post {
         always {
-            echo 'Clean images'
-            archiveArtifacts artifacts: 'deploy/*.yaml', fingerprint: true
             sh """
               docker rmi kubespheredev/porter:$tag
               docker rmi kubespheredev/porter-agent:$tag

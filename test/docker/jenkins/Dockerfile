@@ -1,4 +1,4 @@
-FROM golang:1.11
+FROM golang:1.12
 
 RUN apt-get update && apt-get install -y apt-transport-https jq openssl libltdl7 \
     && curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \

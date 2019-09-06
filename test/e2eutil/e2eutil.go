@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"strconv"
 	"time"
@@ -35,18 +36,19 @@ import (
 
 func WaitForController(c client.Client, namespace, name string, retryInterval, timeout time.Duration) error {
 	err := wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		controller := &appsv1.StatefulSet{}
+		controller := &appsv1.Deployment{}
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		err = c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, controller)
 		if apierrors.IsNotFound(err) {
-			fmt.Println("Cannot find controller")
+			log.Println("Cannot find controller")
 			return false, nil
 		}
 		if err != nil {
 			return false, err
 		}
 		if controller.Status.ReadyReplicas == 1 {
+			log.Println("Controller is not ready")
 			return true, nil
 		}
 		return false, nil
@@ -55,6 +57,10 @@ func WaitForController(c client.Client, namespace, name string, retryInterval, t
 }
 
 func WaitForDeletion(dynclient client.Client, obj runtime.Object, retryInterval, timeout time.Duration) error {
+	err := dynclient.Delete(context.TODO(), obj)
+	if err != nil {
+		return err
+	}
 	key, err := client.ObjectKeyFromObject(obj)
 	if err != nil {
 		return err
@@ -107,9 +113,9 @@ func GetLogOfPod(rest *rest.RESTClient, namespace, name string, logOptions *core
 	return err
 }
 
-func GetServiceNodesIP(c client.Client, namespace, name string) ([]string, error) {
+func GetServiceNodesIP(c client.Client, namespaceName types.NamespacedName) ([]string, error) {
 	service := &corev1.Service{}
-	err := c.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, service)
+	err := c.Get(context.TODO(), namespaceName, service)
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +132,10 @@ func KubectlApply(filename string) error {
 }
 
 func KubectlDelete(filename string) error {
-	ctx, cancle := context.WithTimeout(context.Background(), time.Second*20)
+	ctx, cancle := context.WithTimeout(context.Background(), time.Second*30)
 	cmd := exec.CommandContext(ctx, "kubectl", "delete", "-f", filename)
 	defer cancle()
-	return cmd.Run()
-}
-
-func KustomizeBuild(kmpath, dst string) error {
-	cmd := exec.Command("kustomize", "build", kmpath, "-o", dst)
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	log.Println(string(output))
+	return err
 }

@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter:v0.1
-IMG_AGENT ?= kubespheredev/porter-agent:v0.1
+IMG_MANAGER ?= kubespheredev/porter:v0.2
+IMG_AGENT ?= kubespheredev/porter-agent:v0.2
 NAMESPACE ?= porter-system
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
@@ -57,12 +57,7 @@ CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
 debug: vet
-	./hack/debug_in_cluster.sh
-debug-out-of-cluster: vet
-	./hack/manager/debug_out_cluster.sh
-
-debug-log:
-	kubectl logs -f -n porter-system controller-manager-0 -c manager
+	./hack/test.sh -m debug
 
 clean-up:
 	./hack/cleanup.sh
@@ -74,22 +69,14 @@ release:
 	kustomize build config/default -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
-release-with-private-registry: test
-	./hack/deploy.sh ${IMG_MANAGER} manager --private
-	./hack/deploy.sh ${IMG_AGENT} agent --private
-	sed -i '' -e  's/namespace: .*/namespace: '"${NAMESPACE}"'/' ./config/default/kustomization.yaml
-	@echo "Building yamls"
-	kustomize build config/overlays/private_registry -o deploy/porter.yaml
-	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
-
 install-travis:
 	chmod +x ./hack/*.sh
 	./hack/install_tools.sh
 
 e2e-test: vet
-	./hack/e2e.sh
+	./hack/test.sh
 e2e-nobuild:
-	./hack/e2e.sh --skip-build
+	./hack/test.sh --skip-build
 
 docker-ut:
 	docker run --rm -v "${PWD}":/usr/src/github.com/kubesphere/porter -w /usr/src/github.com/kubesphere/porter golang:1.11-alpine  go test -v ./pkg/nettool/

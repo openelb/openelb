@@ -32,7 +32,7 @@ type EipStatus struct {
 }
 
 // +kubebuilder:object:root=true
-
+// +kubebuilder:subresource:status
 // Eip is the Schema for the eips API
 type Eip struct {
 	metav1.TypeMeta   `json:",inline"`

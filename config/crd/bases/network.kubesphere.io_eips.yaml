@@ -11,6 +11,8 @@ spec:
     kind: Eip
     plural: eips
   scope: ""
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: Eip is the Schema for the eips API
