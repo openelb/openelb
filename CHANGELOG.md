@@ -1,5 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
+## [ 0.1.1 ] - 2019-09-09
+
+### Added
+- [🚒 use annotation to store eip](https://github.com/kubesphere/porter/pull/57)
+- [add Porter intro of English version](https://github.com/kubesphere/porter/pull/53)
+
+### Changed
+- [🌟 upgrade to kubebuilder 2.0](https://github.com/kubesphere/porter/pull/54)
+- [⏫upgrade kustomize](https://github.com/kubesphere/porter/pull/55)
+
+### Fixed
+- [🚒 fix e2e](https://github.com/kubesphere/porter/pull/56)
+
 ## [ 0.1.0 ] - 2019-03-31
 
 ### Added
