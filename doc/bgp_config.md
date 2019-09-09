@@ -7,9 +7,9 @@ Porter使用了[gobgp](https://github.com/osrg/gobgp)来与外部路由器做路
 [global.config]
     as = 65000
     router-id = "192.168.98.111"
-    port = 17900
+    port = 17900 ##标准端口是179，
 [porter-config]
-    using-port-forward =true
+    using-port-forward =true ##如果是标准端口，请去掉这个属性
 [[neighbors]]
     [neighbors.config]
         neighbor-address = "192.168.98.5"
