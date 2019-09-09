@@ -29,7 +29,7 @@ func RunGoBGPContainer(configPath string) (string, error) {
 	}
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: BGPImageName,
-	}, hostConfig, nil, "")
+	}, hostConfig, nil, "testbgp")
 	if err != nil {
 		return "", err
 	}

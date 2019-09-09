@@ -54,7 +54,8 @@ var _ = Describe("Strategy Test", func() {
 
 			eiplist.Items[2].Status.Occupied = true
 			_, err = selector.Select(service, eiplist)
-			Expect(err.Error()).To(HavePrefix("No enough EIP resource for allocation"))
+			//TODO: refactor this
+			Expect(err.Error()).To(HavePrefix("Not enougn eip to use"))
 		})
 	})
 	Context("PortBased Strategy", func() {

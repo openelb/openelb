@@ -1,7 +1,10 @@
-namespace: porter-test-b2397c7d
+namespace: porter-system
 
 bases:
 - ../default
+
+resources:
+- ns.yaml
 
 patchesStrategicMerge:
 - agent_image_patch.yaml

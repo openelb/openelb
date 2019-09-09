@@ -19,10 +19,5 @@ docker build -f deploy/${binary}/Dockerfile -t ${IMG} bin/$binary/
 echo "[3] Docker image build done, try to push to registry"
 docker push $IMG
 
-if [ "$3" == "--private" ]; then
-    echo "add pull registry to manifest"
-    dockerconfig=`cat ~/.docker/config.json | base64 -w 0`
-    sed $sedopt 's/dockerconfigjson:.*/dockerconfigjson: '"$dockerconfig"'/' ./config/overlays/private_registry/manager_secret.yaml 
-fi
 
 

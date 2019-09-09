@@ -65,8 +65,9 @@ clean-up:
 release:
 	./hack/deploy.sh ${IMG_MANAGER} manager
 	./hack/deploy.sh ${IMG_AGENT} agent
-	sed -i '' -e  's/namespace: .*/namespace: '"${NAMESPACE}"'/' ./config/default/kustomization.yaml
-	kustomize build config/default -o deploy/porter.yaml
+	sed -i '' -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/release/agent_image_patch.yaml
+	sed -i '' -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/release/manager_image_patch.yaml
+	kustomize build config/release -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
 
 install-travis:

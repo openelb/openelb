@@ -1,13 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: porter-manager
+  name: porter-agent
   namespace: system
 spec:
   template:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: kubespheredev/porter:b2397c7d
-        name: manager
-        imagePullPolicy: Always
+      - image: magicsong/porter-agent:fca0c6a4
+        name: porter-agent

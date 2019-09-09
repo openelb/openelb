@@ -10,8 +10,10 @@ fi
 function cleanup(){
     result=$?
     set +e
-    echo "Cleaning Namespace"
-    kubectl delete ns $TEST_NS > /dev/null
+    if [ $MODE == "test" ]; then
+        echo "Cleaning Namespace"
+        kubectl delete ns $TEST_NS
+    fi
     exit $result
 }
 
@@ -61,7 +63,7 @@ case $key in
 esac
 done
 
-trap cleanup SIGINT SIGQUIT
+trap cleanup SIGINT SIGQUIT EXIT
 
 if [ $SKIP_BUILD != "yes" ]; then
     echo "Building manager"
@@ -86,7 +88,7 @@ echo "Current Namespace is $TEST_NS'"
 if [ $MODE == "debug" ] ; then
     echo "deploying for testing"
     kubectl apply -f $YAML_PATH
-    kubectl create configmap bgp-cfg --dry-run -oyaml --from-file=./config/bgp/config.toml | kubectl apply -f -
+    kubectl create configmap bgp-cfg --dry-run -oyaml --from-file=./config/bgp/config.toml -n $TEST_NS | kubectl apply -f -
     echo "Done! Let's roll"
 else
 ###./hack/certs.sh --service webhook-server-service --namespace $TEST_NS --secret webhook-server-secret

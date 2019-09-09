@@ -53,6 +53,7 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	Expect(testClient.Delete(context.TODO(), nginxDeploy)).ShouldNot(HaveOccurred())
 	e2eutil.KubectlDelete(os.Getenv("YAML_PATH"))
+	Expect(e2eutil.DeleteNamespace(testClient, testNamespace)).ShouldNot(HaveOccurred())
 })
 
 func getWorkspace() string {
