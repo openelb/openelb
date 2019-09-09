@@ -11,14 +11,10 @@
  1. 在机器上安装kubernetes
  2. 获取yaml
      ```bash
-    wget https://github.com/kubesphere/porter/releases/download/v0.1.0/porter.yaml
+    wget https://github.com/kubesphere/porter/releases/download/v0.1.1/porter.yaml
      ```
- 3. 修改yaml中一个名为bgp-cfg的configmap，按照[BGP配置教程](doc/bgp_config.md)简单修改一些字段即可。注意要路由器的地址和AS域，确保建立的是`EBGP`
- 4. 给master节点打标签，确保porter安装在主节点（如果不想安装在主节点，那么需要在路由器端配上所有可能的Node节点）
-     ```bash
-    kubectl label nodes name_of_your_master dedicated=master #请先修改mastername
-     ```
- 5. 安装porter到集群中
+ 3. 修改yaml中一个名为bgp-cfg的configmap，按照[BGP配置教程](doc/bgp_config.md)简单修改一些字段即可。注意要路由器的地址和AS域
+ 4. 安装porter到集群中
      ```bash
      kubectl apply -f porter.yaml
      ```
@@ -79,10 +75,8 @@
     ```bash
     kubectl apply -f - <<EOF
     apiVersion: network.kubesphere.io/v1alpha1
-    kind: EIP
+    kind: Eip
     metadata:
-        labels:
-            controller-tools.k8s.io: "1.0"
         name: eip-sample
     spec:
         address: 10.11.11.11 #这里替换为你申请的EIP
@@ -109,7 +103,7 @@
         targetPort:  80
     ```
 
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/config/sample/service.yaml)
+    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/test.yaml),这个样例已经包含了一个EIP
 
     ```bash
     kubectl apply -f service.yaml

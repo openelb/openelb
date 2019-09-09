@@ -91,7 +91,7 @@
 
 1. 获取yaml文件
     ```
-    wget https://github.com/kubesphere/porter/releases/download/v0.0.1/porter.yaml
+    wget https://github.com/kubesphere/porter/releases/download/v0.1.1/porter.yaml
     ```
 2. 修改yaml文件中的configmap `bgp-cfg`，请按照<https://github.com/kubesphere/porter/blob/master/doc/bgp_config.md>配置这个文件，并且需要和刚才模拟器配置相对应。
 3. 配置公网ip回路规则。和模拟路由器的问题一致，公网ip导流至集群中之后，ip包发出默认都是eth0，eth0会将此包丢弃，需要将此ip包导向模拟路由器。**这一步需要在k8s所有节点上配置，因为实际的服务可能部署在任何节点。**
@@ -100,33 +100,21 @@
     sudo ip route replace default via 192.168.98.5 dev eth0 table 101 #路由表101的默认网关是192.168.98.5这个模拟路由器
     ```
     上面的`192.168.98.5`即模拟路由器的地址，模拟路由器上已经配置了一条回路规则，所以此包就不会被丢弃了。实际k8s集群不需要配置，因为k8s集群的默认网关就是这个路由器。
-4. （可选，必读）配置master节点label，我们需要强制将porter部署到master节点。
-   ```bash
-   kubectl label nodes name_of_your_master dedicated=master #请先修改mastername
-   ```
-   如果不想限制porter部署的节点，那么需要在上面配置交换机的时候，将所有节点都作为模拟路由器的邻居。并且删除porter.yaml中的nodeselector:
-   ```yaml
-    nodeSelector:
-        dedicated: master
-    ##如果不想限制porter控制器部署的节点，那么需要注释掉上面两行
-   ```
-5. 安装porter到集群中，`kubectl apply -f porter.yaml`
-6. 添加一个EIP到集群中。
+
+4. 安装porter到集群中，`kubectl apply -f porter.yaml`
+5. 添加一个EIP到集群中。
    ```bash
    kubectl apply -f - <<EOF
     apiVersion: network.kubesphere.io/v1alpha1
-    kind: EIP
+    kind: Eip
     metadata:
-    labels:
-        controller-tools.k8s.io: "1.0"
-    name: eip-sample
+        name: eip-sample
     spec:
-    # Add fields here
         address: 139.198.121.228 #这里替换为你申请的EIP，私有环境可以换成任意的不冲突的IP
         disable: false
     EOF 
    ```
-7. 部署测试Service. Service必须要添加如下一个annotations，type也要指定为LoadBalancer,如下：
+6. 部署测试Service. Service必须要添加如下一个annotations，type也要指定为LoadBalancer,如下：
 
     ```yaml
     kind: Service
@@ -144,17 +132,17 @@
             port:  8088
             targetPort:  80
     ```
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/config/sample/service.yaml)
+    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/test.yaml)
     > 使用这个样例之前需先替换里面的EIP
     ```
     kubectl apply -f service.yaml
     ``` 
-8. 检查一下Porter日志和EIP events，如果没问题，就可以按照Service中的EIP和其端口访问服务了。
+7. 检查一下Porter日志和EIP events，如果没问题，就可以按照Service中的EIP和其端口访问服务了。
    ```bash
    kubectl logs -n porter-system controller-manager-0 -c manager
    kubectl describe eip eip-sample ##观察是否有对应的event
    ```
-9. 检查模拟路由器上，是否有两个等价路由：
+8. 检查模拟路由器上，是否有两个等价路由：
    ```bash
    root@i-7bwamgny:~# ip route
    default via 192.168.98.1 dev eth0
