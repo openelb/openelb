@@ -10,7 +10,11 @@ import (
 
 func (r *EipReconciler) AddRule(instance *networkv1alpha1.Eip) error {
 	if instance.Spec.Address != "" {
-		rule := nettool.NewEIPRule(instance.Spec.Address, 32)
+		rule, err := nettool.NewEIPRule(instance.Spec.Address)
+		if err != nil {
+			r.Log.Info("Failed to initialize ip rule", "eip", instance.Spec.Address)
+			return err
+		}
 		nodeName := os.Getenv("MY_NODE_NAME")
 		if ok, err := rule.IsExist(); err != nil {
 			return err
@@ -32,7 +36,11 @@ func (r *EipReconciler) AddRule(instance *networkv1alpha1.Eip) error {
 
 func (r *EipReconciler) DeleteRule(instance *networkv1alpha1.Eip) error {
 	if instance.Spec.Address != "" {
-		rule := nettool.NewEIPRule(instance.Spec.Address, 32)
+		rule, err := nettool.NewEIPRule(instance.Spec.Address)
+		if err != nil {
+			r.Log.Info("Failed to initialize ip rule", "eip", instance.Spec.Address)
+			return err
+		}
 		if ok, err := rule.IsExist(); err != nil {
 			return err
 		} else {

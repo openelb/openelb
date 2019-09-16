@@ -9,7 +9,7 @@ import (
 	. "github.com/kubesphere/porter/pkg/util"
 )
 
-var _ = Describe("Ip", func() {
+var _ = Describe("Ip test", func() {
 	It("Should get my default gateway", func() {
 		ip := GetOutboundIP()
 		Expect(ip).ShouldNot(BeEmpty())
@@ -25,5 +25,16 @@ var _ = Describe("Ip", func() {
 		if intf != "" {
 			Expect(name).To(Equal(intf))
 		}
+	})
+	It("Should caculate correct ip address", func() {
+		Expect(GetValidAddressCount("192.168.1.1")).Should(Equal(1))
+		Expect(GetValidAddressCount("192.168.1.0/24")).Should(Equal(254))
+		Expect(GetValidAddressCount("192.168.1.1/25")).Should(Equal(127))
+		Expect(GetValidAddressCount("192.168.1.0/23")).Should(Equal(508))
+		Expect(GetValidAddressCount("192.168.255.255/32")).Should(Equal(0))
+		Expect(GetValidAddressCount("192.168.255.255")).Should(Equal(0))
+		Expect(GetValidAddressCount("192.168.255.250")).Should(Equal(1))
+		Expect(GetValidAddressCount("192.168.255.0")).Should(Equal(0))
+		Expect(GetValidAddressCount("192.168.0.0/16")).Should(Equal(65024))
 	})
 })

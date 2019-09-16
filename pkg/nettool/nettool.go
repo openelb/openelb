@@ -2,6 +2,7 @@ package nettool
 
 import (
 	"net"
+	"strings"
 
 	"github.com/kubesphere/porter/pkg/util"
 	"github.com/vishvananda/netlink"
@@ -26,14 +27,17 @@ type EIPRule struct {
 	EIP *net.IPNet
 }
 
-func NewEIPRule(eip string, mask int) *EIPRule {
-	EIP := &net.IPNet{
-		IP:   net.ParseIP(eip),
-		Mask: net.CIDRMask(mask, 32),
+func NewEIPRule(eip string) (*EIPRule, error) {
+	if !strings.Contains(eip, "/") {
+		eip = eip + "/32"
+	}
+	_, EIP, err := net.ParseCIDR(eip)
+	if err != nil {
+		return nil, err
 	}
 	return &EIPRule{
 		EIP: EIP,
-	}
+	}, nil
 }
 func (e *EIPRule) ToAgentRule() *netlink.Rule {
 	rule := netlink.NewRule()

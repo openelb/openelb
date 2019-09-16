@@ -10,6 +10,10 @@ const (
 	PorterAnnotationValue = "porter"
 )
 
+func IsPorterService(svc *corev1.Service) bool {
+	return HasPorterLBAnnotation(svc.Annotations) && IsTypeLoadBalancer(svc)
+}
+
 func HasPorterLBAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false

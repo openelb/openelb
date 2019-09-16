@@ -16,23 +16,31 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/kubesphere/porter/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EipSpec defines the desired state of EIP
 type EipSpec struct {
-	Address string `json:"address,omitempty"`
-	Disable bool   `json:"disable,omitempty"`
+	Address       string `json:"address,omitempty"`
+	Disable       bool   `json:"disable,omitempty"`
+	UsingKnownIPs bool   `json:"usingKnownIPs,omitempty"`
 }
 
 // EipStatus defines the observed state of EIP
 type EipStatus struct {
-	PortsUsage map[string]string `json:"portsUsage,omitempty"`
-	Occupied   bool              `json:"occupied,omitempty"`
+	Occupied bool `json:"occupied,omitempty"`
+	Usage    int  `json:"usage,omitempty"`
+	PoolSize int  `json:"poolSize,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="cidr",type=string,JSONPath=`.spec.address`
+// +kubebuilder:printcolumn:name="usage",type=integer,JSONPath=`.status.usage`
+// +kubebuilder:printcolumn:name="total",type=integer,JSONPath=`.status.poolSize`
+// +kubebuilder:resource:scope=Cluster,categories=ksnet
+
 // Eip is the Schema for the eips API
 type Eip struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -53,4 +61,8 @@ type EipList struct {
 
 func init() {
 	SchemeBuilder.Register(&Eip{}, &EipList{})
+}
+
+func (e Eip) GetEIPSize() int {
+	return util.GetValidAddressCount(e.Spec.Address)
 }

@@ -24,6 +24,7 @@ import (
 	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/controllers/lb"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
+	"github.com/kubesphere/porter/pkg/ipam"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -53,10 +54,10 @@ func init() {
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 
 }
+
 func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.Logger(true))
-
 	//starting bgp server
 	setupLog.Info("starting bgp server")
 	ready := make(chan interface{})
@@ -75,11 +76,17 @@ func main() {
 	}
 
 	// Setup all Controllers
+	setupLog.Info("Setting up IPAM")
+	i := ipam.NewIPAM(ctrl.Log.WithName("IPAM"))
+	if err = i.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create ipam")
+		os.Exit(1)
+	}
+
 	setupLog.Info("Setting up controller")
 	if err = (&lb.ServiceReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("lb"),
-		EventRecorder: mgr.GetEventRecorderFor("service"),
+		IPAM: i,
+		Log:  ctrl.Log.WithName("controllers").WithName("lb"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "lb")
 		os.Exit(1)

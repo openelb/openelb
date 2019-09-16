@@ -6,11 +6,23 @@ metadata:
   creationTimestamp: null
   name: eips.network.kubesphere.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.address
+    name: cidr
+    type: string
+  - JSONPath: .status.usage
+    name: usage
+    type: integer
+  - JSONPath: .status.poolSize
+    name: total
+    type: integer
   group: network.kubesphere.io
   names:
+    categories:
+    - ksnet
     kind: Eip
     plural: eips
-  scope: ""
+  scope: Cluster
   subresources:
     status: {}
   validation:
@@ -36,16 +48,18 @@ spec:
               type: string
             disable:
               type: boolean
+            usingKnownIPs:
+              type: boolean
           type: object
         status:
           description: EipStatus defines the observed state of EIP
           properties:
             occupied:
               type: boolean
-            portsUsage:
-              additionalProperties:
-                type: string
-              type: object
+            poolSize:
+              type: integer
+            usage:
+              type: integer
           type: object
       type: object
   version: v1alpha1

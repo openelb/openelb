@@ -2,7 +2,7 @@ pipeline {
   agent {
     docker {
       image 'magicsong/porter-infra:v0.0.1'
-      args '-v $HOME:/root -v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp --net=host -v gomod-porter:/go'
+      args '-v /var/run/docker.sock:/var/run/docker.sock  -v /usr/bin/docker:/usr/bin/docker -v /tmp:/tmp --net=host -v gomod-porter:/go'
     }
   }
   environment {
@@ -11,8 +11,17 @@ pipeline {
       returnStdout: true
     ).trim()
     JENKINS_IP = '192.168.98.8'
+    KUBECONFIG = "/root/.kube/config"
   }
   stages {
+    stage('set kubeconfig and secret'){
+     steps{
+        sh 'mkdir -p ~/.kube'
+        withCredentials([kubeconfigContent(credentialsId: 'lbkubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
+           sh 'echo "$KUBECONFIG_CONTENT" > ~/.kube/config'
+        }
+      }
+    }
     stage('Building Manager'){
       steps{
         sh """

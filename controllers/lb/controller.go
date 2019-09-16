@@ -18,17 +18,20 @@ package lb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/constant"
 	portererror "github.com/kubesphere/porter/pkg/errors"
-	"github.com/kubesphere/porter/pkg/machinery"
+	"github.com/kubesphere/porter/pkg/ipam"
 	"github.com/kubesphere/porter/pkg/util"
 	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -44,6 +47,7 @@ import (
 
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
+	IPAM *ipam.IPAM
 	client.Client
 	Log logr.Logger
 	record.EventRecorder
@@ -53,8 +57,14 @@ func (r *ServiceReconciler) getNewerService(serv *corev1.Service) error {
 	return r.Get(context.TODO(), types.NamespacedName{Namespace: serv.Namespace, Name: serv.Name}, serv)
 }
 
+func (r *ServiceReconciler) getNewerEIP(eip *v1alpha1.Eip) error {
+	return r.Get(context.TODO(), types.NamespacedName{Name: eip.Name}, eip)
+}
+
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//service
+	r.Client = mgr.GetClient()
+	r.EventRecorder = mgr.GetEventRecorderFor("service")
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
@@ -73,7 +83,7 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	// Watch for changes to Service
 	//return ctl.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForObject{}, p)
-	ctl, err := ctrl.NewControllerManagedBy(mgr).For(&corev1.Service{}).WithEventFilter(p).Build(r)
+	ctl, err := ctrl.NewControllerManagedBy(mgr).For(&corev1.Service{}).WithEventFilter(p).Named("LBController").Build(r)
 	if err != nil {
 		r.Log.Error(err, "Failed to build controller")
 		return err
@@ -116,46 +126,29 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	_ = r.Log.WithValues("porter", req.NamespacedName)
+	r.Log = r.Log.WithValues("porter", req.NamespacedName)
 	// your logic here
 	// Fetch the Service instance
-	svc := &corev1.Service{}
-	err := r.Get(context.TODO(), req.NamespacedName, svc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return ctrl.Result{}, err
-	}
-	r.Log.Info("----------------Begin to reconclie for service")
-
-	needReconcile, err := r.useFinalizerIfNeeded(svc)
-	if err != nil {
-		return ctrl.Result{Requeue: true}, err
-	}
-	if needReconcile {
-		return ctrl.Result{}, nil
-	}
-
-	err = r.createLB(svc)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		return r.reconcile(req.NamespacedName)
+	})
 	if err != nil {
 		switch t := err.(type) {
 		case portererror.ResourceNotEnoughError:
 			r.Log.Info(t.Error() + ", waiting for requeue")
 			return ctrl.Result{
-				RequeueAfter: machinery.GetRequeueTime(svc),
+				RequeueAfter: time.Second * 10,
 			}, nil
 		case portererror.EIPNotFoundError:
 			r.Log.Info("Detect unknown ips in annotations")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, r.clearAnnotation(req.NamespacedName)
 		default:
 			if errors.IsNotFound(err) {
 				r.Log.Info("Maybe sevice has been deleted, skipping reconciling")
 				return ctrl.Result{}, nil
 			}
 			r.Log.Error(t, "Create LB for service failed")
-			return ctrl.Result{}, t
+			return ctrl.Result{RequeueAfter: time.Second * 10}, t
 		}
 	}
 	return ctrl.Result{}, nil
@@ -173,6 +166,7 @@ func (r *ServiceReconciler) useFinalizerIfNeeded(serv *corev1.Service) (bool, er
 		if !util.ContainsString(serv.ObjectMeta.Finalizers, constant.FinalizerName) {
 			serv.ObjectMeta.Finalizers = append(serv.ObjectMeta.Finalizers, constant.FinalizerName)
 			if err := r.Update(context.Background(), serv); err != nil {
+				r.Log.Info("Failed to use update to  append finalizer to service", "service", serv.Name)
 				return false, err
 			}
 			r.Log.Info("Append Finalizer to service", "ServiceName", serv.Name, "Namespace", serv.Namespace)
@@ -199,4 +193,21 @@ func (r *ServiceReconciler) useFinalizerIfNeeded(serv *corev1.Service) (bool, er
 		}
 	}
 	return false, nil
+}
+
+func (r *ServiceReconciler) clearAnnotation(key types.NamespacedName) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		serv := &corev1.Service{}
+		err := r.Get(context.TODO(), key, serv)
+		if err != nil {
+			return err
+		}
+		delete(serv.Annotations, PorterEIPAnnotationKey)
+		err = r.Update(context.Background(), serv)
+		if err != nil {
+			r.Log.Info("[Will Retry] Failed to clear Annotations")
+			return err
+		}
+		return nil
+	})
 }

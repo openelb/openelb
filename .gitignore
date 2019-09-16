@@ -22,9 +22,8 @@ bin
 *.swo
 *~
 .vscode
-deploy/porter.yaml
 *.bak
 .DS_Store
-
+*.coverprofile
 # log
 *.porterlog
