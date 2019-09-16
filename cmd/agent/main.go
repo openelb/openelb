@@ -59,9 +59,7 @@ func main() {
 	}
 
 	if err = (&eip.EipReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("Eip"),
-		EventRecorder: mgr.GetEventRecorderFor("eip"),
+		Log: ctrl.Log.WithName("controllers").WithName("Eip"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Eip")
 		os.Exit(1)

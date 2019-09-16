@@ -1,4 +1,4 @@
-package machinery_test
+package cidr
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestMachinery(t *testing.T) {
+func TestCidr(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Machinery Suite")
+	RunSpecs(t, "Cidr Suite")
 }

@@ -18,6 +18,9 @@ package eip
 import (
 	"context"
 	"os"
+	"time"
+
+	"k8s.io/client-go/util/retry"
 
 	"github.com/go-logr/logr"
 	"github.com/kiali/kiali/log"
@@ -59,10 +62,33 @@ func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
+	var deleted bool
+	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		err := r.Get(context.TODO(), req.NamespacedName, instance)
+		if err != nil {
+			return err
+		}
+		deleted, err = r.useFinalizerIfNeeded(instance)
+		return err
+	})
+
+	if err != nil {
+		r.Log.Info("Failed to handler finalizer to eip, try again later")
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
+	}
+	if !deleted {
+		err = r.AddRule(instance)
+		if err != nil {
+			r.Log.Info("Failed to add rule of eip, try again later")
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		}
+	}
 	return ctrl.Result{}, nil
 }
 
 func (r *EipReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Client = mgr.GetClient()
+	r.EventRecorder = mgr.GetEventRecorderFor("eip")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.Eip{}).
 		WithEventFilter(predicate.Funcs{
@@ -93,7 +119,7 @@ func (r *EipReconciler) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, er
 				return false, err
 			}
 			r.Log.Info("Append Finalizer to eip", "eipName", eip.Name, "Namespace", eip.Namespace)
-			return true, nil
+			return false, nil
 		}
 	} else {
 		// The object is being deleted
@@ -110,7 +136,7 @@ func (r *EipReconciler) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, er
 				if errors.IsNotFound(err) {
 					return true, nil
 				}
-				return true, err
+				return false, err
 			}
 			log.Info("Remove Finalizer before eip deleted", "eipName", eip.Name, "Namespace", eip.Namespace)
 			return true, nil

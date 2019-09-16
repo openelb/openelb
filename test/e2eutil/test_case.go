@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"text/template"
@@ -58,7 +59,7 @@ type TestCase struct {
 var routerContainerNotExist = fmt.Errorf("containerid is empty")
 
 func (t *TestCase) WaitForControllerUp() error {
-	return WaitForController(t.K8sClient, t.Namespace, managerName, 5*time.Second, 2*time.Minute)
+	return WaitForController(t.K8sClient, t.Namespace, managerName, 5*time.Second, 3*time.Minute)
 }
 
 func (t *TestCase) SetRouterContainerID(id string) {
@@ -201,8 +202,7 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 	//testing
 	eip := &networkv1alpha1.Eip{}
 	eip.Name = "test-eip"
-	eip.Namespace = t.Namespace
-	eip.Spec.Address = "1.1.1.1"
+	eip.Spec.Address = "1.1.1.0/24"
 	Expect(t.K8sClient.Create(context.TODO(), eip)).NotTo(HaveOccurred())
 	defer func() {
 		t.K8sClient.Delete(context.TODO(), eip)
@@ -257,10 +257,13 @@ func (t *TestCase) StartDefaultTest(workspace string) {
 		if err != nil {
 			return err
 		}
-		if len(service.Status.LoadBalancer.Ingress) > 0 && service.Status.LoadBalancer.Ingress[0].IP == eip.Spec.Address {
-			return nil
+		if len(service.Status.LoadBalancer.Ingress) > 0 {
+			_, ipnet, _ := net.ParseCIDR(eip.Spec.Address)
+			if ipnet.Contains(net.ParseIP(service.Status.LoadBalancer.Ingress[0].IP)) {
+				return nil
+			}
 		}
-		return fmt.Errorf("Failed to get ingress")
+		return fmt.Errorf("Failed to get correct ingress")
 	}, 2*time.Minute, time.Second).Should(Succeed())
 	//check route in bird
 	Eventually(func() error {
