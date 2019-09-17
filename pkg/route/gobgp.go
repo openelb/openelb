@@ -1,4 +1,4 @@
-package routes
+package route
 
 import (
 	"context"
@@ -12,7 +12,24 @@ import (
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	api "github.com/osrg/gobgp/api"
 	bgp "github.com/osrg/gobgp/pkg/packet/bgp"
+	"github.com/osrg/gobgp/pkg/server"
 )
+
+func NewGoBGPAdvertise() Advertiser {
+	return &gobgp{
+		s: bgpserver.GetServer(),
+	}
+}
+
+type gobgp struct {
+	s *server.BgpServer
+}
+
+func GenerateIdentifier(nexthop string) uint32 {
+	index := strings.LastIndex(nexthop, ".")
+	n, _ := strconv.ParseUint(nexthop[index+1:], 0, 32)
+	return uint32(n)
+}
 
 func toAPIPath(ip string, prefix uint32, nexthop string) *api.Path {
 	nlri, _ := ptypes.MarshalAny(&api.IPAddressPrefix{
@@ -34,32 +51,19 @@ func toAPIPath(ip string, prefix uint32, nexthop string) *api.Path {
 	}
 }
 
-func GenerateIdentifier(nexthop string) uint32 {
-	index := strings.LastIndex(nexthop, ".")
-	n, _ := strconv.ParseUint(nexthop[index+1:], 0, 32)
-	return uint32(n)
-}
-func IsRouteAdded(ip string, prefix uint32) bool {
-	lookup := &api.TableLookupPrefix{
-		Prefix: ip,
+func getNextHopFromPathAttributes(attrs []bgp.PathAttributeInterface) net.IP {
+	for _, attr := range attrs {
+		switch a := attr.(type) {
+		case *bgp.PathAttributeNextHop:
+			return a.Value
+		case *bgp.PathAttributeMpReachNLRI:
+			return a.Nexthop
+		}
 	}
-	listPathRequest := &api.ListPathRequest{
-		TableType: api.TableType_GLOBAL,
-		Family:    &api.Family{Afi: api.Family_AFI_IP, Safi: api.Family_SAFI_UNICAST},
-		Prefixes:  []*api.TableLookupPrefix{lookup},
-	}
-	var result bool
-	fn := func(d *api.Destination) {
-		result = true
-	}
-	err := bgpserver.GetServer().ListPath(context.Background(), listPathRequest, fn)
-	if err != nil {
-		panic(err)
-	}
-	return result
+	return nil
 }
 
-func ReconcileRoutes(ip string, nexthops []string) (toAdd []string, toDelete []string, err error) {
+func (g *gobgp) ReconcileRoutes(ip string, prefix uint32, nexthops []string) (toAdd []string, toDelete []string, err error) {
 	lookup := &api.TableLookupPrefix{
 		Prefix: ip,
 	}
@@ -94,17 +98,17 @@ func ReconcileRoutes(ip string, nexthops []string) (toAdd []string, toDelete []s
 		}
 	}
 
-	err = bgpserver.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	err = g.s.ListPath(context.Background(), listPathRequest, fn)
 	if !found {
 		toAdd = nexthops
 	}
 	return
 }
-func AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
-	s := bgpserver.GetServer()
+
+func (g *gobgp) AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
-		_, err := s.AddPath(context.Background(), &api.AddPathRequest{
+		_, err := g.s.AddPath(context.Background(), &api.AddPathRequest{
 			Path: apipath,
 		})
 		if err != nil {
@@ -114,11 +118,10 @@ func AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 	return nil
 }
 
-func DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
-	s := bgpserver.GetServer()
+func (g *gobgp) DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
-		err := s.DeletePath(context.Background(), &api.DeletePathRequest{
+		err := g.s.DeletePath(context.Background(), &api.DeletePathRequest{
 			Path: apipath,
 		})
 		if err != nil {
@@ -128,39 +131,7 @@ func DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 	return nil
 }
 
-func getNextHopFromPathAttributes(attrs []bgp.PathAttributeInterface) net.IP {
-	for _, attr := range attrs {
-		switch a := attr.(type) {
-		case *bgp.PathAttributeNextHop:
-			return a.Value
-		case *bgp.PathAttributeMpReachNLRI:
-			return a.Nexthop
-		}
-	}
-	return nil
-}
-
-func AddRoutes(ip string, prefix uint32, nexthops []string) error {
-	toAdd, toDelete, err := ReconcileRoutes(ip, nexthops)
-	if err != nil {
-		return err
-	}
-	err = AddMultiRoutes(ip, prefix, toAdd)
-	if err != nil {
-		return err
-	}
-	err = DeleteMultiRoutes(ip, prefix, toDelete)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteRoutes(ip string, nexthops []string) error {
-	return DeleteMultiRoutes(ip, 32, nexthops)
-}
-
-func DeleteAllRoutesOfIP(ip string) error {
+func (g *gobgp) DeleteAllRoutesOfIP(ip string) error {
 	lookup := &api.TableLookupPrefix{
 		Prefix: ip,
 	}
@@ -169,11 +140,10 @@ func DeleteAllRoutesOfIP(ip string) error {
 		Family:    &api.Family{Afi: api.Family_AFI_IP, Safi: api.Family_SAFI_UNICAST},
 		Prefixes:  []*api.TableLookupPrefix{lookup},
 	}
-	s := bgpserver.GetServer()
 	var errDelete error
 	fn := func(d *api.Destination) {
 		for _, path := range d.Paths {
-			errDelete = s.DeletePath(context.Background(), &api.DeletePathRequest{
+			errDelete = g.s.DeletePath(context.Background(), &api.DeletePathRequest{
 				Path: path,
 			})
 			if errDelete != nil {
@@ -181,7 +151,7 @@ func DeleteAllRoutesOfIP(ip string) error {
 			}
 		}
 	}
-	err := bgpserver.GetServer().ListPath(context.Background(), listPathRequest, fn)
+	err := g.s.ListPath(context.Background(), listPathRequest, fn)
 	if err != nil {
 		return err
 	}
@@ -190,3 +160,4 @@ func DeleteAllRoutesOfIP(ip string) error {
 	}
 	return nil
 }
+
