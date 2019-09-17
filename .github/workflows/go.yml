@@ -3,7 +3,7 @@ on: [push,pull_request]
 jobs:
 
   build:
-    name: Build
+    name: Build And Test
     runs-on: ubuntu-latest
     steps:
 
@@ -17,5 +17,5 @@ jobs:
       uses: actions/checkout@v1
     - name: Install CI tools
       run: make install-travis
-    - name: test
+    - name: Test
       run: make test
