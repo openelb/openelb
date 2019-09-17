@@ -15,7 +15,7 @@ Porter 是 [KubeSphere](https://kubesphere.io/) 的一个子项目。
 
 ## 物理部署架构
 
-下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](config/sample/service.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
+下图是物理部署架构图，假设有一个服务部署在 node1 (192.168.0.2) 和 node2 (192.168.0.6) 上，需要通过公网 IP 1.1.1.1 访问该服务，服务部署人员按照[示例](test/samples/test.yaml)部署该服务后，Porter 会自动同步路由信息到 leaf 交换机，进而同步到 spine，border 交换机，互联网用户就可以通过 EIP 1.1.1.1 直接访问该服务了。
 
 ![node architecture](doc/img/node-arch.png)
 

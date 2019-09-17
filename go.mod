@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.44.3 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/armon/go-radix v1.0.0
+	github.com/coreos/go-iptables v0.4.2
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v1.13.1
@@ -14,7 +15,6 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-logr/logr v0.1.0
-	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
@@ -37,13 +37,11 @@ require (
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
-	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
+	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
 	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
 	google.golang.org/grpc v1.23.0
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
 	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/kubernetes v1.14.6
-	k8s.io/utils v0.0.0-20190506122338-8fab8cb257d5
 	sigs.k8s.io/controller-runtime v0.2.0-beta.5
 )

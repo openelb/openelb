@@ -25,6 +25,7 @@ import (
 	"github.com/kubesphere/porter/pkg/bgp/config"
 	"github.com/kubesphere/porter/pkg/bgp/table"
 	"github.com/kubesphere/porter/pkg/nettool"
+	"github.com/kubesphere/porter/pkg/nettool/iptables"
 	"github.com/kubesphere/porter/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/packet/bgp"
@@ -39,6 +40,8 @@ type StartOption struct {
 	ConfigType      string `short:"t" long:"config-type" description:"specifying config type (toml, yaml, json)" default:"toml"`
 	GrpcHosts       string `long:"api-hosts" description:"specify the hosts that gobgpd listens on" default:":50051"`
 	GracefulRestart bool   `short:"r" long:"graceful-restart" description:"flag restart-state in graceful-restart capability"`
+
+	iptables.IptablesIface
 }
 
 var bgpServer *server.BgpServer
@@ -100,7 +103,7 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 					}
 					localip := util.GetOutboundIP()
 					for _, nei := range c.Neighbors {
-						err := nettool.DeletePortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+						err := nettool.DeletePortForwardOfBGP(opts.IptablesIface, nei.Config.NeighborAddress, localip, c.Global.Config.Port)
 						if err != nil {
 							log.Fatalf("Error in deleting iptables, %s", err.Error())
 						}
@@ -121,7 +124,7 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 						}
 						localip := util.GetOutboundIP()
 						for _, nei := range c.Neighbors {
-							err := nettool.AddPortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+							err := nettool.AddPortForwardOfBGP(opts.IptablesIface, nei.Config.NeighborAddress, localip, c.Global.Config.Port)
 							if err != nil {
 								log.Fatalf("Error in creating iptables, %s", err.Error())
 							}
@@ -198,7 +201,7 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 						}
 						localip := util.GetOutboundIP()
 						for _, nei := range newConfig.Neighbors {
-							err := nettool.AddPortForwardOfBGP(nei.Config.NeighborAddress, localip, c.Global.Config.Port)
+							err := nettool.AddPortForwardOfBGP(opts.IptablesIface, nei.Config.NeighborAddress, localip, c.Global.Config.Port)
 							if err != nil {
 								log.Fatalf("Error in creating iptables, %s", err.Error())
 							}

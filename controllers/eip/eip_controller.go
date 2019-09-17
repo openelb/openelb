@@ -20,15 +20,15 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/client-go/util/retry"
-
 	"github.com/go-logr/logr"
 	"github.com/kiali/kiali/log"
 	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/constant"
+	"github.com/kubesphere/porter/pkg/nettool/iptables"
 	"github.com/kubesphere/porter/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -44,6 +44,7 @@ type EipReconciler struct {
 	client.Client
 	Log logr.Logger
 	record.EventRecorder
+	iptableExec iptables.IptablesIface
 }
 
 func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -54,12 +55,9 @@ func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	err := r.Client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
 			r.Log.Info("EIP is deleted safely", "name", instance.GetName(), "namespace", instance.GetNamespace())
 			return ctrl.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
 	var deleted bool
@@ -77,9 +75,10 @@ func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
 	if !deleted {
-		err = r.AddRule(instance)
+		r.Log.Info("open forward for eip")
+		err = r.OpenEIPForward(instance.Spec.Address)
 		if err != nil {
-			r.Log.Info("Failed to add rule of eip, try again later")
+			r.Log.Info("Failed to open forward chain, try again later")
 			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
 	}
@@ -89,6 +88,7 @@ func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *EipReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Client = mgr.GetClient()
 	r.EventRecorder = mgr.GetEventRecorderFor("eip")
+	r.iptableExec = iptables.NewIPTables()
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.Eip{}).
 		WithEventFilter(predicate.Funcs{
@@ -126,8 +126,8 @@ func (r *EipReconciler) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, er
 		if util.ContainsString(eip.ObjectMeta.Finalizers, agentFinalizer) {
 			r.Log.Info("Begin to remove finalizer")
 			// our finalizer is present, so lets handle our external dependency
-			if err := r.DeleteRule(eip); err != nil {
-				log.Error(nil, "Failed to delete route", "name", eip.GetName(), "namespace", eip.GetNamespace())
+			if err := r.CloseEIPForward(eip.Spec.Address); err != nil {
+				log.Error(nil, "Failed to delete rule in forward chain", "name", eip.GetName(), "namespace", eip.GetNamespace())
 				return true, err
 			}
 			// remove our finalizer from the list and update it.
