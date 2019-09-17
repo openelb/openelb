@@ -25,6 +25,7 @@ import (
 	"github.com/kubesphere/porter/controllers/lb"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/ipam"
+	"github.com/kubesphere/porter/pkg/nettool/iptables"
 	"github.com/kubesphere/porter/pkg/route"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -62,6 +63,7 @@ func main() {
 	//starting bgp server
 	setupLog.Info("starting bgp server")
 	ready := make(chan interface{})
+	bgpStartOption.IptablesIface = iptables.NewIPTables()
 	go bgpserver.Run(bgpStartOption, ready)
 	<-ready
 	setupLog.Info("bgp server started successfully")

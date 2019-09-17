@@ -16,7 +16,7 @@
 
 ## Principle
 
-The following figure desribes the principle of Porter. Suppose there is a distributed service on node1 (192.168.0.2) and node2 (192.168.0.6). The service needs to be accessed through EIP `1.1.1.1`. After deploying the [Example Service](https://github.com/kubesphere/porter/blob/master/config/samples/service.yaml), Porter will automatically synchronize routing information to the leaf switch, and then synchronize to the spine and border switch, thus external users can access the service through EIP `1.1.1.1`.
+The following figure desribes the principle of Porter. Suppose there is a distributed service on node1 (192.168.0.2) and node2 (192.168.0.6). The service needs to be accessed through EIP `1.1.1.1`. After deploying the [Example Service](https://github.com/kubesphere/porter/blob/master/test/samples/test.yaml), Porter will automatically synchronize routing information to the leaf switch, and then synchronize to the spine and border switch, thus external users can access the service through EIP `1.1.1.1`.
 
 ![node architecture](doc/img/node-arch.png)
 
