@@ -14,7 +14,7 @@ pipeline {
     KUBECONFIG = "/root/.kube/config"
   }
   stages {
-    stage('set kubeconfig and secret'){
+    stage('Set up kubeconfig and secret'){
      steps{
         sh 'mkdir -p ~/.kube'
         withCredentials([kubeconfigContent(credentialsId: 'lbkubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
@@ -36,7 +36,7 @@ pipeline {
         """
       }
     }
-    stage('Test') {
+    stage('Testing') {
       steps {
         sh """
             make e2e-nobuild
