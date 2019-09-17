@@ -89,6 +89,9 @@ func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) erro
 func (d *DataStore) RemoveEIPPool(eip, name string) error {
 	if res, ok := d.IPPool[name]; ok {
 		if len(res.Used) != 0 {
+			for key, val := range res.Used {
+				d.Log.Info("Service is still using this pool", "service", val.Service, "ip", key)
+			}
 			return errors.DataStoreEIPIsUsedError{CIDR: eip}
 		}
 		d.lock.Lock()
@@ -100,43 +103,36 @@ func (d *DataStore) RemoveEIPPool(eip, name string) error {
 }
 
 func (d *DataStore) AssignIP(serviceName, ns string) (*AssignIPResponse, error) {
-	d.Log.Info("Try to AssignIP to service", "Service", serviceName)
+	d.Log.Info("Try to AssignIP to service", "Service", serviceName, "Namespace", ns)
 	selectIP := &AssignIPResponse{}
 	for _, ips := range d.IPPool {
 		if ips.IsFull() {
 			continue
 		}
-		cidr.LoopForEachAddressInCIDR(ips.CIDR, func(ip net.IP) bool {
-			conti := false
+		first, _ := cidr.AddressRange(ips.CIDR)
+		for ; ips.CIDR.Contains(first); first = cidr.Inc(first) {
 			if !ips.UsingKnownIPs {
-				last := ip.To4()[3]
+				last := first.To4()[3]
 				if last == 0 || last == 255 {
-					conti = true
+					continue
 				}
 			}
-			if conti {
-				return false
-			}
-			if _, ok := ips.Used[ip.String()]; !ok {
+			if _, ok := ips.Used[first.String()]; !ok {
 				d.lock.Lock()
 				defer d.lock.Unlock()
-				ips.Used[ip.String()] = &EIPRef{
+				ips.Used[first.String()] = &EIPRef{
 					EIPRefName: ips.EIPRefName,
-					Address:    ip.String(),
+					Address:    first.String(),
 					Service:    types.NamespacedName{Name: serviceName, Namespace: ns},
 				}
-				selectIP.Address = ip.String()
+				selectIP.Address = first.String()
 				selectIP.EIPRefName = ips.EIPRefName
-				return true
+				d.Log.Info("Assign IP to service", "Service", serviceName, "ip", selectIP.Address)
+				return selectIP, nil
 			}
-			return false
-		})
+		}
 	}
-	if selectIP.Address == "" {
-		return nil, errors.NewResourceNotEnoughError("EIP")
-	}
-	d.Log.Info("Assign IP to service", "Service", serviceName, "ip", selectIP.Address)
-	return selectIP, nil
+	return nil, errors.NewResourceNotEnoughError("EIP")
 }
 
 func (d *DataStore) AssignSpecifyIP(ipstr, serviceName, ns string) (*AssignIPResponse, error) {

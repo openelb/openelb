@@ -3,12 +3,11 @@ package ipam_test
 import (
 	"net"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/ipam"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -94,5 +93,16 @@ var _ = Describe("Ipam", func() {
 		_, err = ds.AssignIP("testSVC", "test")
 		Expect(err).To(BeAssignableToTypeOf(errors.ResourceNotEnoughError{}))
 		Expect(ds.AddEIPPool("192.168.98.2", "oneeip", false)).Should(BeAssignableToTypeOf(errors.DataStoreEIPDuplicateError{}))
+	})
+
+	It("Should be ok to add two eip pool in the meantime", func() {
+		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
+		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false)).ShouldNot(HaveOccurred())
+		Expect(ds.AddEIPPool("192.168.2.2", "defaultPool1", false)).ShouldNot(HaveOccurred())
+		resp, err := ds.AssignIP("testSvc1", "default")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(ds.UnassignIP(resp.Address)).ShouldNot(HaveOccurred())
+		Expect(ds.RemoveEIPPool(testIPNetStr, "defaultPool")).ShouldNot(HaveOccurred())
+		Expect(ds.RemoveEIPPool("192.168.2.2", "defaultPool1")).ShouldNot(HaveOccurred())
 	})
 })

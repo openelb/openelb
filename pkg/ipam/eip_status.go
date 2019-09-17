@@ -68,6 +68,10 @@ func (e *EIPUpdater) syncEIP(eip *v1alpha1.Eip) error {
 		if err != nil {
 			return err
 		}
+		if !original.ObjectMeta.DeletionTimestamp.IsZero() {
+			e.log.V(2).Info("eip is deleting, skipping", "eip", eip.Spec.Address)
+			return nil
+		}
 		instance := original.DeepCopy()
 		pool, ok := e.ds.IPPool[eip.Name]
 		if !ok {

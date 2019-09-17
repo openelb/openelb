@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kubesphere/porter/pkg/bgp/routes"
 	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/kubeutil"
 	corev1 "k8s.io/api/core/v1"
@@ -44,9 +43,25 @@ func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (
 	return resp.Address, true, nil
 }
 
+func (r *ServiceReconciler) addRoutes(ip string, prefix uint32, nexthops []string) error {
+	toAdd, toDelete, err := r.ReconcileRoutes(ip, prefix, nexthops)
+	if err != nil {
+		return err
+	}
+	err = r.AddMultiRoutes(ip, prefix, toAdd)
+	if err != nil {
+		return err
+	}
+	err = r.DeleteMultiRoutes(ip, prefix, toDelete)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *ServiceReconciler) advertiseIP(serv *corev1.Service, ip string, nexthops []string) error {
 
-	if err := routes.AddRoutes(ip, 32, nexthops); err != nil {
+	if err := r.addRoutes(ip, 32, nexthops); err != nil {
 		return err
 	}
 	r.Log.Info("Routed added successfully")
@@ -147,7 +162,7 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			r.Log.Info("Endpoints is disappearing,try to delete ip in global table")
-			err := routes.DeleteAllRoutesOfIP(ip)
+			err := r.DeleteAllRoutesOfIP(ip)
 			if err != nil {
 				return err
 			}
@@ -156,7 +171,7 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 			return err
 		}
 	} else {
-		err = routes.DeleteRoutes(ip, nodeIPs)
+		err = r.DeleteMultiRoutes(ip, 32, nodeIPs)
 		if err != nil {
 			r.Log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
 		}

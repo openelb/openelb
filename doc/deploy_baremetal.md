@@ -71,15 +71,15 @@
     ```
 
 ## 部署示例
-1.  添加一个EIP
+1.  添加一个EIP池（单个eip请添加/32）
     ```bash
     kubectl apply -f - <<EOF
     apiVersion: network.kubesphere.io/v1alpha1
     kind: Eip
     metadata:
-        name: eip-sample
+        name: eip-sample-pool
     spec:
-        address: 10.11.11.11 #这里替换为你申请的EIP
+        address: 10.11.11.0/12
         disable: false
     EOF
     ```
@@ -103,7 +103,7 @@
         targetPort:  80
     ```
 
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/test.yaml),这个样例已经包含了一个EIP
+    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/test.yaml),这个样例已经包含两个EIP，使用之前请确认与局域网不冲突
 
     ```bash
     kubectl apply -f service.yaml

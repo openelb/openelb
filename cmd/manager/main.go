@@ -25,6 +25,7 @@ import (
 	"github.com/kubesphere/porter/controllers/lb"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/ipam"
+	"github.com/kubesphere/porter/pkg/route"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -85,8 +86,9 @@ func main() {
 
 	setupLog.Info("Setting up controller")
 	if err = (&lb.ServiceReconciler{
-		IPAM: i,
-		Log:  ctrl.Log.WithName("controllers").WithName("lb"),
+		IPAM:       i,
+		Log:        ctrl.Log.WithName("controllers").WithName("lb"),
+		Advertiser: route.NewGoBGPAdvertise(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "lb")
 		os.Exit(1)
