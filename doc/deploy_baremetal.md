@@ -79,7 +79,7 @@
     metadata:
         name: eip-sample-pool
     spec:
-        address: 10.11.11.0/12
+        address: 10.11.11.0/24
         disable: false
     EOF
     ```
@@ -93,6 +93,7 @@
         name:  mylbapp
         annotations:
             lb.kubesphere.io/v1alpha1: porter
+            #eip.porter.kubesphere.io/v1alpha1: 1.1.1.1 如果需要手动指定eip，可以添加这个注记
     spec:
         selector:
             app:  mylbapp
