@@ -19,7 +19,7 @@ func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (
 		if ip, ok := serv.Annotations[PorterEIPAnnotationKey]; ok {
 			status := r.IPAM.CheckEIPStatus(ip)
 			if !status.Exist {
-				return "", false, portererror.NewEIPNotFoundError(ip)
+				return "", false, portererror.NewResourceNotFoundError("eip", ip)
 			}
 			if !status.Used {
 				r.Log.Info("Service has eip but not in pool", "Service", serv.Name, "eip", ip)
@@ -33,7 +33,7 @@ func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (
 		}
 	}
 	if foundOrError {
-		return "", false, portererror.NewEIPNotFoundError("")
+		return "", false, portererror.NewResourceNotFoundError("eip", "")
 	}
 	resp, err := r.IPAM.AssignIP(serv)
 	if err != nil {
@@ -147,7 +147,7 @@ func (r *ServiceReconciler) updateService(serv *corev1.Service, ip string, newAs
 func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 	ip, _, err := r.ensureEIP(serv, true)
 	if err != nil {
-		if _, ok := err.(portererror.EIPNotFoundError); ok {
+		if portererror.IsResourceNotFound(err) {
 			r.Log.Info("Have not assign a ip, skip deleting LB")
 			return nil
 		}

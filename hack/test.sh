@@ -66,13 +66,16 @@ done
 trap cleanup SIGINT SIGQUIT EXIT
 
 if [ $SKIP_BUILD != "yes" ]; then
-    echo "Building manager"
-    ./hack/deploy.sh $MANAGER_IMG manager
-    echo "Building manager Done"
-
-    echo "Building agent"
-    ./hack/deploy.sh $AGENT_IMG agent
-    echo "Building agent Done"
+    if [ x$SKIP_BUILD_MANAGER != "xtrue" ]; then
+        echo "Building manager"
+        ./hack/deploy.sh $MANAGER_IMG manager
+        echo "Building manager Done"
+    fi
+    if [ x$SKIP_BUILD_AGENT != "xtrue" ]; then
+        echo "Building agent"
+        ./hack/deploy.sh $AGENT_IMG agent
+        echo "Building agent Done"
+    fi
 fi
 
 echo "[4] updating kustomize image patch file"

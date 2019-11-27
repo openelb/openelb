@@ -4,23 +4,23 @@
     port = 17900
 [global.use-multiple-paths.config]
     enabled = true
-[[neighbors]]
-    [neighbors.config]
-        neighbor-address = "192.168.98.8"
-        peer-as = 65001
-    [neighbors.add-paths.config]
-        send-max = 8
-    [neighbors.ebgp-multihop.config]
-        enabled = true
+# [[neighbors]]
+#     [neighbors.config]
+#         neighbor-address = "192.168.98.8"
+#         peer-as = 65001
+#     [neighbors.add-paths.config]
+#         send-max = 8
+#     [neighbors.ebgp-multihop.config]
+#         enabled = true
 
-    [[neighbors.afi-safis]]
-        [neighbors.afi-safis.config]
-        afi-safi-name = "ipv4-unicast"
-    [neighbors.graceful-restart.config]
-        enabled = true
-        restart-time = 120
+#     [[neighbors.afi-safis]]
+#         [neighbors.afi-safis.config]
+#         afi-safi-name = "ipv4-unicast"
+#     [neighbors.graceful-restart.config]
+#         enabled = true
+#         restart-time = 120
 
-   [neighbors.afi-safis.mp-graceful-restart.config]
-        enabled = true
+#    [neighbors.afi-safis.mp-graceful-restart.config]
+#         enabled = true
 [porter-config]
     using-port-forward=false

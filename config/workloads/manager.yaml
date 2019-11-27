@@ -37,7 +37,6 @@ spec:
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"
-      # cloud controller manages should be able to run on masters
       - key: "node-role.kubernetes.io/master"
         effect: NoSchedule
       containers:

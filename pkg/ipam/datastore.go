@@ -161,7 +161,7 @@ func (d *DataStore) AssignSpecifyIP(ipstr, serviceName, ns string) (*AssignIPRes
 			}, nil
 		}
 	}
-	return nil, errors.NewEIPNotFoundError(ipstr)
+	return nil, errors.NewResourceNotFoundError("eip", ipstr)
 }
 
 func (d *DataStore) UnassignIP(ipstr string) error {
@@ -180,7 +180,7 @@ func (d *DataStore) UnassignIP(ipstr string) error {
 			return errors.DataStoreEIPIsNotUsedError{EIP: ipstr}
 		}
 	}
-	return errors.NewEIPNotFoundError(ipstr)
+	return errors.NewResourceNotFoundError("eip", ipstr)
 }
 
 type EIPStatus struct {

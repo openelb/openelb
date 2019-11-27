@@ -75,7 +75,7 @@ func (e *EIPUpdater) syncEIP(eip *v1alpha1.Eip) error {
 		instance := original.DeepCopy()
 		pool, ok := e.ds.IPPool[eip.Name]
 		if !ok {
-			return errors.NewEIPNotFoundError(eip.Name)
+			return errors.NewResourceNotFoundError("eip", eip.Name)
 		}
 		if instance.Status.PoolSize == 0 {
 			instance.Status.PoolSize = util.GetValidAddressCount(instance.Spec.Address)

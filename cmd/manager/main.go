@@ -18,8 +18,11 @@ package main
 
 import (
 	"flag"
+	"github.com/kubesphere/porter/controllers/bgppeer"
+	"github.com/kubesphere/porter/pkg/bgpwrapper"
 	"net/http"
 	"os"
+	"time"
 
 	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/controllers/lb"
@@ -95,6 +98,17 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "lb")
 		os.Exit(1)
 	}
+
+	setupLog.Info("Setting up peer controller")
+	if err = (&bgppeer.BgpPeerReconciler{
+		SyncInterval: time.Second * 10,
+		Interface:    bgpwrapper.NewBGP(bgpserver.GetServer()),
+		Log:          ctrl.Log.WithName("controllers").WithName("peer"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "peer")
+		os.Exit(1)
+	}
+
 	setupLog.Info("Setting up readiness probe")
 	serverMuxA := http.NewServeMux()
 	serverMuxA.HandleFunc("/hello", serveReadinessHandler)

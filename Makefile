@@ -81,3 +81,7 @@ e2e-nobuild:
 
 docker-ut:
 	docker run --rm -v "${PWD}":/usr/src/github.com/kubesphere/porter -w /usr/src/github.com/kubesphere/porter golang:1.11-alpine  go test -v ./pkg/nettool/
+
+build-bgp-image:
+	cd ./test/docker/gobgp/
+	docker build -t magicsong/gobgp:latest -f ./test/docker/gobgp/Dockerfile ./test/docker/gobgp/ 

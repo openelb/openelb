@@ -25,6 +25,7 @@ import (
 	"github.com/kubesphere/porter/pkg/constant"
 	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/ipam"
+	"github.com/kubesphere/porter/pkg/route"
 	"github.com/kubesphere/porter/pkg/util"
 	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"github.com/kubesphere/porter/pkg/route"
 )
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -52,7 +52,7 @@ type ServiceReconciler struct {
 	client.Client
 	Log logr.Logger
 	record.EventRecorder
-	route.Advertiser 
+	route.Advertiser
 }
 
 func (r *ServiceReconciler) getNewerService(serv *corev1.Service) error {
@@ -141,7 +141,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{
 				RequeueAfter: time.Second * 10,
 			}, nil
-		case portererror.EIPNotFoundError:
+		case portererror.ResourceNotFoundError:
 			r.Log.Info("Detect unknown ips in annotations")
 			return ctrl.Result{}, r.clearAnnotation(req.NamespacedName)
 		default:

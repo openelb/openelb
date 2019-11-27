@@ -15,22 +15,24 @@ func NewResourceNotEnoughError(resourcename string) ResourceNotEnoughError {
 	}
 }
 
-type EIPNotFoundError struct {
-	eip string
+type ResourceNotFoundError struct {
+	Type string
+	Name string
 }
 
-func (r EIPNotFoundError) Error() string {
-	return fmt.Sprintf("EIP %s is not exsit in system", r.eip)
+func (r ResourceNotFoundError) Error() string {
+	return fmt.Sprintf("%s %s is not exsit in system", r.Type, r.Name)
 }
 
-func NewEIPNotFoundError(eip string) EIPNotFoundError {
-	return EIPNotFoundError{
-		eip: eip,
+func NewResourceNotFoundError(tye, name string) ResourceNotFoundError {
+	return ResourceNotFoundError{
+		Type: tye,
+		Name: name,
 	}
 }
 
 func IsResourceNotFound(err error) bool {
-	_, ok := err.(EIPNotFoundError)
+	_, ok := err.(ResourceNotFoundError)
 	return ok
 }
 

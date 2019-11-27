@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bgp-container
+  name: bgp-container
+spec:
+  containers:
+  - image: magicsong/gobgp:latest
+    name: bgp-container
+    resources: 
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+    volumeMounts:
+    - name: bgp-config
+      mountPath:  /etc/gobgp/
+  restartPolicy: Always
+  volumes:
+  - name:  bgp-config
+    configMap:
+        name: bgp-config
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bgp-config
+  labels:
+    app: bgp-container
+data:
+  gobgp.conf: |
+    # yaml file

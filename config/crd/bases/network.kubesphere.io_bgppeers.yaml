@@ -1,0 +1,142 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: bgppeers.network.kubesphere.io
+spec:
+  group: network.kubesphere.io
+  names:
+    categories:
+    - ksnet
+    kind: BgpPeer
+    plural: bgppeers
+  scope: Cluster
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: BgpPeer is the Schema for the bgppeers API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: BgpPeerSpec defines the desired state of BgpPeer
+          properties:
+            conf:
+              description: PeerConf define the config of neighbour
+              properties:
+                adminDown:
+                  type: boolean
+                authPassword:
+                  type: string
+                description:
+                  type: string
+                neighborAddress:
+                  type: string
+                neighborInterface:
+                  type: string
+                peerAs:
+                  format: int32
+                  type: integer
+                peerType:
+                  format: int32
+                  type: integer
+                sendCommunity:
+                  format: int32
+                  type: integer
+              type: object
+            gracefulRestart:
+              properties:
+                deferral_time:
+                  format: int32
+                  type: integer
+                enabled:
+                  type: boolean
+                helper_only:
+                  type: boolean
+                longlived_enabled:
+                  type: boolean
+                mode:
+                  type: string
+                notification_enabled:
+                  type: boolean
+                peer_restart_time:
+                  format: int32
+                  type: integer
+                restart_time:
+                  format: int32
+                  type: integer
+                stale_routes_time:
+                  format: int32
+                  type: integer
+              type: object
+            timersConfig:
+              properties:
+                connectRetry:
+                  format: int64
+                  type: integer
+                holdTime:
+                  format: int64
+                  type: integer
+                keepaliveInterval:
+                  format: int64
+                  type: integer
+              type: object
+            transport:
+              description: Transport define the connection config  between peers
+              properties:
+                localAddress:
+                  type: string
+                localPort:
+                  format: int32
+                  type: integer
+                mtuDiscovery:
+                  type: boolean
+                passiveMode:
+                  type: boolean
+                remoteAddress:
+                  type: string
+                remotePort:
+                  format: int32
+                  type: integer
+              type: object
+          type: object
+        status:
+          description: BgpPeerStatus defines the observed state of BgpPeer
+          properties:
+            downtime:
+              format: date-time
+              type: string
+            sessionState:
+              description: SessionState define current state of connection between
+                peers
+              format: int32
+              type: integer
+            uptime:
+              format: date-time
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
