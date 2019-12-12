@@ -1,11 +1,11 @@
 apiVersion: network.kubesphere.io/v1alpha1
 kind: BgpPeer
 metadata:
-  name: bgppeer-sample
+  name: bgppeer-sample2
 spec:
   conf:
     description: "测试用BGPPeer"
     peerAs: 65002
-    neighborAddress: 10.17.158.54
+    neighborAddress: 192.168.98.8
 
 

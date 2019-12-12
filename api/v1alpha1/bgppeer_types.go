@@ -25,7 +25,7 @@ import (
 
 // BgpPeerSpec defines the desired state of BgpPeer
 type BgpPeerSpec struct {
-	Conf            *PeerConf        `json:"conf,omitempty"`
+	Conf            PeerConf         `json:"conf,omitempty"`
 	TimersConfig    *TimersConfig    `json:"timersConfig,omitempty"`
 	Transport       *Transport       `json:"transport,omitempty"`
 	GracefulRestart *GracefulRestart `json:"gracefulRestart,omitempty"`
@@ -45,12 +45,10 @@ type PeerConf struct {
 
 // Transport define the connection config  between peers
 type Transport struct {
-	LocalAddress  string `json:"localAddress,omitempty"`
-	LocalPort     uint32 `json:"localPort,omitempty"`
-	MtuDiscovery  bool   `json:"mtuDiscovery,omitempty"`
-	PassiveMode   bool   `json:"passiveMode,omitempty"`
-	RemoteAddress string `json:"remoteAddress,omitempty"`
-	RemotePort    uint32 `json:"remotePort,omitempty"`
+	LocalAddress string `json:"localAddress,omitempty"`
+	LocalPort    uint32 `json:"localPort,omitempty"`
+	MtuDiscovery bool   `json:"mtuDiscovery,omitempty"`
+	PassiveMode  bool   `json:"passiveMode,omitempty"`
 }
 
 type TimersConfig struct {
@@ -60,15 +58,13 @@ type TimersConfig struct {
 }
 
 type GracefulRestart struct {
-	Enabled             bool   `json:"enabled,omitempty"`
-	RestartTime         uint32 `json:"restart_time,omitempty"`
-	HelperOnly          bool   `json:"helper_only,omitempty"`
-	DeferralTime        uint32 `json:"deferral_time,omitempty"`
-	NotificationEnabled bool   `json:"notification_enabled,omitempty"`
-	LonglivedEnabled    bool   `json:"longlived_enabled,omitempty"`
-	StaleRoutesTime     uint32 `json:"stale_routes_time,omitempty"`
-	PeerRestartTime     uint32 `json:"peer_restart_time,omitempty"`
-	Mode                string `json:"mode,omitempty"`
+	Enabled          bool   `json:"enabled,omitempty"`
+	RestartTime      uint32 `json:"restart_time,omitempty"`
+	DeferralTime     uint32 `json:"deferral_time,omitempty"`
+	LonglivedEnabled bool   `json:"longlived_enabled,omitempty"`
+	StaleRoutesTime  uint32 `json:"stale_routes_time,omitempty"`
+	PeerRestartTime  uint32 `json:"peer_restart_time,omitempty"`
+	Mode             string `json:"mode,omitempty"`
 }
 
 //SessionState define current state of connection between peers

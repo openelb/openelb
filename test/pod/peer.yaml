@@ -4,9 +4,11 @@ metadata:
   labels:
     run: bgp-container
   name: bgp-container
+  annotations:
+    "cni.projectcalico.org/ipAddrs": "[\"10.17.158.54\"]"
 spec:
   containers:
-  - image: magicsong/gobgp:latest
+  - image: magicsong/gobgp:v0.0.1
     name: bgp-container
     resources: 
       requests:
@@ -33,4 +35,29 @@ metadata:
     app: bgp-container
 data:
   gobgp.conf: |
-    # yaml file
+    [global.config]
+      as = 65002
+      router-id = "10.17.158.54"
+      port = 179
+    [global.apply-policy.config]
+      default-import-policy = "accept-route"
+      default-export-policy = "accept-route"
+    [global.use-multiple-paths.config]
+      enabled = true
+    [[neighbors]]
+       [[neighbors.afi-safis]]
+         [neighbors.afi-safis.config]
+         afi-safi-name = "ipv4-unicast"
+       [neighbors.graceful-restart.config]
+         enabled = true
+         restart-time = 120
+      [neighbors.config]
+        neighbor-address = "192.168.98.8"
+        peer-as = 65001
+      [neighbors.transport.config]
+        bind-interface = "eth0"
+        local-address = "10.17.158.54"
+      [neighbors.add-paths.config]
+          send-max = 8
+          receive = true
+          

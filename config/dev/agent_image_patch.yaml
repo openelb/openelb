@@ -8,6 +8,6 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: kubespheredev/porter-agent:35226357
+      - image: kubespheredev/porter-agent:abaaa388
         name: porter-agent
         imagePullPolicy: Always

@@ -15,6 +15,11 @@ spec:
       labels:
         app: porter-agent
     spec:
+      tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+      - key: "node-role.kubernetes.io/master"
+        effect: NoSchedule
       containers:
         - name: porter-agent
           image: magicsong/porter-agent:latest

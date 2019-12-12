@@ -113,7 +113,7 @@ func (r *BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *BgpPeerReconciler) ensurePeer(peer *networkv1alpha1.BgpPeer) error {
-	log := r.Log.WithValues(peer.Name, "Address", peer.Spec.Conf.NeighborAddress)
+	log := r.Log.WithValues("PeerName", peer.Name, "Address", peer.Spec.Conf.NeighborAddress)
 	_, err := r.GetPeer(peer)
 	if err != nil {
 		if !errors.IsResourceNotFound(err) {
@@ -159,7 +159,7 @@ func (r *BgpPeerReconciler) ensurePeerDeleted(peer *networkv1alpha1.BgpPeer) err
 }
 
 func (r *BgpPeerReconciler) reconcileFinalizier(peer *networkv1alpha1.BgpPeer) (bool, error) {
-	log := r.Log.WithValues(peer.Name, "Address", peer.Spec.Conf.NeighborAddress)
+	log := r.Log.WithValues("PeerName", peer.Name, "Address", peer.Spec.Conf.NeighborAddress)
 	finalizer := "peer." + constant.FinalizerName
 	if peer.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,

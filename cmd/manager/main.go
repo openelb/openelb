@@ -91,6 +91,7 @@ func main() {
 
 	setupLog.Info("Setting up controller")
 	if err = (&lb.ServiceReconciler{
+		Client:     mgr.GetClient(),
 		IPAM:       i,
 		Log:        ctrl.Log.WithName("controllers").WithName("lb"),
 		Advertiser: route.NewGoBGPAdvertise(),
@@ -100,14 +101,17 @@ func main() {
 	}
 
 	setupLog.Info("Setting up peer controller")
-	if err = (&bgppeer.BgpPeerReconciler{
+	peerReconciler := &bgppeer.BgpPeerReconciler{
+		Client:       mgr.GetClient(),
 		SyncInterval: time.Second * 10,
 		Interface:    bgpwrapper.NewBGP(bgpserver.GetServer()),
 		Log:          ctrl.Log.WithName("controllers").WithName("peer"),
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if err = peerReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "peer")
 		os.Exit(1)
 	}
+	go peerReconciler.SyncPeersState()
 
 	setupLog.Info("Setting up readiness probe")
 	serverMuxA := http.NewServeMux()

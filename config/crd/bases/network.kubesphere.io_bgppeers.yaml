@@ -64,14 +64,10 @@ spec:
                   type: integer
                 enabled:
                   type: boolean
-                helper_only:
-                  type: boolean
                 longlived_enabled:
                   type: boolean
                 mode:
                   type: string
-                notification_enabled:
-                  type: boolean
                 peer_restart_time:
                   format: int32
                   type: integer
@@ -106,11 +102,6 @@ spec:
                   type: boolean
                 passiveMode:
                   type: boolean
-                remoteAddress:
-                  type: string
-                remotePort:
-                  format: int32
-                  type: integer
               type: object
           type: object
         status:

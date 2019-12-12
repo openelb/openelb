@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
@@ -54,10 +55,20 @@ func ReadConfigfileServe(path, format string, configCh chan *BgpConfigSet) {
 		log.WithField("file", e.Name).Warn("Config file changed")
 		sigReloadConfig <- syscall.SIGUSR1
 	})
-	cnt := 0
+	cnt, notFoundCnt := 0, 0
+
 	for {
 		c, err := ReadConfigfile(v)
 		if err != nil {
+			if os.IsNotExist(err) {
+				log.WithField("file", path).Warn("config file not loaded")
+				notFoundCnt++
+				if notFoundCnt < 5 {
+					time.Sleep(5)
+					continue
+				}
+				log.WithField("file", path).Error("config file not loaded(max times exceed)")
+			}
 			goto ERROR
 		}
 		if cnt == 0 {

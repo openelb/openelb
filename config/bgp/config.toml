@@ -1,6 +1,6 @@
 [global.config]
-    as = 65000
-    router-id = "192.168.98.2"
+    as = 65001
+    router-id = "192.168.98.3"
     port = 17900
 [global.use-multiple-paths.config]
     enabled = true

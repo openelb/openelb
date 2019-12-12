@@ -65,7 +65,6 @@ func (r *ServiceReconciler) getNewerEIP(eip *v1alpha1.Eip) error {
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//service
-	r.Client = mgr.GetClient()
 	r.EventRecorder = mgr.GetEventRecorderFor("service")
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {

@@ -44,7 +44,7 @@ func (e *EIPUpdater) Start(stop <-chan struct{}) error {
 }
 
 func (e *EIPUpdater) do() {
-	e.log.Info("Begin to sync eiplist")
+	e.log.V(2).Info("Begin to sync eiplist")
 	time.Sleep(e.syncInterval)
 	eiplist := &v1alpha1.EipList{}
 	err := e.List(context.TODO(), eiplist)
@@ -58,7 +58,7 @@ func (e *EIPUpdater) do() {
 			e.log.Error(err, "Failed to sync eip, waiting for next try", "Name", eip.Name, "CIDR", eip.Spec.Address)
 		}
 	}
-	e.log.Info("Eiplist synced")
+	e.log.V(2).Info("Eiplist synced")
 }
 
 func (e *EIPUpdater) syncEIP(eip *v1alpha1.Eip) error {
