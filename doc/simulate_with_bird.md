@@ -132,7 +132,7 @@
             port:  8088
             targetPort:  80
     ```
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/test.yaml)
+    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/samples/test.yaml)
     > 使用这个样例之前需先替换里面的EIP
     ```
     kubectl apply -f service.yaml

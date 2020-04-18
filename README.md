@@ -13,7 +13,7 @@
 
 As we know, In the cloud-hosted Kubernetes cluster, the cloud providers (AWS, GCP, Azure, etc.) usually provide the Load Balancer to assign IPs and expose the service to outside.
 
-However, the service is hard to expose in a bare metal cluster since Kubernetes does not provide a load-balancer for bare metal environment. Fortunately, Porter allows you to create Kubernetes services of type “LoadBalancer” in bare metal clusters, which makes you have consistent experience with the cloud.
+However, the service is hard to expose in a bare metal cluster since Kubernetes does not provide a load-balancer for bare metal environment. Fortunately, Porter allows you to create Kubernetes services of type "LoadBalancer" in bare metal clusters, which makes you have consistent experience with the cloud.
 
 ## Core Features
 

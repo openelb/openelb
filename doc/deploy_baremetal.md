@@ -104,7 +104,7 @@
         targetPort:  80
     ```
 
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/test.yaml),这个样例已经包含两个EIP，使用之前请确认与局域网不冲突
+    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml),这个样例已经包含两个EIP，使用之前请确认与局域网不冲突
 
     ```bash
     kubectl apply -f service.yaml
