@@ -14,24 +14,37 @@ const (
 	PorterEIPAnnotationKey = "eip.porter.kubesphere.io/v1alpha1"
 )
 
-func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (string, bool, error) {
-	if serv.Annotations != nil {
-		if ip, ok := serv.Annotations[PorterEIPAnnotationKey]; ok {
-			status := r.IPAM.CheckEIPStatus(ip)
-			if !status.Exist {
-				return "", false, portererror.NewEIPNotFoundError(ip)
-			}
-			if !status.Used {
-				r.Log.Info("Service has eip but not in pool", "Service", serv.Name, "eip", ip)
-				_, err := r.IPAM.AssignSpecifyIP(serv, ip)
-				if err != nil {
-					r.Log.Info("Failed to mark eip as used", "eip", ip)
-					return "", false, err
-				}
-			}
-			return ip, false, nil
+func (r *ServiceReconciler) findEIP(svc *corev1.Service) string {
+	if svc.Annotations != nil {
+		if ip, ok := svc.Annotations[PorterEIPAnnotationKey]; ok {
+			return ip
 		}
 	}
+
+	if svc.Spec.LoadBalancerIP != "" {
+		return svc.Spec.LoadBalancerIP
+	}
+
+	return ""
+}
+
+func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (string, bool, error) {
+	if ip := r.findEIP(serv); ip != "" {
+		status := r.IPAM.CheckEIPStatus(ip)
+		if !status.Exist {
+			return "", false, portererror.NewEIPNotFoundError(ip)
+		}
+		if !status.Used {
+			r.Log.Info("Service has eip but not in pool", "Service", serv.Name, "eip", ip)
+			_, err := r.IPAM.AssignSpecifyIP(serv, ip)
+			if err != nil {
+				r.Log.Info("Failed to mark eip as used", "eip", ip)
+				return "", false, err
+			}
+		}
+		return ip, false, nil
+	}
+
 	if foundOrError {
 		return "", false, portererror.NewEIPNotFoundError("")
 	}
