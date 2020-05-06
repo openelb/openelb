@@ -13,13 +13,13 @@
      ```bash
     wget https://github.com/kubesphere/porter/releases/download/v0.1.1/porter.yaml
      ```
- 3. 修改yaml中一个名为bgp-cfg的configmap，按照[BGP配置教程](doc/bgp_config.md)简单修改一些字段即可。注意要路由器的地址和AS域
+ 3. 修改yaml中一个名为bgp-cfg的configmap，按照[BGP配置教程](bgp_config.md)简单修改一些字段即可。注意要路由器的地址和AS域
  4. 安装porter到集群中
      ```bash
      kubectl apply -f porter.yaml
      ```
 ## 路由器配置
-> 不同的路由器配置不同，这边仅列出一个样例的思科三层交换机的配置，更多的请参考[路由器配置](doc/router_config.md)。本节以思科的[Nexus 9000 Series](https://www.cisco.com/c/en/us/td/docs/switches/datacenter/nexus9000/sw/92x/unicast/configuration/guide/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x_chapter_01010.html)作为示例。
+> 不同的路由器配置不同，这边仅列出一个样例的思科三层交换机的配置，更多的请参考[路由器配置](router_config.md)。本节以思科的[Nexus 9000 Series](https://www.cisco.com/c/en/us/td/docs/switches/datacenter/nexus9000/sw/92x/unicast/configuration/guide/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x_chapter_01010.html)作为示例。
 
 
 1. 以admin进入N9K配置界面。按照实际情况修改下面的配置。（注：实际输入不能有注释）
