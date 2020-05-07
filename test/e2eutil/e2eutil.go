@@ -104,7 +104,7 @@ func GetLogOfPod(rest *rest.RESTClient, namespace, name string, logOptions *core
 	if logOptions.TailLines != nil {
 		req.Param("tailLines", strconv.FormatInt(*logOptions.TailLines, 10))
 	}
-	readCloser, err := req.Stream()
+	readCloser, err := req.Stream(context.TODO())
 	if err != nil {
 		return err
 	}

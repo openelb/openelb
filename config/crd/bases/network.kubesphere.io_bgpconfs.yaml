@@ -1,0 +1,68 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: bgpconfs.network.kubesphere.io
+spec:
+  group: network.kubesphere.io
+  names:
+    kind: BgpConf
+    listKind: BgpConfList
+    plural: bgpconfs
+    singular: bgpconf
+  scope: Cluster
+  validation:
+    openAPIV3Schema:
+      description: BgpConf is the Schema for the bgpconfs API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: struct for container bgp:config. Configuration parameters relating
+            to the global BGP router.
+          properties:
+            as:
+              description: original -> bgp:as bgp:as's original type is inet:as-number.
+                Local autonomous system number of the router.  Uses the 32-bit as-number
+                type from the model in RFC 6991.
+              format: int32
+              type: integer
+            port:
+              description: original -> gobgp:port
+              format: int32
+              type: integer
+            routerID:
+              description: original -> bgp:router-id bgp:router-id's original type
+                is inet:ipv4-address. Router id of the router, expressed as an 32-bit
+                value, IPv4 address.
+              type: string
+          type: object
+        status:
+          description: BgpConfStatus defines the observed state of BgpConf
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

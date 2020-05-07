@@ -72,7 +72,7 @@ func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err != nil {
 		r.Log.Info("Failed to handler finalizer to eip, try again later")
 		return ctrl.Result{RequeueAfter: time.Second * 10}, err
-	}	
+	}
 	return ctrl.Result{}, nil
 }
 

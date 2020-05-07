@@ -1,365 +1,249 @@
-//
-// Copyright (C) 2014-2017 Nippon Telegraph and Telephone Corporation.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package serverd
 
 import (
-	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/kubesphere/porter/pkg/bgp/config"
-	"github.com/kubesphere/porter/pkg/bgp/table"
-	"github.com/kubesphere/porter/pkg/nettool"
+	"fmt"
+	"github.com/go-logr/logr"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"github.com/kubesphere/porter/pkg/nettool/iptables"
-	"github.com/kubesphere/porter/pkg/util"
 	api "github.com/osrg/gobgp/api"
-	"github.com/osrg/gobgp/pkg/packet/bgp"
 	"github.com/osrg/gobgp/pkg/server"
-	log "github.com/sirupsen/logrus"
+
+	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"net"
+	"strconv"
+	"strings"
 )
 
-type StartOption struct {
-	ConfigFile      string `short:"f" long:"config-file" description:"specifying a config file"`
-	ConfigType      string `short:"t" long:"config-type" description:"specifying config type (toml, yaml, json)" default:"toml"`
+type BgpOptions struct {
 	GrpcHosts       string `long:"api-hosts" description:"specify the hosts that gobgpd listens on" default:":50051"`
 	GracefulRestart bool   `short:"r" long:"graceful-restart" description:"flag restart-state in graceful-restart capability"`
-
-	iptables.IptablesIface
 }
 
-var bgpServer *server.BgpServer
-
-func GetServer() *server.BgpServer {
-	if bgpServer == nil {
-		log.Fatalln("BGP must start before using")
+func NewBgpOptions() *BgpOptions {
+	return &BgpOptions{
+		GrpcHosts:       ":50051",
+		GracefulRestart: true,
 	}
-	return bgpServer
 }
 
-//RunAlone is used for test
-func RunAlone(ready chan<- interface{}) {
+func (options *BgpOptions) AddFlags(fs *pflag.FlagSet, c *BgpOptions) {
+	fs.StringVar(&options.GrpcHosts, "api-hosts", c.GrpcHosts, "specify the hosts that gobgpd listens on")
+	fs.BoolVar(&options.GracefulRestart, "r", false, "flag restart-state in graceful-restart capability")
+}
+
+type BgpServer struct {
+	bgpServer  *server.BgpServer
+	bgpOptions *BgpOptions
+	Log        logr.Logger
+	bgpIptable iptables.IptablesIface
+}
+
+func NewBgpServer(bgpOptions *BgpOptions) *BgpServer {
 	maxSize := 256 << 20
 	grpcOpts := []grpc.ServerOption{grpc.MaxRecvMsgSize(maxSize), grpc.MaxSendMsgSize(maxSize)}
-	log.Info("gobgpd started")
-	bgpServer = server.NewBgpServer(server.GrpcListenAddress(":50052"), server.GrpcOption(grpcOpts))
+
+	bgpServer := server.NewBgpServer(server.GrpcListenAddress(bgpOptions.GrpcHosts), server.GrpcOption(grpcOpts))
 	go bgpServer.Serve()
-	if err := bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
-		Global: &api.Global{
-			As:               65003,
-			RouterId:         "10.0.255.254",
-			ListenPort:       -1, // gobgp won't listen on tcp:179
-			UseMultiplePaths: true,
+
+	return &BgpServer{
+		bgpServer:  bgpServer,
+		bgpOptions: bgpOptions,
+		bgpIptable: iptables.NewIPTables(),
+	}
+}
+
+func (server *BgpServer) StopServer() error {
+	return server.bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
+}
+
+func generateIdentifier(nexthop string) uint32 {
+	index := strings.LastIndex(nexthop, ".")
+	n, _ := strconv.ParseUint(nexthop[index+1:], 0, 32)
+	return uint32(n)
+}
+
+func getFamily(ip string) *api.Family {
+	family := &api.Family{
+		Afi:  api.Family_AFI_IP,
+		Safi: api.Family_SAFI_UNICAST,
+	}
+	if net.ParseIP(ip).To4() == nil {
+		family = &api.Family{
+			Afi:  api.Family_AFI_IP6,
+			Safi: api.Family_SAFI_UNICAST,
+		}
+	}
+
+	return family
+}
+
+func toAPIPath(ip string, prefix uint32, nexthop string) *api.Path {
+	nlri, _ := ptypes.MarshalAny(&api.IPAddressPrefix{
+		Prefix:    ip,
+		PrefixLen: prefix,
+	})
+	a1, _ := ptypes.MarshalAny(&api.OriginAttribute{
+		Origin: 0,
+	})
+	a2, _ := ptypes.MarshalAny(&api.NextHopAttribute{
+		NextHop: nexthop,
+	})
+	attrs := []*any.Any{a1, a2}
+
+	return &api.Path{
+		Family:     getFamily(ip),
+		Nlri:       nlri,
+		Pattrs:     attrs,
+		Identifier: generateIdentifier(nexthop),
+	}
+}
+
+func fromAPIPath(path *api.Path) (net.IP, error) {
+	for _, attr := range path.Pattrs {
+		var value ptypes.DynamicAny
+		if err := ptypes.UnmarshalAny(attr, &value); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal route distinguisher: %s", err)
+		}
+
+		switch a := value.Message.(type) {
+		case *api.NextHopAttribute:
+			nexthop := net.ParseIP(a.NextHop).To4()
+			if nexthop == nil {
+				if nexthop = net.ParseIP(a.NextHop).To16(); nexthop == nil {
+					return nil, fmt.Errorf("invalid nexthop address: %s", a.NextHop)
+				}
+			}
+			return nexthop, nil
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find nexthop")
+}
+
+func (server *BgpServer) retriveRoutes(ip string, prefix uint32, nexthops []string) (err error, toAdd, toDelete []string) {
+	listPathRequest := &api.ListPathRequest{
+		TableType: api.TableType_GLOBAL,
+		Family:    getFamily(ip),
+		Prefixes: []*api.TableLookupPrefix{
+			&api.TableLookupPrefix{
+				Prefix: ip,
+			},
 		},
-	}); err != nil {
-		log.Fatal(err)
-	}
-	ready <- 0
-	select {}
-}
-
-func Run(opts *StartOption, ready chan<- interface{}) {
-	sigCh := make(chan os.Signal)
-	signal.Notify(sigCh, syscall.SIGTERM)
-	configCh := make(chan *config.BgpConfigSet)
-	maxSize := 256 << 20
-	grpcOpts := []grpc.ServerOption{grpc.MaxRecvMsgSize(maxSize), grpc.MaxSendMsgSize(maxSize)}
-
-	log.Info("gobgpd started")
-	bgpServer = server.NewBgpServer(server.GrpcListenAddress(opts.GrpcHosts), server.GrpcOption(grpcOpts))
-	go bgpServer.Serve()
-	if opts.ConfigFile == "" {
-		log.Fatalln("Configfile must be non-empty")
 	}
 
-	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh)
-	loop := func() {
-		var c *config.BgpConfigSet
-		for {
-			select {
-			case <-sigCh:
-				bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
-				//clear iptables
-
-				if c != nil && c.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
-					if len(c.Neighbors) < 1 {
-						log.Println("Skipping deleting iptables as there is no neighbors")
-					}
-					localip := util.GetOutboundIP()
-					for _, nei := range c.Neighbors {
-						err := nettool.DeletePortForwardOfBGP(opts.IptablesIface, nei.Config.NeighborAddress, localip, c.Global.Config.Port)
-						if err != nil {
-							log.Fatalf("Error in deleting iptables, %s", err.Error())
-						}
-					}
-				}
-				return
-			case newConfig := <-configCh:
-				var added, deleted, updated []config.Neighbor
-				var addedPg, deletedPg, updatedPg []config.PeerGroup
-				var updatePolicy bool
-
-				if c == nil {
-					c = newConfig
-					//portforword if neccessary
-					if c.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
-						if len(c.Neighbors) < 1 {
-							log.Fatal("Must have at least one neighbor")
-						}
-						localip := util.GetOutboundIP()
-						for _, nei := range c.Neighbors {
-							err := nettool.AddPortForwardOfBGP(opts.IptablesIface, nei.Config.NeighborAddress, localip, c.Global.Config.Port)
-							if err != nil {
-								log.Fatalf("Error in creating iptables, %s", err.Error())
-							}
-						}
-					}
-					if err := bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
-						Global: config.NewGlobalFromConfigStruct(&c.Global),
-					}); err != nil {
-						log.Fatalf("failed to set global config: %s", err)
-					}
-
-					if len(newConfig.Collector.Config.Url) > 0 {
-						log.Fatal("collector feature is not supported")
-					}
-
-					for _, c := range newConfig.RpkiServers {
-						if err := bgpServer.AddRpki(context.Background(), &api.AddRpkiRequest{
-							Address:  c.Config.Address,
-							Port:     c.Config.Port,
-							Lifetime: c.Config.RecordLifetime,
-						}); err != nil {
-							log.Fatalf("failed to set rpki config: %s", err)
-						}
-					}
-					for _, c := range newConfig.BmpServers {
-						if err := bgpServer.AddBmp(context.Background(), &api.AddBmpRequest{
-							Address:           c.Config.Address,
-							Port:              c.Config.Port,
-							Policy:            api.AddBmpRequest_MonitoringPolicy(c.Config.RouteMonitoringPolicy.ToInt()),
-							StatisticsTimeout: int32(c.Config.StatisticsTimeout),
-						}); err != nil {
-							log.Fatalf("failed to set bmp config: %s", err)
-						}
-					}
-					for _, c := range newConfig.MrtDump {
-						if len(c.Config.FileName) == 0 {
-							continue
-						}
-						if err := bgpServer.EnableMrt(context.Background(), &api.EnableMrtRequest{
-							DumpType:         int32(c.Config.DumpType.ToInt()),
-							Filename:         c.Config.FileName,
-							DumpInterval:     c.Config.DumpInterval,
-							RotationInterval: c.Config.RotationInterval,
-						}); err != nil {
-							log.Fatalf("failed to set mrt config: %s", err)
-						}
-					}
-					p := config.ConfigSetToRoutingPolicy(newConfig)
-					rp, err := table.NewAPIRoutingPolicyFromConfigStruct(p)
-					if err != nil {
-						log.Warn(err)
-					} else {
-						bgpServer.SetPolicies(context.Background(), &api.SetPoliciesRequest{
-							DefinedSets: rp.DefinedSets,
-							Policies:    rp.Policies,
-						})
-					}
-
-					added = newConfig.Neighbors
-					addedPg = newConfig.PeerGroups
-					if opts.GracefulRestart {
-						for i, n := range added {
-							if n.GracefulRestart.Config.Enabled {
-								added[i].GracefulRestart.State.LocalRestarting = true
-							}
-						}
-					}
-
-				} else {
-					//update config
-					if newConfig.PorterConfig.UsingPortForward && c.Global.Config.Port != bgp.BGP_PORT {
-						if len(newConfig.Neighbors) < 1 {
-							log.Fatal("Must have at least one neighbor")
-						}
-						localip := util.GetOutboundIP()
-						for _, nei := range newConfig.Neighbors {
-							err := nettool.AddPortForwardOfBGP(opts.IptablesIface, nei.Config.NeighborAddress, localip, c.Global.Config.Port)
-							if err != nil {
-								log.Fatalf("Error in creating iptables, %s", err.Error())
-							}
-						}
-					}
-
-					addedPg, deletedPg, updatedPg = config.UpdatePeerGroupConfig(c, newConfig)
-					added, deleted, updated = config.UpdateNeighborConfig(c, newConfig)
-					updatePolicy = config.CheckPolicyDifference(config.ConfigSetToRoutingPolicy(c), config.ConfigSetToRoutingPolicy(newConfig))
-
-					if updatePolicy {
-						log.Info("Policy config is updated")
-						p := config.ConfigSetToRoutingPolicy(newConfig)
-						rp, err := table.NewAPIRoutingPolicyFromConfigStruct(p)
-						if err != nil {
-							log.Warn(err)
-						} else {
-							bgpServer.SetPolicies(context.Background(), &api.SetPoliciesRequest{
-								DefinedSets: rp.DefinedSets,
-								Policies:    rp.Policies,
-							})
-						}
-					}
-					// global policy update
-					if !newConfig.Global.ApplyPolicy.Config.Equal(&c.Global.ApplyPolicy.Config) {
-						a := newConfig.Global.ApplyPolicy.Config
-						toDefaultTable := func(r config.DefaultPolicyType) table.RouteType {
-							var def table.RouteType
-							switch r {
-							case config.DEFAULT_POLICY_TYPE_ACCEPT_ROUTE:
-								def = table.ROUTE_TYPE_ACCEPT
-							case config.DEFAULT_POLICY_TYPE_REJECT_ROUTE:
-								def = table.ROUTE_TYPE_REJECT
-							}
-							return def
-						}
-						toPolicies := func(r []string) []*table.Policy {
-							p := make([]*table.Policy, 0, len(r))
-							for _, n := range r {
-								p = append(p, &table.Policy{
-									Name: n,
-								})
-							}
-							return p
-						}
-
-						def := toDefaultTable(a.DefaultImportPolicy)
-						ps := toPolicies(a.ImportPolicyList)
-						bgpServer.SetPolicyAssignment(context.Background(), &api.SetPolicyAssignmentRequest{
-							Assignment: table.NewAPIPolicyAssignmentFromTableStruct(&table.PolicyAssignment{
-								Name:     table.GLOBAL_RIB_NAME,
-								Type:     table.POLICY_DIRECTION_IMPORT,
-								Policies: ps,
-								Default:  def,
-							}),
-						})
-
-						def = toDefaultTable(a.DefaultExportPolicy)
-						ps = toPolicies(a.ExportPolicyList)
-						bgpServer.SetPolicyAssignment(context.Background(), &api.SetPolicyAssignmentRequest{
-							Assignment: table.NewAPIPolicyAssignmentFromTableStruct(&table.PolicyAssignment{
-								Name:     table.GLOBAL_RIB_NAME,
-								Type:     table.POLICY_DIRECTION_EXPORT,
-								Policies: ps,
-								Default:  def,
-							}),
-						})
-
-						updatePolicy = true
-
-					}
-					c = newConfig
-				}
-				for _, pg := range addedPg {
-					log.Infof("PeerGroup %s is added", pg.Config.PeerGroupName)
-					if err := bgpServer.AddPeerGroup(context.Background(), &api.AddPeerGroupRequest{
-						PeerGroup: config.NewPeerGroupFromConfigStruct(&pg),
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				for _, pg := range deletedPg {
-					log.Infof("PeerGroup %s is deleted", pg.Config.PeerGroupName)
-					if err := bgpServer.DeletePeerGroup(context.Background(), &api.DeletePeerGroupRequest{
-						Name: pg.Config.PeerGroupName,
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				for _, pg := range updatedPg {
-					log.Infof("PeerGroup %v is updated", pg.State.PeerGroupName)
-					if u, err := bgpServer.UpdatePeerGroup(context.Background(), &api.UpdatePeerGroupRequest{
-						PeerGroup: config.NewPeerGroupFromConfigStruct(&pg),
-					}); err != nil {
-						log.Warn(err)
-					} else {
-						updatePolicy = updatePolicy || u.NeedsSoftResetIn
-					}
-				}
-				for _, pg := range updatedPg {
-					log.Infof("PeerGroup %s is updated", pg.Config.PeerGroupName)
-					if _, err := bgpServer.UpdatePeerGroup(context.Background(), &api.UpdatePeerGroupRequest{
-						PeerGroup: config.NewPeerGroupFromConfigStruct(&pg),
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				for _, dn := range newConfig.DynamicNeighbors {
-					log.Infof("Dynamic Neighbor %s is added to PeerGroup %s", dn.Config.Prefix, dn.Config.PeerGroup)
-					if err := bgpServer.AddDynamicNeighbor(context.Background(), &api.AddDynamicNeighborRequest{
-						DynamicNeighbor: &api.DynamicNeighbor{
-							Prefix:    dn.Config.Prefix,
-							PeerGroup: dn.Config.PeerGroup,
-						},
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				for _, p := range added {
-					log.Infof("Peer %v is added", p.State.NeighborAddress)
-					if err := bgpServer.AddPeer(context.Background(), &api.AddPeerRequest{
-						Peer: config.NewPeerFromConfigStruct(&p),
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				for _, p := range deleted {
-					log.Infof("Peer %v is deleted", p.State.NeighborAddress)
-					if err := bgpServer.DeletePeer(context.Background(), &api.DeletePeerRequest{
-						Address: p.State.NeighborAddress,
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				for _, p := range updated {
-					log.Infof("Peer %v is updated", p.State.NeighborAddress)
-					if u, err := bgpServer.UpdatePeer(context.Background(), &api.UpdatePeerRequest{
-						Peer: config.NewPeerFromConfigStruct(&p),
-					}); err != nil {
-						log.Warn(err)
-					} else {
-						updatePolicy = updatePolicy || u.NeedsSoftResetIn
-					}
-				}
-
-				if updatePolicy {
-					if err := bgpServer.ResetPeer(context.Background(), &api.ResetPeerRequest{
-						Address:   "",
-						Direction: api.ResetPeerRequest_IN,
-						Soft:      true,
-					}); err != nil {
-						log.Warn(err)
-					}
-				}
-				ready <- 0
+	origins := make(map[string]bool)
+	news := make(map[string]bool)
+	for _, item := range nexthops {
+		news[item] = true
+	}
+	found := false
+	fn := func(d *api.Destination) {
+		found = true
+		server.Log.Info("list paths:", "paths", d.Paths)
+		for _, path := range d.Paths {
+			nexthop, _ := fromAPIPath(path)
+			server.Log.Info("path nexthop", "nexthop", nexthop)
+			origins[nexthop.String()] = true
+		}
+		//compare
+		for key := range origins {
+			if _, ok := news[key]; !ok {
+				toDelete = append(toDelete, key)
+			}
+		}
+		for key := range news {
+			if _, ok := origins[key]; !ok {
+				toAdd = append(toAdd, key)
 			}
 		}
 	}
 
-	loop()
+	err = server.bgpServer.ListPath(context.Background(), listPathRequest, fn)
+	if err != nil {
+		return
+	}
+	if !found {
+		toAdd = nexthops
+	}
+
+	return
+}
+
+func (server *BgpServer) ReconcileRoutes(ip string, prefix uint32, nexthops []string) error {
+	err, toAdd, toDelete := server.retriveRoutes(ip, prefix, nexthops)
+	if err != nil {
+		return err
+	}
+
+	server.Log.Info("update router:", "toAdd", toAdd, "toDelete", toDelete)
+	err = server.addMultiRoutes(ip, prefix, toAdd)
+	if err != nil {
+		return err
+	}
+	err = server.deleteMultiRoutes(ip, prefix, toDelete)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (server *BgpServer) addMultiRoutes(ip string, prefix uint32, nexthops []string) error {
+	for _, nexthop := range nexthops {
+		apipath := toAPIPath(ip, prefix, nexthop)
+		server.Log.Info("add path:", "apiPath", apipath)
+		_, err := server.bgpServer.AddPath(context.Background(), &api.AddPathRequest{
+			Path: apipath,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (server *BgpServer) deleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
+	for _, nexthop := range nexthops {
+		apipath := toAPIPath(ip, prefix, nexthop)
+		server.Log.Info("delete path:", "apiPath", apipath)
+		err := server.bgpServer.DeletePath(context.Background(), &api.DeletePathRequest{
+			Path: apipath,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (server *BgpServer) DeleteAllRoutesOfIP(ip string) error {
+	lookup := &api.TableLookupPrefix{
+		Prefix: ip,
+	}
+	listPathRequest := &api.ListPathRequest{
+		TableType: api.TableType_GLOBAL,
+		Family:    getFamily(ip),
+		Prefixes:  []*api.TableLookupPrefix{lookup},
+	}
+	var errDelete error
+	fn := func(d *api.Destination) {
+		for _, path := range d.Paths {
+			errDelete = server.bgpServer.DeletePath(context.Background(), &api.DeletePathRequest{
+				Path: path,
+			})
+			if errDelete != nil {
+				return
+			}
+		}
+	}
+	err := server.bgpServer.ListPath(context.Background(), listPathRequest, fn)
+	if err != nil {
+		return err
+	}
+	if errDelete != nil {
+		return errDelete
+	}
+	return nil
 }
