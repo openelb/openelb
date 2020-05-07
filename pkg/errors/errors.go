@@ -29,6 +29,39 @@ func NewEIPNotFoundError(eip string) EIPNotFoundError {
 	}
 }
 
+type EIPLBTypeNotFoundError struct {
+}
+
+func NewEIPLBTypeNotFoundError() EIPLBTypeNotFoundError {
+	return EIPLBTypeNotFoundError{}
+}
+
+func (r EIPLBTypeNotFoundError) Error() string {
+	return fmt.Sprintf("EIP lbtype is not found in service annotations")
+}
+
+type Layer2AnnouncerNotReadyError struct {
+}
+
+func NewLayer2AnnouncerNotReadyError() Layer2AnnouncerNotReadyError {
+	return Layer2AnnouncerNotReadyError{}
+}
+
+func (r Layer2AnnouncerNotReadyError) Error() string {
+	return fmt.Sprintf("Layer2 announcer not ready")
+}
+
+type BGPServerNotReadyError struct {
+}
+
+func NewBGPServerNotReadyError() BGPServerNotReadyError {
+	return BGPServerNotReadyError{}
+}
+
+func (r BGPServerNotReadyError) Error() string {
+	return fmt.Sprintf("BGP server not ready")
+}
+
 func IsResourceNotFound(err error) bool {
 	_, ok := err.(EIPNotFoundError)
 	return ok

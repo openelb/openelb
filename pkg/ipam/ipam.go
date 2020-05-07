@@ -2,6 +2,7 @@ package ipam
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -32,6 +33,15 @@ type IPAM struct {
 	ds           *DataStore
 	SyncInterval time.Duration
 	EIPUpdater   *EIPUpdater
+}
+
+func (i *IPAM) LBTypeForEIP(eip string) string {
+	for _, p := range i.ds.IPPool {
+		if p.CIDR.Contains(net.ParseIP(eip)) {
+			return p.LBType
+		}
+	}
+	return ""
 }
 
 func (i *IPAM) CheckEIPStatus(eip string) *EIPStatus {
@@ -114,7 +124,7 @@ func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 func (i *IPAM) addEIPtoDataStore(eip *networkv1alpha1.Eip) error {
 	i.Log.Info("Add EIP to pool")
-	return i.ds.AddEIPPool(eip.Spec.Address, eip.Name, eip.Spec.UsingKnownIPs)
+	return i.ds.AddEIPPool(eip.Spec.Address, eip.Name, eip.Spec.UsingKnownIPs, eip.Spec.LBType)
 }
 
 func (i *IPAM) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, error) {
@@ -155,7 +165,11 @@ func (i *IPAM) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, error) {
 }
 
 func (i *IPAM) AssignIP(serv *corev1.Service) (*AssignIPResponse, error) {
-	return i.ds.AssignIP(serv.Name, serv.Namespace)
+	lbType := serv.Annotations[constant.PorterLBTypeAnnotationKey]
+	if lbType == "" {
+		return nil, errors.NewEIPLBTypeNotFoundError()
+	}
+	return i.ds.AssignIP(serv.Name, serv.Namespace, lbType)
 }
 
 func (i *IPAM) RevokeIP(ip string) error {

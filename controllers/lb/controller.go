@@ -25,6 +25,8 @@ import (
 	"github.com/kubesphere/porter/pkg/constant"
 	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/ipam"
+	"github.com/kubesphere/porter/pkg/layer2"
+	"github.com/kubesphere/porter/pkg/route"
 	"github.com/kubesphere/porter/pkg/util"
 	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"github.com/kubesphere/porter/pkg/route"
 )
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -52,7 +53,8 @@ type ServiceReconciler struct {
 	client.Client
 	Log logr.Logger
 	record.EventRecorder
-	route.Advertiser 
+	route.Advertiser
+	announcer *layer2.Announce
 }
 
 func (r *ServiceReconciler) getNewerService(serv *corev1.Service) error {
@@ -67,10 +69,12 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//service
 	r.Client = mgr.GetClient()
 	r.EventRecorder = mgr.GetEventRecorderFor("service")
+	r.announcer = layer2.New(r.Log, r.Client)
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
 				if validate.HasPorterLBAnnotation(e.MetaNew.GetAnnotations()) || validate.HasPorterLBAnnotation(e.MetaOld.GetAnnotations()) {
+					//TODO fix
 					return e.ObjectOld != e.ObjectNew
 				}
 			}
@@ -144,6 +148,9 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		case portererror.EIPNotFoundError:
 			r.Log.Info("Detect unknown ips in annotations")
 			return ctrl.Result{}, r.clearAnnotation(req.NamespacedName)
+		case portererror.EIPLBTypeNotFoundError:
+			r.Log.Info(err.Error())
+			return ctrl.Result{}, nil
 		default:
 			if errors.IsNotFound(err) {
 				r.Log.Info("Maybe sevice has been deleted, skipping reconciling")
@@ -204,7 +211,7 @@ func (r *ServiceReconciler) clearAnnotation(key types.NamespacedName) error {
 		if err != nil {
 			return err
 		}
-		delete(serv.Annotations, PorterEIPAnnotationKey)
+		delete(serv.Annotations, constant.PorterEIPAnnotationKey)
 		err = r.Update(context.Background(), serv)
 		if err != nil {
 			r.Log.Info("[Will Retry] Failed to clear Annotations")

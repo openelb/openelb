@@ -48,7 +48,7 @@ var bgpServer *server.BgpServer
 
 func GetServer() *server.BgpServer {
 	if bgpServer == nil {
-		log.Fatalln("BGP must start before using")
+		log.Warning("BGP should start before using")
 	}
 	return bgpServer
 }
@@ -75,6 +75,12 @@ func RunAlone(ready chan<- interface{}) {
 }
 
 func Run(opts *StartOption, ready chan<- interface{}) {
+	if opts.ConfigFile == "" {
+		log.Warning("ConfigFile is empty, support layer2 only")
+		ready <- 0
+		return
+	}
+
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, syscall.SIGTERM)
 	configCh := make(chan *config.BgpConfigSet)
@@ -84,9 +90,6 @@ func Run(opts *StartOption, ready chan<- interface{}) {
 	log.Info("gobgpd started")
 	bgpServer = server.NewBgpServer(server.GrpcListenAddress(opts.GrpcHosts), server.GrpcOption(grpcOpts))
 	go bgpServer.Serve()
-	if opts.ConfigFile == "" {
-		log.Fatalln("Configfile must be non-empty")
-	}
 
 	go config.ReadConfigfileServe(opts.ConfigFile, opts.ConfigType, configCh)
 	loop := func() {

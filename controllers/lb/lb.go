@@ -3,20 +3,16 @@ package lb
 import (
 	"context"
 	"fmt"
-
+	"github.com/kubesphere/porter/pkg/constant"
 	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/kubeutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-const (
-	PorterEIPAnnotationKey = "eip.porter.kubesphere.io/v1alpha1"
-)
-
 func (r *ServiceReconciler) findEIP(svc *corev1.Service) string {
 	if svc.Annotations != nil {
-		if ip, ok := svc.Annotations[PorterEIPAnnotationKey]; ok {
+		if ip, ok := svc.Annotations[constant.PorterEIPAnnotationKey]; ok {
 			return ip
 		}
 	}
@@ -103,10 +99,21 @@ func (r *ServiceReconciler) createLB(serv *corev1.Service) error {
 	if err != nil {
 		return err
 	}
-	err = r.advertiseIP(serv, ip, nexthops)
+
+	lbType := r.IPAM.LBTypeForEIP(ip)
+	switch lbType {
+	case constant.PorterLBTypeBGP:
+		err = r.advertiseIP(serv, ip, nexthops)
+	case constant.PorterLBTypeLayer2:
+		err = r.announcer.SetBalancer(ip, nexthops[0])
+	default:
+		r.Log.Info("invalid lbType", "lbType", lbType, "ip", ip)
+		err = portererror.NewEIPLBTypeNotFoundError()
+	}
+
 	if err != nil {
-		r.Log.Info("Failed to advertise ip,try to revoke ip", "ip", ip)
 		if newAssign {
+			r.Log.Info("Failed to advertise ip,try to revoke ip", "ip", ip)
 			revokeErr := r.IPAM.RevokeIP(ip)
 			if revokeErr != nil {
 				panic(revokeErr)
@@ -146,12 +153,15 @@ func (r *ServiceReconciler) updateService(serv *corev1.Service, ip string, newAs
 	if serv.Annotations == nil {
 		serv.Annotations = make(map[string]string)
 	}
-	if store, ok := serv.Annotations[PorterEIPAnnotationKey]; !ok || store != ip {
-		serv.Annotations[PorterEIPAnnotationKey] = ip
-		if err := r.Update(context.Background(), serv); err != nil {
-			r.Log.Error(err, "Faided to add annotations")
-			return err
-		}
+	if store, ok := serv.Annotations[constant.PorterEIPAnnotationKey]; !ok || store != ip {
+		serv.Annotations[constant.PorterEIPAnnotationKey] = ip
+	}
+	if _, ok := serv.Annotations[constant.PorterLBTypeAnnotationKey]; !ok {
+		serv.Annotations[constant.PorterLBTypeAnnotationKey] = r.IPAM.LBTypeForEIP(ip)
+	}
+	if err := r.Update(context.Background(), serv); err != nil {
+		r.Log.Error(err, "Faided to add annotations")
+		return err
 	}
 	r.Event(serv, corev1.EventTypeNormal, "LB Created", fmt.Sprintf("Successfully assign EIP %s", ip))
 	return nil
@@ -171,25 +181,34 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 		r.Log.Info("Failed to revoke ip on service", "ip", ip)
 		return err
 	}
-	nodeIPs, err := r.getServiceNodesIP(serv)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.Log.Info("Endpoints is disappearing,try to delete ip in global table")
-			err := r.DeleteAllRoutesOfIP(ip)
-			if err != nil {
+
+	lbType := r.IPAM.LBTypeForEIP(ip)
+	switch lbType {
+	case constant.PorterLBTypeBGP:
+		nodeIPs, err := r.getServiceNodesIP(serv)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.Log.Info("Endpoints is disappearing,try to delete ip in global table")
+				err := r.DeleteAllRoutesOfIP(ip)
+				if err != nil {
+					return err
+				}
+			} else {
+				r.Log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
 				return err
 			}
 		} else {
-			r.Log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
-			return err
+			err = r.DeleteMultiRoutes(ip, 32, nodeIPs)
+			if err != nil {
+				r.Log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
+			}
 		}
-	} else {
-		err = r.DeleteMultiRoutes(ip, 32, nodeIPs)
-		if err != nil {
-			r.Log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
-		}
+		r.Log.Info("Routed deleted successful")
+	case constant.PorterLBTypeLayer2:
+		r.announcer.DeleteBalancer(ip)
+	default:
+		return portererror.NewEIPLBTypeNotFoundError()
 	}
-	r.Log.Info("Routed deleted successful")
 	return nil
 }
 

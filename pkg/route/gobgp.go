@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/kubesphere/porter/pkg/bgp/apiutil"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
+	portererror "github.com/kubesphere/porter/pkg/errors"
 	api "github.com/osrg/gobgp/api"
 	bgp "github.com/osrg/gobgp/pkg/packet/bgp"
 	"github.com/osrg/gobgp/pkg/server"
@@ -64,6 +65,10 @@ func getNextHopFromPathAttributes(attrs []bgp.PathAttributeInterface) net.IP {
 }
 
 func (g *gobgp) ReconcileRoutes(ip string, prefix uint32, nexthops []string) (toAdd []string, toDelete []string, err error) {
+	if g.s == nil {
+		return nil, nil, portererror.NewBGPServerNotReadyError()
+	}
+
 	lookup := &api.TableLookupPrefix{
 		Prefix: ip,
 	}
@@ -106,6 +111,10 @@ func (g *gobgp) ReconcileRoutes(ip string, prefix uint32, nexthops []string) (to
 }
 
 func (g *gobgp) AddMultiRoutes(ip string, prefix uint32, nexthops []string) error {
+	if g.s == nil {
+		return portererror.NewBGPServerNotReadyError()
+	}
+
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
 		_, err := g.s.AddPath(context.Background(), &api.AddPathRequest{
@@ -119,6 +128,10 @@ func (g *gobgp) AddMultiRoutes(ip string, prefix uint32, nexthops []string) erro
 }
 
 func (g *gobgp) DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
+	if g.s == nil {
+		return portererror.NewBGPServerNotReadyError()
+	}
+
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
 		err := g.s.DeletePath(context.Background(), &api.DeletePathRequest{
@@ -132,6 +145,10 @@ func (g *gobgp) DeleteMultiRoutes(ip string, prefix uint32, nexthops []string) e
 }
 
 func (g *gobgp) DeleteAllRoutesOfIP(ip string) error {
+	if g.s == nil {
+		return portererror.NewBGPServerNotReadyError()
+	}
+
 	lookup := &api.TableLookupPrefix{
 		Prefix: ip,
 	}
@@ -160,4 +177,3 @@ func (g *gobgp) DeleteAllRoutesOfIP(ip string) error {
 	}
 	return nil
 }
-
