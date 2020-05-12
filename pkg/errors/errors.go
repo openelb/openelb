@@ -29,15 +29,15 @@ func NewEIPNotFoundError(eip string) EIPNotFoundError {
 	}
 }
 
-type EIPLBTypeNotFoundError struct {
+type EIPProtocolNotFoundError struct {
 }
 
-func NewEIPLBTypeNotFoundError() EIPLBTypeNotFoundError {
-	return EIPLBTypeNotFoundError{}
+func NewEIPProtocolNotFoundError() EIPProtocolNotFoundError {
+	return EIPProtocolNotFoundError{}
 }
 
-func (r EIPLBTypeNotFoundError) Error() string {
-	return fmt.Sprintf("EIP lbtype is not found in service annotations")
+func (r EIPProtocolNotFoundError) Error() string {
+	return fmt.Sprintf("EIP protocol is not found in service annotations")
 }
 
 type Layer2AnnouncerNotReadyError struct {

@@ -148,7 +148,10 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		case portererror.EIPNotFoundError:
 			r.Log.Info("Detect unknown ips in annotations")
 			return ctrl.Result{}, r.clearAnnotation(req.NamespacedName)
-		case portererror.EIPLBTypeNotFoundError:
+		case portererror.EIPProtocolNotFoundError:
+			r.Log.Info(err.Error())
+			return ctrl.Result{}, nil
+		case portererror.BGPServerNotReadyError:
 			r.Log.Info(err.Error())
 			return ctrl.Result{}, nil
 		default:

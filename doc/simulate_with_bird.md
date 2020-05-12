@@ -111,7 +111,7 @@
         name: eip-sample
     spec:
         address: 139.198.121.228 #这里替换为你申请的EIP，私有环境可以换成任意的不冲突的IP
-        lbType: bgp
+        protocol: bgp
         disable: false
     EOF 
    ```
@@ -124,7 +124,7 @@
     name:  mylbapp
     annotations:
         lb.kubesphere.io/v1alpha1: porter
-        #lbtype.porter.kubesphere.io/v1alpha1: bgp  如果没有指定eip，那么必须添加这个标记
+        #protocol.porter.kubesphere.io/v1alpha1: bgp  如果没有指定eip，那么必须添加这个标记
     spec:
         selector:
             app:  mylbapp

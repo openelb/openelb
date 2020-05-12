@@ -27,7 +27,7 @@ var _ = Describe("Ipam", func() {
 	It("Should be ok with single ip", func() {
 		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
 		singleIP := "1.1.1.1"
-		Expect(ds.AddEIPPool(singleIP, "singleEIP", false, constant.PorterLBTypeBGP)).ShouldNot(HaveOccurred())
+		Expect(ds.AddEIPPool(singleIP, "singleEIP", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
 		Expect(*ds.GetEIPStatus(singleIP)).To(Equal(ipam.EIPStatus{
 			Exist: true,
 			EIPRef: &ipam.EIPRef{
@@ -35,7 +35,7 @@ var _ = Describe("Ipam", func() {
 				Address:    singleIP,
 			},
 		}))
-		ip, err := ds.AssignIP("testSVC", "test", constant.PorterLBTypeBGP)
+		ip, err := ds.AssignIP("testSVC", "test", constant.PorterProtocolBGP)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(ip.Address).To(Equal(singleIP))
 		Expect(ds.UnassignIP(ip.Address)).ShouldNot(HaveOccurred())
@@ -45,8 +45,8 @@ var _ = Describe("Ipam", func() {
 	It("Should be ok to add eip", func() {
 		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
 
-		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false, constant.PorterLBTypeBGP)).ShouldNot(HaveOccurred())
-		Expect(ds.AddEIPPool("192.168.1.0/25", "defaultPool1", false, constant.PorterLBTypeBGP)).Should(HaveOccurred())
+		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
+		Expect(ds.AddEIPPool("192.168.1.0/25", "defaultPool1", false, constant.PorterProtocolBGP)).Should(HaveOccurred())
 
 		Expect(ds.GetEIPStatus("192.168.2.1").Exist).To(BeFalse())
 		Expect(*ds.GetEIPStatus("192.168.1.1")).To(Equal(ipam.EIPStatus{
@@ -57,7 +57,7 @@ var _ = Describe("Ipam", func() {
 			},
 		}))
 
-		ip, err := ds.AssignIP("testSVC", "test", constant.PorterLBTypeBGP)
+		ip, err := ds.AssignIP("testSVC", "test", constant.PorterProtocolBGP)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(testIPNet.Contains(net.ParseIP(ip.Address))).To(BeTrue())
 		Expect(*ds.GetEIPStatus(ip.Address)).To(Equal(ipam.EIPStatus{
@@ -86,22 +86,22 @@ var _ = Describe("Ipam", func() {
 		Expect(ds.UnassignIP("192.168.1.2")).ShouldNot(HaveOccurred())
 		Expect(ds.RemoveEIPPool(testIPNetStr, "defaultPool")).ShouldNot(HaveOccurred())
 
-		Expect(ds.AddEIPPool("192.168.98.1", "oneeip", false, constant.PorterLBTypeBGP)).ShouldNot(HaveOccurred())
+		Expect(ds.AddEIPPool("192.168.98.1", "oneeip", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
 
-		ip, err = ds.AssignIP("testSVC", "test", constant.PorterLBTypeBGP)
+		ip, err = ds.AssignIP("testSVC", "test", constant.PorterProtocolBGP)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(ip.Address).To(Equal("192.168.98.1"))
 
-		_, err = ds.AssignIP("testSVC", "test", constant.PorterLBTypeBGP)
+		_, err = ds.AssignIP("testSVC", "test", constant.PorterProtocolBGP)
 		Expect(err).To(BeAssignableToTypeOf(errors.ResourceNotEnoughError{}))
-		Expect(ds.AddEIPPool("192.168.98.2", "oneeip", false, constant.PorterLBTypeBGP)).Should(BeAssignableToTypeOf(errors.DataStoreEIPDuplicateError{}))
+		Expect(ds.AddEIPPool("192.168.98.2", "oneeip", false, constant.PorterProtocolBGP)).Should(BeAssignableToTypeOf(errors.DataStoreEIPDuplicateError{}))
 	})
 
 	It("Should be ok to add two eip pool in the meantime", func() {
 		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
-		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false, constant.PorterLBTypeBGP)).ShouldNot(HaveOccurred())
-		Expect(ds.AddEIPPool("192.168.2.2", "defaultPool1", false, constant.PorterLBTypeBGP)).ShouldNot(HaveOccurred())
-		resp, err := ds.AssignIP("testSvc1", "default", constant.PorterLBTypeBGP)
+		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
+		Expect(ds.AddEIPPool("192.168.2.2", "defaultPool1", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
+		resp, err := ds.AssignIP("testSvc1", "default", constant.PorterProtocolBGP)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(ds.UnassignIP(resp.Address)).ShouldNot(HaveOccurred())
 		Expect(ds.RemoveEIPPool(testIPNetStr, "defaultPool")).ShouldNot(HaveOccurred())

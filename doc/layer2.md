@@ -22,12 +22,12 @@ metadata:
     name: eip-sample-pool
 spec:
     address: 10.11.11.0/24
-    lbType: layer2
+    protocol: layer2
     disable: false
 EOF
 ```
 
-在service中使用layer2的时候，我们需要使用”lbtype.porter.kubesphere.io/v1alpha1: layer2”指定使用layer2.
+在service中使用layer2的时候，我们需要使用”protocol.porter.kubesphere.io/v1alpha1: layer2”指定使用layer2.
 如果service中通过”eip.porter.kubesphere.io/v1alpha1“指定了EIP， 那么我们可以省略.
 ```yaml
 kind: Service
@@ -37,7 +37,7 @@ metadata:
     annotations:
         lb.kubesphere.io/v1alpha1: porter
         #eip.porter.kubesphere.io/v1alpha1: 1.1.1.1 如果需要手动指定eip，可以添加这个注记
-        #lbtype.porter.kubesphere.io/v1alpha1: layer2  如果没有指定eip，那么必须添加这个标记
+        #protocol.porter.kubesphere.io/v1alpha1: layer2  如果没有指定eip，那么必须添加这个标记
 spec:
     selector:
         app:  mylbapp

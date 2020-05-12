@@ -80,7 +80,7 @@
         name: eip-sample-pool
     spec:
         address: 10.11.11.0/24
-        lbType: bgp
+        protocol: bgp
         disable: false
     EOF
     ```
@@ -95,7 +95,7 @@
         annotations:
             lb.kubesphere.io/v1alpha1: porter
             #eip.porter.kubesphere.io/v1alpha1: 1.1.1.1 如果需要手动指定eip，可以添加这个注记
-            #lbtype.porter.kubesphere.io/v1alpha1: bgp  如果没有指定eip，那么必须添加这个标记
+            #protocol.porter.kubesphere.io/v1alpha1: bgp  如果没有指定eip，那么必须添加这个标记
     spec:
         selector:
             app:  mylbapp

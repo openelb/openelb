@@ -25,7 +25,7 @@ type EipSpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}(\/([0-9]|[1-2][0-9]|3[0-2]))?$`
 	Address       string `json:"address,omitempty"`
-	LBType        string `json:"lbType,omitempty"`
+	Protocol      string `json:"protocol,omitempty"`
 	Disable       bool   `json:"disable,omitempty"`
 	UsingKnownIPs bool   `json:"usingKnownIPs,omitempty"`
 }

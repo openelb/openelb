@@ -100,15 +100,15 @@ func (r *ServiceReconciler) createLB(serv *corev1.Service) error {
 		return err
 	}
 
-	lbType := r.IPAM.LBTypeForEIP(ip)
-	switch lbType {
-	case constant.PorterLBTypeBGP:
+	protocol := r.IPAM.ProtocolForEIP(ip)
+	switch protocol {
+	case constant.PorterProtocolBGP:
 		err = r.advertiseIP(serv, ip, nexthops)
-	case constant.PorterLBTypeLayer2:
+	case constant.PorterProtocolLayer2:
 		err = r.announcer.SetBalancer(ip, nexthops[0])
 	default:
-		r.Log.Info("invalid lbType", "lbType", lbType, "ip", ip)
-		err = portererror.NewEIPLBTypeNotFoundError()
+		r.Log.Info("invalid protocol", "protocol", protocol, "ip", ip)
+		err = portererror.NewEIPProtocolNotFoundError()
 	}
 
 	if err != nil {
@@ -156,8 +156,8 @@ func (r *ServiceReconciler) updateService(serv *corev1.Service, ip string, newAs
 	if store, ok := serv.Annotations[constant.PorterEIPAnnotationKey]; !ok || store != ip {
 		serv.Annotations[constant.PorterEIPAnnotationKey] = ip
 	}
-	if _, ok := serv.Annotations[constant.PorterLBTypeAnnotationKey]; !ok {
-		serv.Annotations[constant.PorterLBTypeAnnotationKey] = r.IPAM.LBTypeForEIP(ip)
+	if _, ok := serv.Annotations[constant.PorterProtocolAnnotationKey]; !ok {
+		serv.Annotations[constant.PorterProtocolAnnotationKey] = r.IPAM.ProtocolForEIP(ip)
 	}
 	if err := r.Update(context.Background(), serv); err != nil {
 		r.Log.Error(err, "Faided to add annotations")
@@ -182,9 +182,9 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 		return err
 	}
 
-	lbType := r.IPAM.LBTypeForEIP(ip)
-	switch lbType {
-	case constant.PorterLBTypeBGP:
+	protocol := r.IPAM.ProtocolForEIP(ip)
+	switch protocol {
+	case constant.PorterProtocolBGP:
 		nodeIPs, err := r.getServiceNodesIP(serv)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -204,10 +204,10 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 			}
 		}
 		r.Log.Info("Routed deleted successful")
-	case constant.PorterLBTypeLayer2:
+	case constant.PorterProtocolLayer2:
 		r.announcer.DeleteBalancer(ip)
 	default:
-		return portererror.NewEIPLBTypeNotFoundError()
+		return portererror.NewEIPProtocolNotFoundError()
 	}
 	return nil
 }

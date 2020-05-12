@@ -40,7 +40,7 @@ type CIDRResource struct {
 	Used          map[string]*EIPRef
 	Size          int
 	UsingKnownIPs bool
-	LBType        string
+	Protocol      string
 }
 
 func (c *CIDRResource) IsFull() bool {
@@ -59,7 +59,7 @@ type AssignIPResponse struct {
 }
 
 //TODO: use EIP crd struct
-func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool, lbType string) error {
+func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool, protocol string) error {
 	d.Log.Info("Add EIP to pool", "CIDR", eip)
 	if !strings.Contains(eip, "/") {
 		eip = eip + "/32"
@@ -83,7 +83,7 @@ func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool, lbTy
 		Used:          make(map[string]*EIPRef),
 		Size:          util.GetValidAddressCount(eip),
 		UsingKnownIPs: usingKnownIPs,
-		LBType:        lbType,
+		Protocol:      protocol,
 	}
 	d.Log.Info("Added EIP to pool", "CIDR", eip)
 	return nil
@@ -105,11 +105,11 @@ func (d *DataStore) RemoveEIPPool(eip, name string) error {
 	return errors.DataStoreEIPNotExist{CIDR: eip}
 }
 
-func (d *DataStore) AssignIP(serviceName, ns string, lbType string) (*AssignIPResponse, error) {
+func (d *DataStore) AssignIP(serviceName, ns string, protocol string) (*AssignIPResponse, error) {
 	d.Log.Info("Try to AssignIP to service", "Service", serviceName, "Namespace", ns)
 	selectIP := &AssignIPResponse{}
 	for _, ips := range d.IPPool {
-		if ips.IsFull() || ips.LBType != lbType {
+		if ips.IsFull() || ips.Protocol != protocol {
 			continue
 		}
 		first, _ := cidr.AddressRange(ips.CIDR)
