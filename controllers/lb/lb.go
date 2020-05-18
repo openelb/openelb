@@ -56,25 +56,9 @@ func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (
 	return resp.Address, true, nil
 }
 
-func (r *ServiceReconciler) addRoutes(ip string, prefix uint32, nexthops []string) error {
-	toAdd, toDelete, err := r.ReconcileRoutes(ip, prefix, nexthops)
-	if err != nil {
-		return err
-	}
-	err = r.AddMultiRoutes(ip, prefix, toAdd)
-	if err != nil {
-		return err
-	}
-	err = r.DeleteMultiRoutes(ip, prefix, toDelete)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (r *ServiceReconciler) advertiseIP(serv *corev1.Service, ip string, nexthops []string) error {
 
-	if err := r.addRoutes(ip, 32, nexthops); err != nil {
+	if err := r.BgpServer.ReconcileRoutes(ip, 32, nexthops); err != nil {
 		return err
 	}
 	r.Log.Info("Routed added successfully")
@@ -171,23 +155,10 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 		r.Log.Info("Failed to revoke ip on service", "ip", ip)
 		return err
 	}
-	nodeIPs, err := r.getServiceNodesIP(serv)
+
+	err = r.BgpServer.DeleteAllRoutesOfIP(ip)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			r.Log.Info("Endpoints is disappearing,try to delete ip in global table")
-			err := r.DeleteAllRoutesOfIP(ip)
-			if err != nil {
-				return err
-			}
-		} else {
-			r.Log.Error(nil, "error in get nodes ip when try to deleting bgp routes")
-			return err
-		}
-	} else {
-		err = r.DeleteMultiRoutes(ip, 32, nodeIPs)
-		if err != nil {
-			r.Log.Error(nil, "Failed to delete routes ", "nexthops", nodeIPs)
-		}
+		return err
 	}
 	r.Log.Info("Routed deleted successful")
 	return nil

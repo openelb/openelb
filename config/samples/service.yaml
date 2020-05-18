@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name:  mylbapp
+  annotations:
+    lb.kubesphere.io/v1alpha1: porter
+spec:
+  selector:
+    app:  mylbapp
+  type:  LoadBalancer
+  ports:
+    - name:  http
+      port:  8088
+      targetPort:  80

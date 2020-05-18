@@ -1,0 +1,10 @@
+apiVersion: network.kubesphere.io/v1alpha1
+kind: BgpConf
+metadata:
+  name: bgpconf-sample
+spec:
+  # Add fields here
+  as : 65000
+  router-id : 192.168.0.2
+  port: 17900
+

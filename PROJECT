@@ -1,7 +1,13 @@
-version: "2"
 domain: kubesphere.io
 repo: github.com/kubesphere/porter
 resources:
 - group: network
-  version: v1alpha1
   kind: Eip
+  version: v1alpha1
+- group: network
+  kind: BgpPeer
+  version: v1alpha1
+- group: network
+  kind: BgpConf
+  version: v1alpha1
+version: "2"

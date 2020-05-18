@@ -171,6 +171,30 @@ rules:
   - patch
   - update
   - watch
+  - apiGroups:
+  - network.kubesphere.io
+  resources:
+  - bgpconfs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - apiGroups:
+  - network.kubesphere.io
+  resources:
+  - bgppeers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - network.kubesphere.io
   resources:
