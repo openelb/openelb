@@ -60,28 +60,19 @@ func (r *EipReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		return ctrl.Result{}, err
 	}
-	var deleted bool
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		err := r.Get(context.TODO(), req.NamespacedName, instance)
 		if err != nil {
 			return err
 		}
-		deleted, err = r.useFinalizerIfNeeded(instance)
+		_, err = r.useFinalizerIfNeeded(instance)
 		return err
 	})
 
 	if err != nil {
 		r.Log.Info("Failed to handler finalizer to eip, try again later")
 		return ctrl.Result{RequeueAfter: time.Second * 10}, err
-	}
-	if !deleted {
-		r.Log.Info("open forward for eip")
-		err = r.OpenEIPForward(instance.Spec.Address)
-		if err != nil {
-			r.Log.Info("Failed to open forward chain, try again later")
-			return ctrl.Result{RequeueAfter: time.Second * 10}, err
-		}
-	}
+	}	
 	return ctrl.Result{}, nil
 }
 
@@ -125,11 +116,6 @@ func (r *EipReconciler) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, er
 		// The object is being deleted
 		if util.ContainsString(eip.ObjectMeta.Finalizers, agentFinalizer) {
 			r.Log.Info("Begin to remove finalizer")
-			// our finalizer is present, so lets handle our external dependency
-			if err := r.CloseEIPForward(eip.Spec.Address); err != nil {
-				log.Error(nil, "Failed to delete rule in forward chain", "name", eip.GetName(), "namespace", eip.GetNamespace())
-				return true, err
-			}
 			// remove our finalizer from the list and update it.
 			eip.ObjectMeta.Finalizers = util.RemoveString(eip.ObjectMeta.Finalizers, agentFinalizer)
 			if err := r.Update(context.Background(), eip); err != nil {
