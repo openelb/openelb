@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/kubesphere/porter/pkg/constant"
-	cidrutil "github.com/kubesphere/porter/pkg/util/cidr"
+	"github.com/mikioh/ipaddr"
 )
 
 // Get preferred outbound ip of this machine
@@ -46,31 +46,40 @@ func ToCommonString(ip string, prefix uint32) string {
 	return fmt.Sprintf("%s/%d", ip, prefix)
 }
 
-func GetAddressRange(addr string) (net.IP, net.IP, *net.IPNet, error) {
+func ParseAddress(addr string) ([]*net.IPNet, error) {
 	if strings.Contains(addr, constant.EipRangeSeparator) {
 		r := strings.SplitN(addr, constant.EipRangeSeparator, 2)
 		if len(r) != 2 {
-			return nil, nil, nil, fmt.Errorf("%s is not a valid address range", addr)
+			return nil, fmt.Errorf("%s is not a valid address range", addr)
 		}
-		first := net.ParseIP(r[0])
-		last := net.ParseIP(r[1])
+		first := net.ParseIP(strings.TrimSpace(r[0]))
+		last := net.ParseIP(strings.TrimSpace(r[1]))
 		if first == nil || last == nil {
-			return nil, nil, nil, fmt.Errorf("%s is not a valid address range", addr)
+			return nil, fmt.Errorf("%s is not a valid address range", addr)
 		}
 
-		return first, last, nil, nil
+		var ret []*net.IPNet
+		for _, pfx := range ipaddr.Summarize(first, last) {
+			n := &net.IPNet{
+				IP:   pfx.IP,
+				Mask: pfx.Mask,
+			}
+			ret = append(ret, n)
+		}
+		return ret, nil
 	}
+
 
 	if !strings.Contains(addr, "/") {
 		addr = addr + "/32"
 	}
+
 	_, ipnet, err := net.ParseCIDR(addr)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
-	first, last := cidrutil.AddressRange(ipnet)
-	return first, last, ipnet, nil
+	return []*net.IPNet{ipnet}, nil
 }
 
 func GetCIDRAddressCount(cidr string) int {

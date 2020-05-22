@@ -1,14 +1,13 @@
 package ipam
 
 import (
-	"encoding/binary"
-	"math"
 	"net"
 	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/util"
+	"github.com/mikioh/ipaddr"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -25,13 +24,13 @@ type DataStore struct {
 	IPPool map[string]*CIDRResource
 }
 
-func (d *DataStore) IsInteractOfCurrentPool(ipnet *net.IPNet, first, last net.IP) bool {
+func (d *DataStore) IsInteractOfCurrentPool(ipnets []*net.IPNet) bool {
+	if ipnets == nil {
+		return false
+	}
+
 	for _, cidr := range d.IPPool {
-		if cidr.IntersectsWith(&CIDRResource{
-			CIDR:    ipnet,
-			FirstIP: first,
-			LastIP:  last,
-		}) {
+		if cidr.IntersectsWith(ipnets) {
 			return true
 		}
 	}
@@ -40,9 +39,7 @@ func (d *DataStore) IsInteractOfCurrentPool(ipnet *net.IPNet, first, last net.IP
 
 type CIDRResource struct {
 	EIPRefName    string
-	CIDR          *net.IPNet
-	FirstIP       net.IP
-	LastIP        net.IP
+	CIDRs         []*net.IPNet
 	Used          map[string]*EIPRef
 	Size          int
 	UsingKnownIPs bool
@@ -53,107 +50,31 @@ func (c *CIDRResource) IsFull() bool {
 }
 
 func (c *CIDRResource) Contains(ip net.IP) bool {
-	if ip.To4() == nil {
+	if ip == nil {
 		return false
 	}
 
-	if c.CIDR != nil {
-		return c.CIDR.Contains(ip)
+	for _, cidr := range c.CIDRs {
+		if cidr.Contains(ip) {
+			return true
+		}
 	}
-
-	start := binary.BigEndian.Uint32(c.FirstIP.To4())
-	end := binary.BigEndian.Uint32(c.LastIP.To4())
-	value := binary.BigEndian.Uint32(ip.To4())
-	return start <= value && value <= end
+	return false
 }
 
-func (c *CIDRResource) IntersectsWith(value *CIDRResource) bool {
-	if value == nil {
+func (c *CIDRResource) IntersectsWith(ipnets []*net.IPNet) bool {
+	if ipnets == nil {
 		return false
 	}
 
-	cf, cl := c.FirstIP.To4(), c.LastIP.To4()
-	vf, vl := value.FirstIP.To4(), value.LastIP.To4()
-
-	if cf == nil || cl == nil || vf == nil || vl == nil {
-		return false
+	for _, cidr := range c.CIDRs {
+		for _, ipnet := range ipnets {
+			if util.Intersect(cidr, ipnet) {
+				return true
+			}
+		}
 	}
-
-	cfn := binary.BigEndian.Uint32(cf)
-	cln := binary.BigEndian.Uint32(cl)
-	vfn := binary.BigEndian.Uint32(vf)
-	vln := binary.BigEndian.Uint32(vl)
-
-	if cln < vfn || vln < cfn {
-		return false
-	}
-
-	return true
-}
-
-func (c *CIDRResource) NewIPRange() IPRange {
-	// note: currently we only support IPv4
-	first := c.FirstIP.To4()
-	last := c.LastIP.To4()
-
-	if first == nil || last == nil {
-		return nil
-	}
-
-	return &IPv4Range{
-		first: binary.BigEndian.Uint32(first),
-		last:  binary.BigEndian.Uint32(last),
-	}
-}
-
-type IPRange interface {
-	First() net.IP
-	Last() net.IP
-	Curr() net.IP
-	Next() net.IP
-	Prev() net.IP
-}
-
-type IPv4Range struct {
-	first uint32
-	last  uint32
-	index uint32
-}
-
-func (r *IPv4Range) First() net.IP {
-	ip := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ip, r.first)
-	return ip
-}
-
-func (r *IPv4Range) Last() net.IP {
-	ip := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ip, r.last)
-	return ip
-}
-
-func (r *IPv4Range) Curr() net.IP {
-	curr := r.first + r.index
-	ip := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ip, curr)
-	return ip
-}
-
-func (r *IPv4Range) Next() net.IP {
-	if r.index == math.MaxUint32 ||
-		int64(r.first)+int64(r.index) == int64(r.last) {
-		return nil
-	}
-	r.index++
-	return r.Curr()
-}
-
-func (r *IPv4Range) Prev() net.IP {
-	if r.index == 0 {
-		return nil
-	}
-	r.index--
-	return r.Curr()
+	return false
 }
 
 type EIPRef struct {
@@ -170,7 +91,7 @@ type AssignIPResponse struct {
 func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) error {
 	d.Log.Info("Add EIP to pool", "CIDR", eip)
 
-	first, last, ipnet, err := util.GetAddressRange(eip)
+	ipnets, err := util.ParseAddress(eip)
 
 	if err != nil {
 		return err
@@ -180,7 +101,7 @@ func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) erro
 		d.Log.Info("Cannot add eips with same name")
 		return errors.DataStoreEIPDuplicateError{CIDR: eip}
 	}
-	if d.IsInteractOfCurrentPool(ipnet, first, last) {
+	if d.IsInteractOfCurrentPool(ipnets) {
 		return errors.DataStoreEIPDuplicateError{CIDR: eip}
 	}
 	d.lock.Lock()
@@ -188,9 +109,7 @@ func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) erro
 
 	d.IPPool[name] = &CIDRResource{
 		EIPRefName:    name,
-		CIDR:          ipnet,
-		FirstIP:       first,
-		LastIP:        last,
+		CIDRs:         ipnets,
 		Used:          make(map[string]*EIPRef),
 		Size:          util.GetValidAddressCount(eip),
 		UsingKnownIPs: usingKnownIPs,
@@ -222,30 +141,30 @@ func (d *DataStore) AssignIP(serviceName, ns string) (*AssignIPResponse, error) 
 		if ips.IsFull() {
 			continue
 		}
-		rg := ips.NewIPRange()
-		if rg == nil {
-			continue
-		}
 
-		for curr := rg.First(); curr != nil; curr = rg.Next() {
-			if !ips.UsingKnownIPs {
-				last := curr.To4()[3]
-				if last == 0 || last == 255 {
-					continue
+		for _, cidr := range ips.CIDRs {
+			c := ipaddr.NewCursor([]ipaddr.Prefix{*ipaddr.NewPrefix(cidr)})
+			for pos := c.First(); pos != nil; pos = c.Next() {
+				ip := pos.IP
+				if !ips.UsingKnownIPs {
+					last := ip.To4()[3]
+					if last == 0 || last == 255 {
+						continue
+					}
 				}
-			}
-			if _, ok := ips.Used[curr.String()]; !ok {
-				d.lock.Lock()
-				defer d.lock.Unlock()
-				ips.Used[curr.String()] = &EIPRef{
-					EIPRefName: ips.EIPRefName,
-					Address:    curr.String(),
-					Service:    types.NamespacedName{Name: serviceName, Namespace: ns},
+				if _, ok := ips.Used[ip.String()]; !ok {
+					d.lock.Lock()
+					defer d.lock.Unlock()
+					ips.Used[ip.String()] = &EIPRef{
+						EIPRefName: ips.EIPRefName,
+						Address:    ip.String(),
+						Service:    types.NamespacedName{Name: serviceName, Namespace: ns},
+					}
+					selectIP.Address = ip.String()
+					selectIP.EIPRefName = ips.EIPRefName
+					d.Log.Info("Assign IP to service", "Service", serviceName, "ip", selectIP.Address)
+					return selectIP, nil
 				}
-				selectIP.Address = curr.String()
-				selectIP.EIPRefName = ips.EIPRefName
-				d.Log.Info("Assign IP to service", "Service", serviceName, "ip", selectIP.Address)
-				return selectIP, nil
 			}
 		}
 	}
