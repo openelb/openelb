@@ -1,49 +1,55 @@
-# 物理机部署
+# Deploy Porter on Bare Metal Kubernetes Cluster
 
-## 安装前提
-1.  物理机连接的路由器必须支持BGP协议
-2.  如果需要实现路由器端的负载均衡，需要路由器支持ECMP，并包括以下特性：
-    - 支持接收多个等价路由
-    - 支持接收来自同一个邻居的多条等价路由
-3. 如果网络架构中存在一个路由器不支持BGP（或者被禁止开启BGP）,那么需要在这个路由器上手动写EIP的nexthop路由（或者通过其他路由发现协议）
+> English | [中文](zh/deploy_baremetal.md)
 
-## 安装Porter
- 1. 在机器上安装kubernetes
- 2. 获取yaml
+## Prerequisites
+1.  A Kubernetes cluster
+1.  Your router needs to support the BGP protocol
+1.  Your router needs to support Equal-cost multi-path routing (ECMP) if you want to enable load-balancing on the router. Including the following features:
+    - Support multi-path routing
+    - Support BGP Additional-Paths
+1. If there is a router that does not support the BGP protocol (or is not allowed to enable the BGP protocol), you need to manually write the nexthop route of EIP on this router (or use other routing protocols)
+
+## Install Porter
+1. Install Kubernetes Cluster
+2. Get Porter's YAML file
      ```bash
     wget https://github.com/kubesphere/porter/releases/download/v0.1.1/porter.yaml
      ```
- 3. 修改yaml中一个名为bgp-cfg的configmap，按照[BGP配置教程](bgp_config.md)简单修改一些字段即可。注意要路由器的地址和AS域
- 4. 安装porter到集群中
+3. You need to modify a `ConfigMap` named `bgp-cfg` in the YAML according to the [BGP Configuration](bgp_config.md)
+4. Install Porter on k8s cluster
      ```bash
      kubectl apply -f porter.yaml
      ```
-## 路由器配置
-> 不同的路由器配置不同，这边仅列出一个样例的思科三层交换机的配置，更多的请参考[路由器配置](router_config.md)。本节以思科的[Nexus 9000 Series](https://www.cisco.com/c/en/us/td/docs/switches/datacenter/nexus9000/sw/92x/unicast/configuration/guide/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x_chapter_01010.html)作为示例。
+
+## Router Configuration
+> Different routers have different configurations. Here is the configuration of a Cisco Nexus 9000 Series. For more router configuration, please refer to [Router Configuration](router_config.md).
+
+### [Cisco Nexus 9000 Series](https://www.cisco.com/c/en/us/td/docs/switches/datacenter/nexus9000/sw/92x/unicast/configuration/guide/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x/b-cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide-92x_chapter_01010.html)
 
 
-1. 以admin进入N9K配置界面。按照实际情况修改下面的配置。（注：实际输入不能有注释）
+1. Enter the N9K configuration interface as admin. Modify the following configuration according to the actual situation. 
 
    ```
-    feature bgp   ##开启BGP功能
+    feature bgp
 
-    router bgp 65001 #设置本路由器AS域
-    router-id 10.10.12.1 #设置本路由器IP
+    router bgp 65001
+    router-id 10.10.12.1
     address-family ipv4 unicast 
-        maximum-paths 8 #开启ECMP，并且最多接受8个等价路由
-        additional-paths send # 能够发送多个等价路由
-        additional-paths receive # 能够接受多个等价路由
-    neighbor 10.10.12.5 #邻居IP
-        remote-as 65000 #邻居AS，必须和本机AS不同
+        maximum-paths 8
+        additional-paths send
+        additional-paths receive
+    neighbor 10.10.12.5
+        remote-as 65000
         timers 10 30
         address-family ipv4 unicast
-        route-map allow in #允许导入系统路由表
-        route-map allow out #允许导出路由表到系统
-        soft-reconfiguration inbound always # 自动更新邻居状态
-        capability additional-paths receive # 开启接受该邻居多条等价路由的能力
+        route-map allow in
+        route-map allow out
+        soft-reconfiguration inbound always
+        capability additional-paths receive
     ```
 
-2. 配置完成之后，查看邻居状态为`Established`即可。`show bgp ipv4 unicast neighbors`
+2. After the configuration is complete, check the neighbor status as `Established`.
 
     ```bash
     myswitvh(config)# show bgp ipv4 unicast neighbors
@@ -70,8 +76,9 @@
         Graceful Restart capability: advertised
     ```
 
-## 部署示例
-1.  添加一个EIP池（单个eip请添加/32）
+## Deployment
+1.  Add an EIP pool
+   
     ```bash
     kubectl apply -f - <<EOF
     apiVersion: network.kubesphere.io/v1alpha1
@@ -83,8 +90,20 @@
         disable: false
     EOF
     ```
+    Sample: [EIP](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml)   
 
-2. 部署测试Service. Service必须要添加如下一个annotations，type也要指定为LoadBalancer,如下：
+    **Note: EIP address now supports 3 types:**
+   
+    - IP Address         
+        `192.168.0.1`
+    - IP Network segment 
+        `192.168.0.0/24`
+    - IP Range     
+        `192.168.0.1-192.168.0.10`
+
+   
+
+2. Deploy a service in kubernetes. The Service must add the following annotations, and the type must also be specified as LoadBalancer:
 
     ```yaml
     kind: Service
@@ -93,7 +112,6 @@
         name:  mylbapp
         annotations:
             lb.kubesphere.io/v1alpha1: porter
-            #eip.porter.kubesphere.io/v1alpha1: 1.1.1.1 如果需要手动指定eip，可以添加这个注记
     spec:
         selector:
             app:  mylbapp
@@ -103,22 +121,24 @@
         port:  8088
         targetPort:  80
     ```
+    Sample: [Service](https://github.com/kubesphere/porter/blob/master/test/samples/test.yaml)  
 
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml),这个样例已经包含两个EIP，使用之前请确认与局域网不冲突
+    **Note：If you want to assign an IP address to Service, there are two ways:**
+    - Add `spec.loadBalancerIP: <ip>` . (recommended)
+    - Add `eip.porter.kubesphere.io/v1alpha1: <ip>` to `annotations`.
 
-    ```bash
-    kubectl apply -f service.yaml
-    ``` 
+    
 
-3. 在路由器上查看是否有对应的路由。如果有，那么连接这个路由器的任何主机应该都能通过EIP+ServicePort的方式访问了。
+
+3. On the router we can see that a new network (external IP address) was added with three paths. Each path is linked to one of the nodes:
 
     ```
-    show routing
-    ……
+    # show bgp all 
+ 
     10.11.11.11/32, ubest/mbest: 3/0
     *via 10.10.12.2, [20/0], 00:03:38, bgp-65001, external, tag 65000
     *via 10.10.12.3, [20/0], 00:03:38, bgp-65001, external, tag 65000
     *via 10.10.12.4, [20/0], 00:03:38, bgp-65001, external, tag 65000
 
     ```
-4. 在集群上使用`kubectl get eip`观察当前集群eip的使用情况
+4. Use `kubectl get eip` to watch the current usage of EIP

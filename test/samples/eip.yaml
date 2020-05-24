@@ -1,17 +1,7 @@
 apiVersion: network.kubesphere.io/v1alpha1
 kind: Eip
 metadata:
-    labels:
-        controller-tools.k8s.io: "1.0"
-    name: eip-sample
+    name: eip-sample-pool
 spec:
-    address: 10.11.11.11 #这里替换为你申请的EIP
+    address: 10.11.11.0/24
     disable: false
-
----
-apiVersion: network.kubesphere.io/v1alpha1
-kind: Eip
-metadata:
-    name: eip-sample2
-spec:
-    address: 10.11.12.0/24
