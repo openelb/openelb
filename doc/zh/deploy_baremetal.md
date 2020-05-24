@@ -76,7 +76,7 @@
     ```
 
 ## 部署示例
-1.  添加一个EIP池
+1.  添加一个 EIP 池
     ```bash
     kubectl apply -f - <<EOF
     apiVersion: network.kubesphere.io/v1alpha1
@@ -88,9 +88,9 @@
         disable: false
     EOF
     ```
-    样例: [Eip](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml)
+    样例: [EIP](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml)
 
-    **注：Eip 地址现在支持 3 种类型**
+    **注：EIP 地址现在支持 3 种类型**
    
     - IP 地址      
         `192.168.0.1`
@@ -135,4 +135,4 @@
     *via 10.10.12.4, [20/0], 00:03:38, bgp-65001, external, tag 65000
 
     ```
-4. 在集群上使用`kubectl get eip`观察当前集群eip的使用情况
+4. 在集群上使用`kubectl get eip`观察当前集群 EIP 的使用情况

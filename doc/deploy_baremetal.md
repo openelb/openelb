@@ -3,20 +3,21 @@
 > English | [中文](zh/deploy_baremetal.md)
 
 ## Prerequisites
+1.  A Kubernetes cluster
 1.  Your router needs to support the BGP protocol
-2.  Your router needs to support Equal-cost multi-path routing (ECMP) if you want to enable load-balancing on the router. Including the following features:
+1.  Your router needs to support Equal-cost multi-path routing (ECMP) if you want to enable load-balancing on the router. Including the following features:
     - Support multi-path routing
     - Support BGP Additional-Paths
-3. If there is a router that does not support the BGP protocol (or is not allowed to enable the BGP protocol), you need to manually write the nexthop route of EIP on this router (or use other routing protocols)
+1. If there is a router that does not support the BGP protocol (or is not allowed to enable the BGP protocol), you need to manually write the nexthop route of EIP on this router (or use other routing protocols)
 
 ## Install Porter
- 1. Install Kubernetes Cluster
- 2. Get Porter's YAML file
+1. Install Kubernetes Cluster
+2. Get Porter's YAML file
      ```bash
     wget https://github.com/kubesphere/porter/releases/download/v0.1.1/porter.yaml
      ```
- 3. You need to modify a `ConfigMap` named `bgp-cfg` in the YAML according to the [BGP Configuration](bgp_config.md)
- 4. Install Porter on k8s cluster
+3. You need to modify a `ConfigMap` named `bgp-cfg` in the YAML according to the [BGP Configuration](bgp_config.md)
+4. Install Porter on k8s cluster
      ```bash
      kubectl apply -f porter.yaml
      ```
@@ -76,7 +77,7 @@
     ```
 
 ## Deployment
-1.  Add an Eip resource
+1.  Add an EIP pool
    
     ```bash
     kubectl apply -f - <<EOF
@@ -89,13 +90,13 @@
         disable: false
     EOF
     ```
-    Sample: [Eip](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml)   
+    Sample: [EIP](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml)   
 
-    **Note: Eip address now supports 3 types:**
+    **Note: EIP address now supports 3 types:**
    
     - IP Address         
         `192.168.0.1`
-    - IP Network/CIDR   
+    - IP Network segment 
         `192.168.0.0/24`
     - IP Range     
         `192.168.0.1-192.168.0.10`
@@ -140,4 +141,4 @@
     *via 10.10.12.4, [20/0], 00:03:38, bgp-65001, external, tag 65000
 
     ```
-4. Use `kubectl get eip` to watch the current usage of Eip
+4. Use `kubectl get eip` to watch the current usage of EIP
