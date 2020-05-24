@@ -1,1 +1,3 @@
-# 路由器BGP配置参考
+# Router Configuration
+
+> English | [中文](zh/router_config.md)
