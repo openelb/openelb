@@ -2,13 +2,12 @@ package ipam
 
 import (
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/util"
-	"github.com/kubesphere/porter/pkg/util/cidr"
+	"github.com/mikioh/ipaddr"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -25,9 +24,13 @@ type DataStore struct {
 	IPPool map[string]*CIDRResource
 }
 
-func (d *DataStore) IsInteractOfCurrentPool(ipnet *net.IPNet) bool {
+func (d *DataStore) IsInteractOfCurrentPool(ipnets []*net.IPNet) bool {
+	if ipnets == nil {
+		return false
+	}
+
 	for _, cidr := range d.IPPool {
-		if util.Intersect(ipnet, cidr.CIDR) {
+		if cidr.IntersectsWith(ipnets) {
 			return true
 		}
 	}
@@ -36,7 +39,7 @@ func (d *DataStore) IsInteractOfCurrentPool(ipnet *net.IPNet) bool {
 
 type CIDRResource struct {
 	EIPRefName    string
-	CIDR          *net.IPNet
+	CIDRs         []*net.IPNet
 	Used          map[string]*EIPRef
 	Size          int
 	UsingKnownIPs bool
@@ -44,6 +47,34 @@ type CIDRResource struct {
 
 func (c *CIDRResource) IsFull() bool {
 	return len(c.Used) == c.Size
+}
+
+func (c *CIDRResource) Contains(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+
+	for _, cidr := range c.CIDRs {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *CIDRResource) IntersectsWith(ipnets []*net.IPNet) bool {
+	if ipnets == nil {
+		return false
+	}
+
+	for _, cidr := range c.CIDRs {
+		for _, ipnet := range ipnets {
+			if util.Intersect(cidr, ipnet) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type EIPRef struct {
@@ -59,25 +90,26 @@ type AssignIPResponse struct {
 
 func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) error {
 	d.Log.Info("Add EIP to pool", "CIDR", eip)
-	if !strings.Contains(eip, "/") {
-		eip = eip + "/32"
-	}
-	_, ipnet, err := net.ParseCIDR(eip)
+
+	ipnets, err := util.ParseAddress(eip)
+
 	if err != nil {
 		return err
 	}
+
 	if _, ok := d.IPPool[name]; ok {
 		d.Log.Info("Cannot add eips with same name")
 		return errors.DataStoreEIPDuplicateError{CIDR: eip}
 	}
-	if d.IsInteractOfCurrentPool(ipnet) {
+	if d.IsInteractOfCurrentPool(ipnets) {
 		return errors.DataStoreEIPDuplicateError{CIDR: eip}
 	}
 	d.lock.Lock()
 	defer d.lock.Unlock()
+
 	d.IPPool[name] = &CIDRResource{
 		EIPRefName:    name,
-		CIDR:          ipnet,
+		CIDRs:         ipnets,
 		Used:          make(map[string]*EIPRef),
 		Size:          util.GetValidAddressCount(eip),
 		UsingKnownIPs: usingKnownIPs,
@@ -109,26 +141,30 @@ func (d *DataStore) AssignIP(serviceName, ns string) (*AssignIPResponse, error) 
 		if ips.IsFull() {
 			continue
 		}
-		first, _ := cidr.AddressRange(ips.CIDR)
-		for ; ips.CIDR.Contains(first); first = cidr.Inc(first) {
-			if !ips.UsingKnownIPs {
-				last := first.To4()[3]
-				if last == 0 || last == 255 {
-					continue
+
+		for _, cidr := range ips.CIDRs {
+			c := ipaddr.NewCursor([]ipaddr.Prefix{*ipaddr.NewPrefix(cidr)})
+			for pos := c.First(); pos != nil; pos = c.Next() {
+				ip := pos.IP
+				if !ips.UsingKnownIPs {
+					last := ip.To4()[3]
+					if last == 0 || last == 255 {
+						continue
+					}
 				}
-			}
-			if _, ok := ips.Used[first.String()]; !ok {
-				d.lock.Lock()
-				defer d.lock.Unlock()
-				ips.Used[first.String()] = &EIPRef{
-					EIPRefName: ips.EIPRefName,
-					Address:    first.String(),
-					Service:    types.NamespacedName{Name: serviceName, Namespace: ns},
+				if _, ok := ips.Used[ip.String()]; !ok {
+					d.lock.Lock()
+					defer d.lock.Unlock()
+					ips.Used[ip.String()] = &EIPRef{
+						EIPRefName: ips.EIPRefName,
+						Address:    ip.String(),
+						Service:    types.NamespacedName{Name: serviceName, Namespace: ns},
+					}
+					selectIP.Address = ip.String()
+					selectIP.EIPRefName = ips.EIPRefName
+					d.Log.Info("Assign IP to service", "Service", serviceName, "ip", selectIP.Address)
+					return selectIP, nil
 				}
-				selectIP.Address = first.String()
-				selectIP.EIPRefName = ips.EIPRefName
-				d.Log.Info("Assign IP to service", "Service", serviceName, "ip", selectIP.Address)
-				return selectIP, nil
 			}
 		}
 	}
@@ -138,7 +174,7 @@ func (d *DataStore) AssignIP(serviceName, ns string) (*AssignIPResponse, error) 
 func (d *DataStore) AssignSpecifyIP(ipstr, serviceName, ns string) (*AssignIPResponse, error) {
 	ip := net.ParseIP(ipstr)
 	for _, ips := range d.IPPool {
-		if ips.CIDR.Contains(ip) {
+		if ips.Contains(ip) {
 			if !ips.UsingKnownIPs {
 				last := ip.To4()[3]
 				if last == 0 || last == 255 {
@@ -168,7 +204,7 @@ func (d *DataStore) UnassignIP(ipstr string) error {
 	d.Log.Info("Try to UnassignIP", "ip", ipstr)
 	ip := net.ParseIP(ipstr)
 	for _, ips := range d.IPPool {
-		if ips.CIDR.Contains(ip) {
+		if ips.Contains(ip) {
 			if _, ok := ips.Used[ipstr]; ok {
 				d.lock.Lock()
 				defer d.lock.Unlock()
@@ -192,7 +228,7 @@ type EIPStatus struct {
 func (d *DataStore) GetEIPStatus(eip string) *EIPStatus {
 	ip := net.ParseIP(eip)
 	for _, ips := range d.IPPool {
-		if ips.CIDR.Contains(ip) {
+		if ips.Contains(ip) {
 			if ref, ok := ips.Used[eip]; ok {
 				return &EIPStatus{
 					EIPRef: ref,
