@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-logr/logr/testing"
 	"github.com/mdlayher/arp"
+	"github.com/mdlayher/raw"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -34,6 +35,17 @@ func fakeResolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err error) {
 }
 
 var _ = Describe("arpResponder", func() {
+	//Need CAP_NET_ADMIN
+	//TODO use udp to test instead raw socket
+	intf, err := net.InterfaceByName("lo")
+	if err != nil {
+		return
+	}
+	_, err = raw.ListenPacket(intf, protocolARP, nil)
+	if err != nil {
+		return
+	}
+
 	It("handle arpResponder", func() {
 		By("create arpResponder")
 		intf, err := net.InterfaceByName("lo")

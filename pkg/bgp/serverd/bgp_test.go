@@ -1,6 +1,7 @@
 package serverd
 
 import (
+	"github.com/coreos/go-iptables/iptables"
 	"github.com/go-logr/logr/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -90,6 +91,11 @@ var _ = Describe("BGP routes test", func() {
 	})
 
 	Context("Create/Update/Delete BgpPeer", func() {
+		ipt, _ := iptables.New()
+		if _, err := ipt.Exists("nat", "PREROUTING"); err != nil {
+			return
+		}
+
 		It("Add BgpPeer", func() {
 			Expect(bgpServer.AddOrUpdatePeer(&BgpPeerSpec{
 				Config: NeighborConfig{
@@ -108,7 +114,7 @@ var _ = Describe("BGP routes test", func() {
 			})).ShouldNot(HaveOccurred())
 		})
 
-		It("Update BgpPeer", func() {
+		It("Delete BgpPeer", func() {
 			Expect(bgpServer.DeletePeer(&BgpPeerSpec{
 				Config: NeighborConfig{
 					NeighborAddress: "192.168.0.2",
