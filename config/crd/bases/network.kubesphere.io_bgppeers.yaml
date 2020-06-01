@@ -1,0 +1,91 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: bgppeers.network.kubesphere.io
+spec:
+  group: network.kubesphere.io
+  names:
+    kind: BgpPeer
+    listKind: BgpPeerList
+    plural: bgppeers
+    singular: bgppeer
+  scope: Cluster
+  validation:
+    openAPIV3Schema:
+      description: BgpPeer is the Schema for the bgppeers API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            addPaths:
+              description: original -> bgp:add-paths Parameters relating to the advertisement
+                and receipt of multiple paths for a single NLRI (add-paths).
+              properties:
+                sendMax:
+                  description: original -> bgp:send-max The maximum number of paths
+                    to advertise to neighbors for a single NLRI.
+                  type: integer
+              type: object
+            config:
+              description: original -> bgp:neighbor-address original -> bgp:neighbor-config
+                Configuration parameters relating to the BGP neighbor or group.
+              properties:
+                neighborAddress:
+                  description: original -> bgp:neighbor-address bgp:neighbor-address's
+                    original type is inet:ip-address. Address of the BGP peer, either
+                    in IPv4 or IPv6.
+                  type: string
+                peerAs:
+                  description: original -> bgp:peer-as bgp:peer-as's original type
+                    is inet:as-number. AS number of the peer.
+                  format: int32
+                  type: integer
+              type: object
+            transport:
+              description: original -> bgp:transport Transport session parameters
+                for the BGP neighbor or group.
+              properties:
+                passiveMode:
+                  description: original -> bgp:passive-mode bgp:passive-mode's original
+                    type is boolean. Wait for peers to issue requests to open a BGP
+                    session, rather than initiating sessions from the local router.
+                  type: boolean
+                remotePort:
+                  description: original -> gobgp:remote-port gobgp:remote-port's original
+                    type is inet:port-number.
+                  type: integer
+              type: object
+            usingPortForward:
+              type: boolean
+          type: object
+        status:
+          description: BgpPeerStatus defines the observed state of BgpPeer
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

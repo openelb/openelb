@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	BGPImageName = "magicsong/gobgp"
+	BGPImageName     = "magicsong/gobgp"
+	GoBgpConfig      = "/tmp/route.toml"
+	DocerGoBgpConfig = "/etc/gobgp/gobgp.conf"
 )
 
 func RunGoBGPContainer(configPath string) (string, error) {
@@ -25,7 +27,7 @@ func RunGoBGPContainer(configPath string) (string, error) {
 	}
 	hostConfig := &container.HostConfig{
 		NetworkMode: "host",
-		Binds:       []string{"/root/bgp/test.toml:/etc/gobgp/gobgp.conf"},
+		Binds:       []string{GoBgpConfig + ":" + DocerGoBgpConfig},
 	}
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: BGPImageName,

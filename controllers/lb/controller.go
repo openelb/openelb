@@ -22,9 +22,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/kubesphere/porter/api/v1alpha1"
+	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/constant"
 	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/ipam"
+	"github.com/kubesphere/porter/pkg/layer2"
 	"github.com/kubesphere/porter/pkg/util"
 	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"github.com/kubesphere/porter/pkg/route"
 )
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -52,7 +53,8 @@ type ServiceReconciler struct {
 	client.Client
 	Log logr.Logger
 	record.EventRecorder
-	route.Advertiser 
+	BgpServer *bgpserver.BgpServer
+	announcer *layer2.Announce
 }
 
 func (r *ServiceReconciler) getNewerService(serv *corev1.Service) error {
@@ -67,6 +69,7 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//service
 	r.Client = mgr.GetClient()
 	r.EventRecorder = mgr.GetEventRecorderFor("service")
+	r.announcer = layer2.New(r.Log, r.Client)
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {
@@ -128,7 +131,7 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	r.Log = r.Log.WithValues("porter", req.NamespacedName)
+	_ = r.Log.WithValues("porter", req.NamespacedName)
 	// your logic here
 	// Fetch the Service instance
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -144,6 +147,9 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		case portererror.EIPNotFoundError:
 			r.Log.Info("Detect unknown ips in annotations")
 			return ctrl.Result{}, r.clearAnnotation(req.NamespacedName)
+		case portererror.EIPProtocolNotFoundError:
+			r.Log.Info(err.Error())
+			return ctrl.Result{}, nil
 		default:
 			if errors.IsNotFound(err) {
 				r.Log.Info("Maybe sevice has been deleted, skipping reconciling")
@@ -204,7 +210,7 @@ func (r *ServiceReconciler) clearAnnotation(key types.NamespacedName) error {
 		if err != nil {
 			return err
 		}
-		delete(serv.Annotations, PorterEIPAnnotationKey)
+		delete(serv.Annotations, constant.PorterEIPAnnotationKey)
 		err = r.Update(context.Background(), serv)
 		if err != nil {
 			r.Log.Info("[Will Retry] Failed to clear Annotations")

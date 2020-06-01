@@ -1,0 +1,11 @@
+apiVersion: network.kubesphere.io/v1alpha1
+kind: BgpPeer
+metadata:
+  name: bgppeer-sample
+spec:
+  # Add fields here
+  config:
+    peerAs : 65001
+    neighborAddress: 192.168.0.6
+  addAaths:
+    sendMax: 10

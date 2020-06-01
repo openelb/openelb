@@ -22,11 +22,10 @@ import (
 	"os"
 
 	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
+	"github.com/kubesphere/porter/controllers/bgp"
 	"github.com/kubesphere/porter/controllers/lb"
 	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/ipam"
-	"github.com/kubesphere/porter/pkg/nettool/iptables"
-	"github.com/kubesphere/porter/pkg/route"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -34,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var bgpStartOption *bgpserver.StartOption
+var bgpStartOption *bgpserver.BgpOptions
 var metricsAddr string
 var readinessProbe bool
 var enableLeaderElection bool
@@ -48,25 +47,18 @@ func init() {
 	_ = corev1.AddToScheme(scheme)
 	_ = networkv1alpha1.AddToScheme(scheme)
 
-	bgpStartOption = new(bgpserver.StartOption)
-	flag.StringVar(&bgpStartOption.ConfigFile, "f", "", "specifying a config file,required")
-	flag.StringVar(&bgpStartOption.ConfigType, "t", "toml", "specifying config type (toml, yaml, json)")
+	bgpStartOption = bgpserver.NewBgpOptions()
 	flag.StringVar(&bgpStartOption.GrpcHosts, "api-hosts", ":50051", "specify the hosts that gobgpd listens on")
-	flag.BoolVar(&bgpStartOption.GracefulRestart, "r", false, "flag restart-state in graceful-restart capability")
+	flag.BoolVar(&bgpStartOption.GracefulRestart, "r", true, "flag restart-state in graceful-restart capability")
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-
 }
 
 func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.Logger(true))
-	//starting bgp server
-	setupLog.Info("starting bgp server")
-	ready := make(chan interface{})
-	bgpStartOption.IptablesIface = iptables.NewIPTables()
-	go bgpserver.Run(bgpStartOption, ready)
-	<-ready
-	setupLog.Info("bgp server started successfully")
+
+	bgpServer := bgpserver.NewBgpServer(bgpStartOption)
+	bgpServer.Log = ctrl.Log.WithName("bgpServer")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
@@ -86,15 +78,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup bgp Controllers
+	setupLog.Info("Setting up bgp")
+	bgpConf := bgp.BgpConfReconciler{
+		Client:    mgr.GetClient(),
+		Log:       ctrl.Log.WithName("BgpConf"),
+		BgpServer: bgpServer,
+	}
+	if err = bgpConf.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create bgpConf")
+		os.Exit(1)
+	}
+	bgpPeer := bgp.BgpPeerReconciler{
+		Client:    mgr.GetClient(),
+		Log:       ctrl.Log.WithName("BgpPeer"),
+		BgpServer: bgpServer,
+	}
+	if err = bgpPeer.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create bgpPeer")
+		os.Exit(1)
+	}
+
 	setupLog.Info("Setting up controller")
 	if err = (&lb.ServiceReconciler{
-		IPAM:       i,
-		Log:        ctrl.Log.WithName("controllers").WithName("lb"),
-		Advertiser: route.NewGoBGPAdvertise(),
+		IPAM:      i,
+		Log:       ctrl.Log.WithName("controllers").WithName("lb"),
+		BgpServer: bgpServer,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "lb")
 		os.Exit(1)
 	}
+
 	setupLog.Info("Setting up readiness probe")
 	serverMuxA := http.NewServeMux()
 	serverMuxA.HandleFunc("/hello", serveReadinessHandler)
@@ -105,6 +119,7 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
 	// Start the Cmd
 	setupLog.Info("Starting the Cmd.")
 	readinessProbe = true

@@ -29,6 +29,28 @@ func NewEIPNotFoundError(eip string) EIPNotFoundError {
 	}
 }
 
+type EIPProtocolNotFoundError struct {
+}
+
+func NewEIPProtocolNotFoundError() EIPProtocolNotFoundError {
+	return EIPProtocolNotFoundError{}
+}
+
+func (r EIPProtocolNotFoundError) Error() string {
+	return fmt.Sprintf("EIP protocol is not found in service annotations")
+}
+
+type Layer2AnnouncerNotReadyError struct {
+}
+
+func NewLayer2AnnouncerNotReadyError() Layer2AnnouncerNotReadyError {
+	return Layer2AnnouncerNotReadyError{}
+}
+
+func (r Layer2AnnouncerNotReadyError) Error() string {
+	return fmt.Sprintf("Layer2 announcer not ready")
+}
+
 func IsResourceNotFound(err error) bool {
 	_, ok := err.(EIPNotFoundError)
 	return ok

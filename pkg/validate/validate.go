@@ -1,13 +1,9 @@
 package validate
 
 import (
+	"github.com/kubesphere/porter/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-)
-
-const (
-	PorterAnnotationKey   = "lb.kubesphere.io/v1alpha1"
-	PorterAnnotationValue = "porter"
 )
 
 func IsPorterService(svc *corev1.Service) bool {
@@ -18,8 +14,8 @@ func HasPorterLBAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
 	}
-	if value, ok := annotation[PorterAnnotationKey]; ok {
-		if value == PorterAnnotationValue {
+	if value, ok := annotation[constant.PorterAnnotationKey]; ok {
+		if value == constant.PorterAnnotationValue {
 			return true
 		}
 	}

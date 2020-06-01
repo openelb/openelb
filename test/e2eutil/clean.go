@@ -34,7 +34,6 @@ func CleanEIPList(dynclient client.Client) error {
 		}
 	}
 	return nil
-
 }
 
 func EnsureNamespaceClean(nsname string) error {

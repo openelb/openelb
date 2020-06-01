@@ -43,6 +43,7 @@ type CIDRResource struct {
 	Used          map[string]*EIPRef
 	Size          int
 	UsingKnownIPs bool
+	Protocol      string
 }
 
 func (c *CIDRResource) IsFull() bool {
@@ -88,7 +89,7 @@ type AssignIPResponse struct {
 	Address    string
 }
 
-func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) error {
+func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool, protocol string) error {
 	d.Log.Info("Add EIP to pool", "CIDR", eip)
 
 	ipnets, err := util.ParseAddress(eip)
@@ -113,6 +114,7 @@ func (d *DataStore) AddEIPPool(eip string, name string, usingKnownIPs bool) erro
 		Used:          make(map[string]*EIPRef),
 		Size:          util.GetValidAddressCount(eip),
 		UsingKnownIPs: usingKnownIPs,
+		Protocol:      protocol,
 	}
 	d.Log.Info("Added EIP to pool", "CIDR", eip)
 	return nil
@@ -134,11 +136,11 @@ func (d *DataStore) RemoveEIPPool(eip, name string) error {
 	return errors.DataStoreEIPNotExist{CIDR: eip}
 }
 
-func (d *DataStore) AssignIP(serviceName, ns string) (*AssignIPResponse, error) {
+func (d *DataStore) AssignIP(serviceName, ns string, protocol string) (*AssignIPResponse, error) {
 	d.Log.Info("Try to AssignIP to service", "Service", serviceName, "Namespace", ns)
 	selectIP := &AssignIPResponse{}
 	for _, ips := range d.IPPool {
-		if ips.IsFull() {
+		if ips.IsFull() || ips.Protocol != protocol {
 			continue
 		}
 

@@ -86,4 +86,4 @@ e2e-nobuild:
 	./hack/test.sh --skip-build
 
 docker-ut:
-	docker run --rm -v "${PWD}":/usr/src/github.com/kubesphere/porter -w /usr/src/github.com/kubesphere/porter golang:1.11-alpine  go test -v ./pkg/nettool/
+	docker run --rm -v "${PWD}":/usr/src/github.com/kubesphere/porter -w /usr/src/github.com/kubesphere/porter golang:1.13-alpine  go test -v ./pkg/nettool/

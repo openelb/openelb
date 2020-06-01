@@ -69,7 +69,6 @@ func ParseAddress(addr string) ([]*net.IPNet, error) {
 		return ret, nil
 	}
 
-
 	if !strings.Contains(addr, "/") {
 		addr = addr + "/32"
 	}

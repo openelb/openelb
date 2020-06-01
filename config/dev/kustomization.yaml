@@ -1,7 +1,10 @@
-namespace: porter-test-bc7c58a5
+namespace: porter-testns
 
 bases:
 - ../default
+
+resources:
+  - ns.yaml
 
 patchesStrategicMerge:
 - agent_image_patch.yaml

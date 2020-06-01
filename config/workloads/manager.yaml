@@ -43,9 +43,6 @@ spec:
       containers:
       - command:
         - /manager
-        args:
-          - -f
-          - /etc/config/config.toml
         image: controller:latest
         imagePullPolicy: IfNotPresent
         name: manager
