@@ -1,21 +1,13 @@
 package layer2
 
 import (
-	"net"
-	"time"
-
 	"github.com/go-logr/logr/testing"
+	portererror "github.com/kubesphere/porter/pkg/errors"
 	"github.com/mdlayher/raw"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"net"
 )
-
-func fakeGetNodeIPMap(c client.Client) (map[string]string, error) {
-	return map[string]string{
-		"master": testIntfIPStr,
-	}, nil
-}
 
 var _ = Describe("test announcer", func() {
 	//Need CAP_NET_ADMIN
@@ -30,15 +22,10 @@ var _ = Describe("test announcer", func() {
 	}
 
 	It("Set/Unset BanlanceIP", func() {
-		getNodeIPMapVar = fakeGetNodeIPMap
-		announce := New(testing.NullLogger{}, nil)
-		time.Sleep(3 * time.Second)
-		resolveIPVar = fakeResolveIP
+		announce := New(testing.NullLogger{})
 
-		Expect(announce.SetBalancer(testEIPStr, testIntfIPStr)).ShouldNot(HaveOccurred())
-		Expect(*announce.arp.ip2mac[testEIPStr]).Should(Equal(testIntfHW))
+		Expect(announce.SetBalancer(testEIPStr, testIntfIPStr)).Should(Equal(portererror.Layer2AnnouncerNotReadyError{}))
 
 		Expect(announce.DeleteBalancer(testEIPStr)).ShouldNot(HaveOccurred())
-		Expect(len(announce.arp.ip2mac)).Should(Equal(0))
 	})
 })

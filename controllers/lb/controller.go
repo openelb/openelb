@@ -54,7 +54,7 @@ type ServiceReconciler struct {
 	Log logr.Logger
 	record.EventRecorder
 	BgpServer *bgpserver.BgpServer
-	announcer *layer2.Announce
+	Announcer *layer2.Announce
 }
 
 func (r *ServiceReconciler) getNewerService(serv *corev1.Service) error {
@@ -69,7 +69,6 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//service
 	r.Client = mgr.GetClient()
 	r.EventRecorder = mgr.GetEventRecorderFor("service")
-	r.announcer = layer2.New(r.Log, r.Client)
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if validate.IsTypeLoadBalancer(e.ObjectOld) || validate.IsTypeLoadBalancer(e.ObjectNew) {

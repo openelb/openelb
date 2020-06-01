@@ -89,7 +89,7 @@ func (r *ServiceReconciler) createLB(serv *corev1.Service) error {
 	case constant.PorterProtocolBGP:
 		err = r.advertiseIP(serv, ip, nexthops)
 	case constant.PorterProtocolLayer2:
-		err = r.announcer.SetBalancer(ip, nexthops[0])
+		err = r.Announcer.SetBalancer(ip, nexthops[0])
 	default:
 		r.Log.Info("invalid protocol", "protocol", protocol, "ip", ip)
 		err = portererror.NewEIPProtocolNotFoundError()
@@ -175,7 +175,7 @@ func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
 		}
 		r.Log.Info("Routed deleted successful")
 	case constant.PorterProtocolLayer2:
-		r.announcer.DeleteBalancer(ip)
+		r.Announcer.DeleteBalancer(ip)
 	default:
 		return portererror.NewEIPProtocolNotFoundError()
 	}
