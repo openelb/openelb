@@ -2,6 +2,8 @@ package ipam
 
 import (
 	"context"
+	"github.com/kubesphere/porter/pkg/layer2"
+	"github.com/mikioh/ipaddr"
 	"net"
 	"time"
 
@@ -33,6 +35,7 @@ type IPAM struct {
 	ds           *DataStore
 	SyncInterval time.Duration
 	EIPUpdater   *EIPUpdater
+	Announce     *layer2.Announce
 }
 
 func (i *IPAM) ProtocolForEIP(eip string) string {
@@ -48,10 +51,11 @@ func (i *IPAM) CheckEIPStatus(eip string) *EIPStatus {
 	return i.ds.GetEIPStatus(eip)
 }
 
-func NewIPAM(log logr.Logger) *IPAM {
+func NewIPAM(log logr.Logger, announce *layer2.Announce) *IPAM {
 	return &IPAM{
-		Log: log,
-		ds:  NewDataStore(log),
+		Log:      log,
+		ds:       NewDataStore(log),
+		Announce: announce,
 	}
 }
 
@@ -128,6 +132,18 @@ func (i *IPAM) addEIPtoDataStore(eip *networkv1alpha1.Eip) error {
 	if protocol == "" {
 		protocol = constant.PorterProtocolBGP
 	}
+
+	if protocol == constant.PorterProtocolLayer2 {
+		ipnets, err := util.ParseAddress(eip.Spec.Address)
+		if err != nil {
+			return err
+		}
+		c := ipaddr.NewCursor([]ipaddr.Prefix{*ipaddr.NewPrefix(ipnets[0])})
+		if err = i.Announce.AddResponder(eip.Name, c.First().IP); err != nil {
+			return err
+		}
+	}
+
 	return i.ds.AddEIPPool(eip.Spec.Address, eip.Name, eip.Spec.UsingKnownIPs, protocol)
 }
 
@@ -146,6 +162,7 @@ func (i *IPAM) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, error) {
 		// The object is being deleted
 		if util.ContainsString(eip.ObjectMeta.Finalizers, constant.IPAMFinalizerName) {
 			i.Log.Info("Begin to remove finalizer")
+			i.Announce.DeleteResponder(eip.Name)
 			if err := i.ds.RemoveEIPPool(eip.Spec.Address, eip.Name); err != nil {
 				if _, ok := err.(errors.DataStoreEIPNotExist); ok {
 					i.Log.Info("EIP is no longer in pool", "eip", eip.Spec.Address)

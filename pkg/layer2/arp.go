@@ -2,14 +2,14 @@ package layer2
 
 import (
 	"fmt"
-	"io"
-	"net"
-
 	"github.com/go-logr/logr"
 	"github.com/j-keck/arping"
 	"github.com/mdlayher/arp"
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
+	"github.com/vishvananda/netlink"
+	"io"
+	"net"
 )
 
 const protocolARP = 0x0806
@@ -83,10 +83,10 @@ func (a *arpResponder) deleteIP(ip string) {
 	delete(a.ip2mac, ip)
 }
 
-func resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err error) {
+func resolveIP(nodeIP net.IP, iface *net.Interface) (hwAddr net.HardwareAddr, err error) {
 	//Resolve mac
 	for i := 0; i < 3; i++ {
-		hwAddr, _, err = arping.Ping(nodeIP)
+		hwAddr, _, err = arping.PingOverIface(nodeIP, *iface)
 		if err != nil {
 			continue
 		} else {
@@ -97,19 +97,37 @@ func resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err error) {
 	return
 }
 
-var (
-	resolveIPVar = resolveIP
-)
-
 func (a *arpResponder) gratuitous(ip, nodeIP net.IP) error {
 	var (
 		hwAddr net.HardwareAddr
 		err    error
 	)
 
-	hwAddr, err = resolveIPVar(nodeIP)
+	if ip.To4() == nil {
+		return nil
+	}
+
+	routers, err := netlink.RouteGet(nodeIP)
 	if err != nil {
 		return err
+	}
+
+	iface, err := net.InterfaceByIndex(routers[0].LinkIndex)
+	if err != nil {
+		return err
+	}
+
+	if iface.Name != "lo" && routers[0].LinkIndex != a.intf.Index {
+		return nil
+	}
+
+	if iface.Name == "lo" {
+		hwAddr = a.intf.HardwareAddr
+	} else {
+		hwAddr, err = resolveIP(nodeIP, a.intf)
+		if err != nil {
+			return err
+		}
 	}
 
 	a.ip2mac[ip.String()] = &hwAddr

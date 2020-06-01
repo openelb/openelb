@@ -3,6 +3,7 @@ package serverd
 import (
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/go-logr/logr/testing"
+	bgpapi "github.com/kubesphere/porter/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,7 +19,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	bgpServer = NewBgpServer(bgpOptions)
-	err := bgpServer.HandleBgpGlobalConfig(&BgpConfSpec{
+	err := bgpServer.HandleBgpGlobalConfig(&bgpapi.BgpConfSpec{
 		As:       65003,
 		RouterId: "10.0.255.254",
 		Port:     17900,
@@ -97,8 +98,8 @@ var _ = Describe("BGP routes test", func() {
 		}
 
 		It("Add BgpPeer", func() {
-			Expect(bgpServer.AddOrUpdatePeer(&BgpPeerSpec{
-				Config: NeighborConfig{
+			Expect(bgpServer.AddOrUpdatePeer(&bgpapi.BgpPeerSpec{
+				Config: bgpapi.NeighborConfig{
 					PeerAs:          65001,
 					NeighborAddress: "192.168.0.2",
 				},
@@ -106,8 +107,8 @@ var _ = Describe("BGP routes test", func() {
 		})
 
 		It("Update BgpPeer", func() {
-			Expect(bgpServer.AddOrUpdatePeer(&BgpPeerSpec{
-				Config: NeighborConfig{
+			Expect(bgpServer.AddOrUpdatePeer(&bgpapi.BgpPeerSpec{
+				Config: bgpapi.NeighborConfig{
 					PeerAs:          65002,
 					NeighborAddress: "192.168.0.2",
 				},
@@ -115,8 +116,8 @@ var _ = Describe("BGP routes test", func() {
 		})
 
 		It("Delete BgpPeer", func() {
-			Expect(bgpServer.DeletePeer(&BgpPeerSpec{
-				Config: NeighborConfig{
+			Expect(bgpServer.DeletePeer(&bgpapi.BgpPeerSpec{
+				Config: bgpapi.NeighborConfig{
 					NeighborAddress: "192.168.0.2",
 				},
 			})).ShouldNot(HaveOccurred())

@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/kubesphere/porter/pkg/layer2"
 	"net/http"
 	"os"
 
@@ -70,9 +71,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	//setup layer2
+	announce := layer2.New(ctrl.Log.WithName("layer2"))
+
 	// Setup all Controllers
 	setupLog.Info("Setting up IPAM")
-	i := ipam.NewIPAM(ctrl.Log.WithName("IPAM"))
+	i := ipam.NewIPAM(ctrl.Log.WithName("IPAM"), announce)
 	if err = i.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create ipam")
 		os.Exit(1)
@@ -104,6 +108,7 @@ func main() {
 		IPAM:      i,
 		Log:       ctrl.Log.WithName("controllers").WithName("lb"),
 		BgpServer: bgpServer,
+		Announcer: announce,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "lb")
 		os.Exit(1)

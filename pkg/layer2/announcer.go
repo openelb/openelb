@@ -1,123 +1,71 @@
 package layer2
 
 import (
-	"net"
-	"os"
-	"strings"
-	"time"
-
 	"github.com/go-logr/logr"
 	portererror "github.com/kubesphere/porter/pkg/errors"
-	"github.com/kubesphere/porter/pkg/kubeutil"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/vishvananda/netlink"
+	"net"
 )
 
 // Announce is used to "announce" new IPs mapped to the node's MAC address.
 type Announce struct {
-	logger logr.Logger
-	client client.Client
-
-	arp *arpResponder
+	logger     logr.Logger
+	responders map[string]Responder
 }
 
 // New returns an initialized Announce.
-func New(log logr.Logger, client client.Client) *Announce {
+func New(log logr.Logger) *Announce {
 	ret := &Announce{
-		logger: log.WithName("Announcer"),
-		client: client,
+		logger:     log.WithName("Announcer"),
+		responders: make(map[string]Responder),
 	}
-
-	go ret.createResponder()
-
 	return ret
 }
 
-var (
-	getNodeIPMapVar = getNodeIPMap
-)
-
-func getNodeIPMap(c client.Client) (map[string]string, error) {
-	for true {
-		//Until k8s client is available
-		time.Sleep(1 * time.Second)
-		nodes, err := kubeutil.GetNodeIPMap(c)
-		if err != nil {
-			return nil, err
-		}
-		if len(nodes) != 0 {
-			return nodes, err
-		}
+func (a *Announce) AddResponder(name string, ip net.IP) error {
+	if a.responders[name] != nil {
+		return nil
 	}
 
-	return nil, nil
+	routers, err := netlink.RouteGet(ip)
+	if err != nil {
+		return err
+	}
+
+	iface, err := net.InterfaceByIndex(routers[0].LinkIndex)
+	if err != nil {
+		return err
+	}
+
+	if ip.To4() != nil {
+		resp, err := newARPResponder(a.logger, iface)
+		if err != nil {
+			return err
+		}
+
+		a.responders[name] = resp
+	}
+
+	return nil
 }
 
-func (a *Announce) createResponder() {
-	var (
-		ifi   net.Interface
-		nodes map[string]string
-		err   error
-	)
-
-	ifs, err := net.Interfaces()
-	if err != nil {
-		a.logger.Error(err, "couldn't list interfaces")
-		goto exit
-	}
-
-	nodes, err = getNodeIPMapVar(a.client)
-	if err != nil {
-		a.logger.Error(err, "couldn't  get nodeIP")
-		goto exit
-	}
-
-	for _, intf := range ifs {
-		ifi = intf
-		for _, nodeIP := range nodes {
-			addrs, err := ifi.Addrs()
-			if err != nil {
-				a.logger.Error(err, "couldn't list address")
-				goto exit
-			}
-
-			for _, addr := range addrs {
-				if strings.Index(addr.String(), nodeIP) >= 0 {
-					a.logger.Info("found interface:", "name", ifi.Name)
-					goto found
-				}
-			}
-		}
-	}
-
-exit:
-	os.Exit(1)
-
-found:
-	resp, err := newARPResponder(a.logger, &ifi)
-	if err != nil {
-		a.logger.Error(err, "couldn't new arpResponder")
-		goto exit
-	}
-	a.arp = resp
-	//TODO support ndp
+func (a *Announce) DeleteResponder(name string) error {
+	a.responders[name].close()
+	delete(a.responders, name)
+	return nil
 }
 
 // SetBalancer adds ip to the set of announced addresses.
 func (a *Announce) SetBalancer(ip, nodeIP string) error {
 	a.logger.Info("set layer2 balancer", "ip", ip, "nodeIP", nodeIP)
-	if net.ParseIP(ip).To4() != nil && net.ParseIP(nodeIP).To4() != nil {
-		if a.arp == nil {
-			return portererror.NewLayer2AnnouncerNotReadyError()
-		}
-		if err := a.arp.gratuitous(net.ParseIP(ip), net.ParseIP(nodeIP)); err != nil {
+
+	if len(a.responders) <= 0 {
+		return portererror.NewLayer2AnnouncerNotReadyError()
+	}
+	for _, responder := range a.responders {
+		if err := responder.gratuitous(net.ParseIP(ip), net.ParseIP(nodeIP)); err != nil {
 			return err
 		}
-
-		return nil
-	}
-
-	if net.ParseIP(ip).To16() != nil && net.ParseIP(nodeIP).To16() != nil {
-		//TODO support ndp
 	}
 
 	return nil
@@ -125,10 +73,9 @@ func (a *Announce) SetBalancer(ip, nodeIP string) error {
 
 // DeleteBalancer deletes an address from the set of addresses we should announce.
 func (a *Announce) DeleteBalancer(ip string) error {
-	if a.arp != nil {
-		a.arp.deleteIP(ip)
+	for _, responder := range a.responders {
+		responder.deleteIP(ip)
 	}
-	//TODO support ndp
 
 	return nil
 }
@@ -148,3 +95,9 @@ const (
 	dropReasonEthernetDestination
 	dropReasonAnnounceIP
 )
+
+type Responder interface {
+	deleteIP(ip string)
+	gratuitous(ip, nodeIP net.IP) error
+	close() error
+}
