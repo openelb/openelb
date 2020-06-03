@@ -47,7 +47,7 @@ func newARPResponder(log logr.Logger, ifi *net.Interface) (*arpResponder, error)
 	return ret, nil
 }
 
-func (a *arpResponder) close() error {
+func (a *arpResponder) Close() error {
 	close(a.closed)
 	return a.conn.Close()
 }
@@ -79,7 +79,7 @@ func generateArp(intfHW net.HardwareAddr, op arp.Operation, srcHW net.HardwareAd
 	return fb, err
 }
 
-func (a *arpResponder) deleteIP(ip string) {
+func (a *arpResponder) DeleteIP(ip string) {
 	delete(a.ip2mac, ip)
 }
 
@@ -97,7 +97,7 @@ func resolveIP(nodeIP net.IP, iface *net.Interface) (hwAddr net.HardwareAddr, er
 	return
 }
 
-func (a *arpResponder) gratuitous(ip, nodeIP net.IP) error {
+func (a *arpResponder) Gratuitous(ip, nodeIP net.IP) error {
 	var (
 		hwAddr net.HardwareAddr
 		err    error

@@ -2,21 +2,12 @@ package ipam
 
 import (
 	"context"
-	"github.com/kubesphere/porter/pkg/layer2"
-	"github.com/mikioh/ipaddr"
-	"net"
 	"time"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	"k8s.io/client-go/util/retry"
 
 	"github.com/go-logr/logr"
 	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/constant"
-	"github.com/kubesphere/porter/pkg/errors"
 	"github.com/kubesphere/porter/pkg/util"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,61 +16,42 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const (
-	DefaultSyncInterval = time.Second * 10
-)
-
 type IPAM struct {
-	client       client.Client
-	Log          logr.Logger
-	ds           *DataStore
-	SyncInterval time.Duration
-	EIPUpdater   *EIPUpdater
-	Announce     *layer2.Announce
+	client client.Client
+	log    logr.Logger
+
+	ds *DataStore
+
+	syncInterval time.Duration
 }
 
-func (i *IPAM) ProtocolForEIP(eip string) string {
-	for _, p := range i.ds.IPPool {
-		if p.Contains(net.ParseIP(eip)) {
-			return p.Protocol
-		}
-	}
-	return ""
-}
-
-func (i *IPAM) CheckEIPStatus(eip string) *EIPStatus {
-	return i.ds.GetEIPStatus(eip)
-}
-
-func NewIPAM(log logr.Logger, announce *layer2.Announce) *IPAM {
+func NewIPAM(log logr.Logger, ds *DataStore) *IPAM {
 	return &IPAM{
-		Log:      log,
-		ds:       NewDataStore(log),
-		Announce: announce,
+		log:          log,
+		ds:           ds,
+		syncInterval: DefaultSyncInterval,
 	}
 }
 
 func (i *IPAM) SetupWithManager(mgr manager.Manager) error {
 	i.client = mgr.GetClient()
-	if i.SyncInterval == 0 {
-		i.SyncInterval = DefaultSyncInterval
-	}
-	i.EIPUpdater = NewEIPUpdaterFromIPAM(i)
-	i.Log.Info("Setting up EIPUpdater")
-	if err := mgr.Add(i.EIPUpdater); err != nil {
-		i.Log.Error(nil, "Failed to run EIPUpdater")
+
+	i.log.Info("Setting up EIPUpdater")
+	if err := mgr.Add(i); err != nil {
+		i.log.Error(nil, "Failed to run EIPUpdater")
 		return err
 	}
+
 	return ctrl.NewControllerManagedBy(mgr).Named("IPAM").
 		For(&networkv1alpha1.Eip{}).
 		WithEventFilter(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				old := e.ObjectOld.(*networkv1alpha1.Eip)
-				new := e.ObjectNew.(*networkv1alpha1.Eip)
+				//only support create and delete, because change EIP will affect a lot
+				//so we should make sure no service use EIP, and then delete , create a new one.
 				if !e.MetaNew.GetDeletionTimestamp().IsZero() {
 					return true
 				}
-				return old.Spec.Address != new.Spec.Address
+				return false
 			},
 			CreateFunc: func(e event.CreateEvent) bool {
 				return true
@@ -97,79 +69,36 @@ func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		return ctrl.Result{}, err
 	}
-	_ = i.Log.WithValues("name", eip.Name, "address", eip.Spec.Address)
-	var deleted bool
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		err := i.client.Get(context.TODO(), types.NamespacedName{Name: eip.Name}, eip)
-		if err != nil {
-			return err
-		}
-		deleted, err = i.useFinalizerIfNeeded(eip)
-		return err
-	})
+
+	deleted, err := i.useFinalizerIfNeeded(eip)
 	if err != nil {
-		i.Log.Error(nil, "Failed to handle finalizer")
 		return ctrl.Result{}, err
 	}
 	if deleted {
 		return ctrl.Result{}, nil
 	}
-	err = i.addEIPtoDataStore(eip)
-	if err != nil {
-		if _, ok := err.(errors.DataStoreEIPDuplicateError); ok {
-			i.Log.Info("Detect this eip is in pool now, skipping")
-			return ctrl.Result{}, nil
-		}
-		i.Log.Error(err, "could not add eip to pool")
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
-	}
-	return ctrl.Result{}, nil
-}
 
-func (i *IPAM) addEIPtoDataStore(eip *networkv1alpha1.Eip) error {
-	i.Log.Info("Add EIP to pool")
-	protocol := eip.Spec.Protocol
-	if protocol == "" {
-		protocol = constant.PorterProtocolBGP
-	}
-
-	if protocol == constant.PorterProtocolLayer2 {
-		ipnets, err := util.ParseAddress(eip.Spec.Address)
-		if err != nil {
-			return err
-		}
-		c := ipaddr.NewCursor([]ipaddr.Prefix{*ipaddr.NewPrefix(ipnets[0])})
-		if err = i.Announce.AddResponder(eip.Name, c.First().IP); err != nil {
-			return err
-		}
-	}
-
-	return i.ds.AddEIPPool(eip.Spec.Address, eip.Name, eip.Spec.UsingKnownIPs, protocol)
+	err = i.ds.AddEIPPool(eip.Spec.Address, eip.Name, eip.Spec.UsingKnownIPs, eip.Spec.Protocol)
+	return ctrl.Result{RequeueAfter: time.Second * 60}, err
 }
 
 func (i *IPAM) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, error) {
-	i.Log.Info("handling finalizer")
+	i.log.Info("handling finalizer")
 	if eip.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !util.ContainsString(eip.ObjectMeta.Finalizers, constant.IPAMFinalizerName) {
 			eip.ObjectMeta.Finalizers = append(eip.ObjectMeta.Finalizers, constant.IPAMFinalizerName)
 			if err := i.client.Update(context.Background(), eip); err != nil {
 				return false, err
 			}
-			i.Log.Info("Append Finalizer to eip")
+			i.log.Info("Append Finalizer to eip")
 			return false, nil
 		}
 	} else {
 		// The object is being deleted
 		if util.ContainsString(eip.ObjectMeta.Finalizers, constant.IPAMFinalizerName) {
-			i.Log.Info("Begin to remove finalizer")
-			i.Announce.DeleteResponder(eip.Name)
+			i.log.Info("Begin to remove finalizer")
 			if err := i.ds.RemoveEIPPool(eip.Spec.Address, eip.Name); err != nil {
-				if _, ok := err.(errors.DataStoreEIPNotExist); ok {
-					i.Log.Info("EIP is no longer in pool", "eip", eip.Spec.Address)
-				} else {
-					i.Log.Error(nil, "Failed to remove eip from pool")
-					return false, err
-				}
+				return false, err
 			}
 			eip.ObjectMeta.Finalizers = util.RemoveString(eip.ObjectMeta.Finalizers, constant.IPAMFinalizerName)
 			if err := i.client.Update(context.Background(), eip); err != nil {
@@ -178,25 +107,9 @@ func (i *IPAM) useFinalizerIfNeeded(eip *networkv1alpha1.Eip) (bool, error) {
 				}
 				return false, err
 			}
-			i.Log.Info("Remove Finalizer before eip deleted")
+			i.log.Info("Remove Finalizer before eip deleted")
 		}
 		return true, nil
 	}
 	return false, nil
-}
-
-func (i *IPAM) AssignIP(serv *corev1.Service) (*AssignIPResponse, error) {
-	protocol := serv.Annotations[constant.PorterProtocolAnnotationKey]
-	if protocol == "" {
-		protocol = constant.PorterProtocolBGP
-	}
-	return i.ds.AssignIP(serv.Name, serv.Namespace, protocol)
-}
-
-func (i *IPAM) RevokeIP(ip string) error {
-	return i.ds.UnassignIP(ip)
-}
-
-func (i *IPAM) AssignSpecifyIP(serv *corev1.Service, ip string) (*AssignIPResponse, error) {
-	return i.ds.AssignSpecifyIP(ip, serv.Name, serv.Namespace)
 }

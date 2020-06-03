@@ -92,12 +92,14 @@ type NeighborConfig struct {
 	// original -> bgp:peer-as
 	// bgp:peer-as's original type is inet:as-number.
 	// AS number of the peer.
-	PeerAs uint32 `mapstructure:"peer-as" json:"peerAs,omitempty"`
+	PeerAs uint32 `mapstructure:"peer-as" json:"peerAs,required"`
 
 	// original -> bgp:neighbor-address
 	// bgp:neighbor-address's original type is inet:ip-address.
 	// Address of the BGP peer, either in IPv4 or IPv6.
-	NeighborAddress string `mapstructure:"neighbor-address" json:"neighborAddress,omitempty"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	NeighborAddress string `mapstructure:"neighbor-address" json:"neighborAddress,required"`
 }
 
 // +kubebuilder:object:root=true
