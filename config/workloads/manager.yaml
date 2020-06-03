@@ -32,8 +32,16 @@ spec:
         app: porter-manager
     spec:
       hostNetwork: true
-      nodeSelector:
-        node-role.kubernetes.io/master: ""
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - porter-manager
+            topologyKey: "kubernetes.io/hostname"
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"

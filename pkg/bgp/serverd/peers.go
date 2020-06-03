@@ -2,12 +2,12 @@ package serverd
 
 import (
 	"fmt"
-	"net"
-
 	bgpapi "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/nettool"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
+	"net"
+	"reflect"
 )
 
 const (
@@ -15,11 +15,47 @@ const (
 	defaultBgpRestartTime = 60
 )
 
+func (server *BgpServer) EnsureNATChain() error {
+	iptable := server.bgpIptable
+
+	chains, err := iptable.ListChains("nat")
+	if err != nil {
+		return err
+	}
+
+	found := false
+	for _, chain := range chains {
+		if chain == nettool.BgpNatChain {
+			found = true
+			break
+		}
+	}
+	if !found {
+		if err = iptable.NewChain("nat", nettool.BgpNatChain); err != nil {
+			return err
+		}
+	}
+
+	rule := []string{"-j", nettool.BgpNatChain}
+	ok, err := iptable.Exists("nat", nettool.BgpNatChain, rule...)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		err = iptable.Append("nat", "PREROUTING", rule...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return iptable.ClearChain("nat", nettool.BgpNatChain)
+}
+
 func (server *BgpServer) DeletePeer(neighbor *bgpapi.BgpPeerSpec) error {
 	delete := false
 	fn := func(peer *api.Peer) {
 		if peer.Conf.NeighborAddress == neighbor.Config.NeighborAddress {
-			delete = false
+			delete = true
 		}
 	}
 
@@ -36,7 +72,9 @@ func (server *BgpServer) DeletePeer(neighbor *bgpapi.BgpPeerSpec) error {
 			return err
 		}
 
-		return nettool.DeletePortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		if response.Global.As != 0 {
+			nettool.DeletePortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		}
 	}
 
 	return nil
@@ -50,9 +88,24 @@ func (server *BgpServer) AddOrUpdatePeer(neighbor *bgpapi.BgpPeerSpec) error {
 	}
 
 	add := true
+	foundPeer := &bgpapi.BgpPeerSpec{}
 	fn := func(peer *api.Peer) {
 		if peer.Conf.NeighborAddress == neighbor.Config.NeighborAddress {
 			add = false
+			foundPeer = &bgpapi.BgpPeerSpec{
+				Config: bgpapi.NeighborConfig{
+					PeerAs:          peer.Conf.PeerAs,
+					NeighborAddress: peer.Conf.NeighborAddress,
+				},
+				AddPaths: bgpapi.AddPaths{
+					SendMax: uint8(peer.AfiSafis[0].AddPaths.Config.SendMax),
+				},
+				Transport: bgpapi.Transport{
+					PassiveMode: peer.Transport.PassiveMode,
+					RemotePort:  uint16(peer.Transport.RemotePort),
+				},
+				UsingPortForward: neighbor.UsingPortForward,
+			}
 		}
 	}
 
@@ -98,6 +151,7 @@ func (server *BgpServer) AddOrUpdatePeer(neighbor *bgpapi.BgpPeerSpec) error {
 		},
 	}
 
+	response, _ := server.bgpServer.GetBgp(context.Background(), nil)
 	if add {
 		if err := server.bgpServer.AddPeer(context.Background(), &api.AddPeerRequest{
 			Peer: peer,
@@ -105,10 +159,20 @@ func (server *BgpServer) AddOrUpdatePeer(neighbor *bgpapi.BgpPeerSpec) error {
 			return err
 		}
 
-		response, _ := server.bgpServer.GetBgp(context.Background(), nil)
-
-		return nettool.AddPortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		if response.Global.As != 0 && neighbor.UsingPortForward {
+			nettool.AddPortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		}
 	} else {
+		if neighbor.UsingPortForward {
+			nettool.AddPortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		} else {
+			nettool.DeletePortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		}
+
+		if reflect.DeepEqual(foundPeer, neighbor) {
+			return nil
+		}
+
 		if _, err := server.bgpServer.UpdatePeer(context.Background(), &api.UpdatePeerRequest{
 			Peer: peer,
 		}); err != nil {

@@ -41,11 +41,11 @@ manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./api/..." paths="./controllers/..." output:crd:artifacts:config=config/crd/bases
 # Run go fmt against code
 fmt:
-	go fmt ./pkg/... ./cmd/... ./test/...  ./api/... ./controllers/...
+	go fmt ./pkg/... ./cmd/...   ./api/... ./controllers/...
 
 # Run go vet against code
 vet:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/... ./test/... ./controllers/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/...  ./controllers/...
 
 
 controller-gen:

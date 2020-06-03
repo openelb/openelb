@@ -1,9 +1,9 @@
 package serverd
 
 import (
-	"github.com/coreos/go-iptables/iptables"
 	"github.com/go-logr/logr/testing"
 	bgpapi "github.com/kubesphere/porter/api/v1alpha1"
+	"github.com/kubesphere/porter/pkg/nettool/iptables"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,15 +18,13 @@ var _ = BeforeSuite(func() {
 		GrpcHosts: ":50052",
 	}
 
-	bgpServer = NewBgpServer(bgpOptions)
+	bgpServer = NewBgpServer(bgpOptions, testing.NullLogger{}, iptables.NewFakeIPTables())
 	err := bgpServer.HandleBgpGlobalConfig(&bgpapi.BgpConfSpec{
 		As:       65003,
 		RouterId: "10.0.255.254",
 		Port:     17900,
 	}, false)
 	Expect(err).ShouldNot(HaveOccurred())
-
-	bgpServer.Log = testing.NullLogger{}
 })
 
 var _ = AfterSuite(func() {
@@ -55,7 +53,7 @@ var _ = Describe("BGP routes test", func() {
 			Expect(len(toDelete)).Should(Equal(0))
 
 			By("Add nexthops to gobgp")
-			err = bgpServer.ReconcileRoutes(ip, 32, nexthops)
+			err = bgpServer.SetBalancer(ip, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
 			err, toAdd, toDelete = bgpServer.retriveRoutes(ip, 32, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -65,7 +63,7 @@ var _ = Describe("BGP routes test", func() {
 			By("Append a nexthop to gobgp")
 			nexthops = append(nexthops, "4.4.4.4")
 			Expect(len(nexthops)).Should(Equal(4))
-			err = bgpServer.ReconcileRoutes(ip, 32, nexthops)
+			err = bgpServer.SetBalancer(ip, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
 			err, toAdd, toDelete = bgpServer.retriveRoutes(ip, 32, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -75,7 +73,7 @@ var _ = Describe("BGP routes test", func() {
 			By("Delete two nexthops from gobgp")
 			nexthops = nexthops[:len(nexthops)-2]
 			Expect(len(nexthops)).Should(Equal(2))
-			err = bgpServer.ReconcileRoutes(ip, 32, nexthops)
+			err = bgpServer.SetBalancer(ip, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
 			err, toAdd, toDelete = bgpServer.retriveRoutes(ip, 32, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -83,7 +81,7 @@ var _ = Describe("BGP routes test", func() {
 			Expect(len(toDelete)).Should(Equal(0))
 
 			By("Delete all nexthops from gobgp")
-			Expect(bgpServer.DeleteAllRoutesOfIP(ip)).ShouldNot(HaveOccurred())
+			Expect(bgpServer.DelBalancer(ip)).ShouldNot(HaveOccurred())
 			err, toAdd, toDelete = bgpServer.retriveRoutes(ip, 32, nexthops)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(len(toAdd)).Should(Equal(2))
@@ -92,11 +90,6 @@ var _ = Describe("BGP routes test", func() {
 	})
 
 	Context("Create/Update/Delete BgpPeer", func() {
-		ipt, _ := iptables.New()
-		if _, err := ipt.Exists("nat", "PREROUTING"); err != nil {
-			return
-		}
-
 		It("Add BgpPeer", func() {
 			Expect(bgpServer.AddOrUpdatePeer(&bgpapi.BgpPeerSpec{
 				Config: bgpapi.NeighborConfig{

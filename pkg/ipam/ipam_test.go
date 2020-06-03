@@ -25,7 +25,7 @@ var _ = Describe("Ipam", func() {
 	})
 
 	It("Should be ok with single ip", func() {
-		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
+		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"), nil)
 		singleIP := "1.1.1.1"
 		Expect(ds.AddEIPPool(singleIP, "singleEIP", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
 		Expect(*ds.GetEIPStatus(singleIP)).To(Equal(ipam.EIPStatus{
@@ -43,7 +43,7 @@ var _ = Describe("Ipam", func() {
 	})
 
 	It("Should be ok to add eip", func() {
-		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
+		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"), nil)
 
 		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
 		Expect(ds.AddEIPPool("192.168.1.0/25", "defaultPool1", false, constant.PorterProtocolBGP)).Should(HaveOccurred())
@@ -72,16 +72,16 @@ var _ = Describe("Ipam", func() {
 			},
 			Used: true,
 		}))
-		_, err = ds.AssignSpecifyIP(ip.Address, "testSvc1", "default")
-		Expect(err).Should(BeAssignableToTypeOf(errors.DataStoreEIPIsUsedError{}))
+		_, err = ds.AssignSpecifyIP(ip.Address, constant.PorterProtocolBGP, "testSvc1", "default")
+		Expect(errors.ReasonForError(err)).Should(Equal(errors.EIPIsUsedError))
 
-		_, err = ds.AssignSpecifyIP("192.168.1.2", "testSvc1", "default")
+		_, err = ds.AssignSpecifyIP("192.168.1.2", constant.PorterProtocolBGP, "testSvc1", "default")
 		Expect(err).ShouldNot(HaveOccurred())
 
-		_, err = ds.AssignSpecifyIP("192.168.1.0", "testSvc1", "default")
-		Expect(err).Should(BeAssignableToTypeOf(errors.DataStoreEIPIsInvalid{}))
+		_, err = ds.AssignSpecifyIP("192.168.1.0", constant.PorterProtocolBGP, "testSvc1", "default")
+		Expect(errors.ReasonForError(err)).Should(Equal(errors.EIPNotExist))
 
-		Expect(ds.RemoveEIPPool(testIPNetStr, "defaultPool")).Should(BeAssignableToTypeOf(errors.DataStoreEIPIsUsedError{}))
+		Expect(errors.ReasonForError(ds.RemoveEIPPool(testIPNetStr, "defaultPool"))).Should(Equal(errors.EIPIsUsedError))
 		Expect(ds.UnassignIP(ip.Address)).ShouldNot(HaveOccurred())
 		Expect(ds.UnassignIP("192.168.1.2")).ShouldNot(HaveOccurred())
 		Expect(ds.RemoveEIPPool(testIPNetStr, "defaultPool")).ShouldNot(HaveOccurred())
@@ -93,12 +93,13 @@ var _ = Describe("Ipam", func() {
 		Expect(ip.Address).To(Equal("192.168.98.1"))
 
 		_, err = ds.AssignIP("testSVC", "test", constant.PorterProtocolBGP)
-		Expect(err).To(BeAssignableToTypeOf(errors.ResourceNotEnoughError{}))
-		Expect(ds.AddEIPPool("192.168.98.2", "oneeip", false, constant.PorterProtocolBGP)).Should(BeAssignableToTypeOf(errors.DataStoreEIPDuplicateError{}))
+		Expect(errors.ReasonForError(err)).Should(Equal(errors.EIPNotEnoughError))
+
+		Expect(errors.ReasonForError(ds.AddEIPPool("192.168.98.2", "oneeip", false, constant.PorterProtocolBGP))).Should(Equal(errors.EIPDuplicateError))
 	})
 
 	It("Should be ok to add two eip pool in the meantime", func() {
-		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"))
+		ds := ipam.NewDataStore(ctrl.Log.WithName("setup"), nil)
 		Expect(ds.AddEIPPool(testIPNetStr, "defaultPool", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
 		Expect(ds.AddEIPPool("192.168.2.2", "defaultPool1", false, constant.PorterProtocolBGP)).ShouldNot(HaveOccurred())
 		resp, err := ds.AssignIP("testSvc1", "default", constant.PorterProtocolBGP)

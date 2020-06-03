@@ -75,5 +75,5 @@ sed $sedopt 's@image: .*@image: '"${MANAGER_IMG}"'@' ./config/dev/manager_image_
 echo "Current Namespace is $TEST_NS'"
 
 echo "deploying for testing"
-kubectl apply -k ./config/dev/
+#kubectl apply -k ./config/dev/
 echo "Done! Let's roll"

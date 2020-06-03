@@ -56,15 +56,17 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	deleted, err := r.useFinalizerIfNeeded(instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if deleted {
 		return ctrl.Result{}, nil
 	}
 
-	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, err
-	}
+	err = r.BgpServer.HandleBgpGlobalConfig(&instance.Spec, false)
 
-	return ctrl.Result{}, r.BgpServer.HandleBgpGlobalConfig(&instance.Spec, false)
+	return ctrl.Result{RequeueAfter: time.Second * 60}, err
 }
 
 func (r *BgpConfReconciler) useFinalizerIfNeeded(conf *networkv1alpha1.BgpConf) (bool, error) {

@@ -14,12 +14,12 @@ func GenerateCretiriaAndAction(routerIP, localIP string, gobgpPort int32) []stri
 //Example: iptables -t nat -A PREROUTING -s 10.10.12.1 -p tcp --dport 179 -j DNAT --to-destination 10.10.12.1:17900
 func AddPortForwardOfBGP(iptableExec iptables.IptablesIface, routerIP, localIP string, gobgpPort int32) error {
 	rule := GenerateCretiriaAndAction(routerIP, localIP, gobgpPort)
-	ok, err := iptableExec.Exists("nat", "PREROUTING", rule...)
+	ok, err := iptableExec.Exists("nat", BgpNatChain, rule...)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		err = iptableExec.Append("nat", "PREROUTING", rule...)
+		err = iptableExec.Append("nat", BgpNatChain, rule...)
 		if err != nil {
 			return err
 		}
@@ -30,7 +30,7 @@ func AddPortForwardOfBGP(iptableExec iptables.IptablesIface, routerIP, localIP s
 
 func DeletePortForwardOfBGP(iptableExec iptables.IptablesIface, routerIP, localIP string, gobgpPort int32) error {
 	rule := GenerateCretiriaAndAction(routerIP, localIP, gobgpPort)
-	return iptableExec.Delete("nat", "PREROUTING", rule...)
+	return iptableExec.Delete("nat", BgpNatChain, rule...)
 }
 
 func OpenForwardForEIP(iptableExec iptables.IptablesIface, eip string) error {
@@ -56,3 +56,5 @@ func CloseForwardForEIP(iptableExec iptables.IptablesIface, eip string) error {
 	}
 	return iptableExec.Delete("filter", "FORWARD", ruleSpec...)
 }
+
+const BgpNatChain = "PREROUTING-PORTER"
