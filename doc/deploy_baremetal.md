@@ -123,7 +123,7 @@
     ```
     Sample: [Service](https://github.com/kubesphere/porter/blob/master/test/samples/test.yaml)  
 
-    **Note：If you want to assign an IP address to Service, there are two ways:**
+    **Note: If you want to assign an IP address to Service, there are two ways:**
     - Add `spec.loadBalancerIP: <ip>` . (recommended)
     - Add `eip.porter.kubesphere.io/v1alpha1: <ip>` to `annotations`.
 
