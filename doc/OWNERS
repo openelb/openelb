@@ -1,8 +1,12 @@
 approvers:
     - zheng1 #oncall
-    - rayzhou2017
+    - duanjiong
+    - FeynmanZhou
 
 reviewers:
     - zheng1 #oncall
     - duanjiong
-    - rayzhou2017
+    - FeynmanZhou
+
+labels:
+    - area/doc
