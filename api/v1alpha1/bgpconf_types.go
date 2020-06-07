@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,8 +38,27 @@ type BgpConf struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   bgpserver.BgpConfSpec `json:"spec,omitempty"`
-	Status BgpConfStatus         `json:"status,omitempty"`
+	Spec   BgpConfSpec   `json:"spec,omitempty"`
+	Status BgpConfStatus `json:"status,omitempty"`
+}
+
+// struct for container bgp:config.
+// Configuration parameters relating to the global BGP router.
+type BgpConfSpec struct {
+	// original -> bgp:as
+	// bgp:as's original type is inet:as-number.
+	// Local autonomous system number of the router.  Uses
+	// the 32-bit as-number type from the model in RFC 6991.
+	As uint32 `mapstructure:"as" json:"as,required"`
+	// original -> bgp:router-id
+	// bgp:router-id's original type is inet:ipv4-address.
+	// Router id of the router, expressed as an
+	// 32-bit value, IPv4 address.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	RouterId string `mapstructure:"router-id" json:"routerID,required"`
+	// original -> gobgp:port
+	Port int32 `mapstructure:"port" json:"port,required"`
 }
 
 // +kubebuilder:object:root=true

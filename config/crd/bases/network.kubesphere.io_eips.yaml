@@ -53,8 +53,15 @@ spec:
               type: string
             disable:
               type: boolean
+            protocol:
+              enum:
+                - bgp
+                - layer2
+              type: string
             usingKnownIPs:
               type: boolean
+          required:
+            - address
           type: object
         status:
           description: EipStatus defines the observed state of EIP

@@ -88,15 +88,17 @@ func (r *BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	deleted, err := r.useFinalizerIfNeeded(bgpPeer)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if deleted {
 		return ctrl.Result{}, nil
 	}
 
-	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, err
-	}
+	err = r.BgpServer.AddOrUpdatePeer(&bgpPeer.Spec)
 
-	return ctrl.Result{}, r.BgpServer.AddOrUpdatePeer(&bgpPeer.Spec)
+	return ctrl.Result{RequeueAfter: time.Second * 60}, err
 }
 
 func (r *BgpPeerReconciler) SetupWithManager(mgr ctrl.Manager) error {

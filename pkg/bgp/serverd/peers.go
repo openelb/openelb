@@ -2,11 +2,12 @@ package serverd
 
 import (
 	"fmt"
-	"net"
-
+	bgpapi "github.com/kubesphere/porter/api/v1alpha1"
 	"github.com/kubesphere/porter/pkg/nettool"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
+	"net"
+	"reflect"
 )
 
 const (
@@ -14,69 +15,47 @@ const (
 	defaultBgpRestartTime = 60
 )
 
-type BgpPeerSpec struct {
-	// original -> bgp:neighbor-address
-	// original -> bgp:neighbor-config
-	// Configuration parameters relating to the BGP neighbor or
-	// group.
-	Config NeighborConfig `mapstructure:"config" json:"config,omitempty"`
+func (server *BgpServer) EnsureNATChain() error {
+	iptable := server.bgpIptable
 
-	// original -> bgp:add-paths
-	// Parameters relating to the advertisement and receipt of
-	// multiple paths for a single NLRI (add-paths).
-	AddPaths AddPaths `mapstructure:"add-paths" json:"addPaths,omitempty"`
+	chains, err := iptable.ListChains("nat")
+	if err != nil {
+		return err
+	}
 
-	// original -> bgp:transport
-	// Transport session parameters for the BGP neighbor or group.
-	Transport Transport `mapstructure:"transport" json:"transport,omitempty"`
+	found := false
+	for _, chain := range chains {
+		if chain == nettool.BgpNatChain {
+			found = true
+			break
+		}
+	}
+	if !found {
+		if err = iptable.NewChain("nat", nettool.BgpNatChain); err != nil {
+			return err
+		}
+	}
 
-	UsingPortForward bool `json:"usingPortForward,omitempty" mapstructure:"using-port-forward"`
+	rule := []string{"-j", nettool.BgpNatChain}
+	ok, err := iptable.Exists("nat", nettool.BgpNatChain, rule...)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		err = iptable.Append("nat", "PREROUTING", rule...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return iptable.ClearChain("nat", nettool.BgpNatChain)
 }
 
-// struct for container bgp:transport.
-// Transport session parameters for the BGP neighbor or group.
-type Transport struct {
-	// original -> bgp:passive-mode
-	// bgp:passive-mode's original type is boolean.
-	// Wait for peers to issue requests to open a BGP session,
-	// rather than initiating sessions from the local router.
-	PassiveMode bool `mapstructure:"passive-mode" json:"passiveMode,omitempty"`
-
-	// original -> gobgp:remote-port
-	// gobgp:remote-port's original type is inet:port-number.
-	RemotePort uint16 `mapstructure:"remote-port" json:"remotePort,omitempty"`
-}
-
-// struct for container bgp:add-paths.
-// Parameters relating to the advertisement and receipt of
-// multiple paths for a single NLRI (add-paths).
-type AddPaths struct {
-	// original -> bgp:send-max
-	// The maximum number of paths to advertise to neighbors
-	// for a single NLRI.
-	SendMax uint8 `mapstructure:"send-max" json:"sendMax,omitempty"`
-}
-
-// struct for container bgp:config.
-// Configuration parameters relating to the BGP neighbor or
-// group.
-type NeighborConfig struct {
-	// original -> bgp:peer-as
-	// bgp:peer-as's original type is inet:as-number.
-	// AS number of the peer.
-	PeerAs uint32 `mapstructure:"peer-as" json:"peerAs,omitempty"`
-
-	// original -> bgp:neighbor-address
-	// bgp:neighbor-address's original type is inet:ip-address.
-	// Address of the BGP peer, either in IPv4 or IPv6.
-	NeighborAddress string `mapstructure:"neighbor-address" json:"neighborAddress,omitempty"`
-}
-
-func (server *BgpServer) DeletePeer(neighbor *BgpPeerSpec) error {
+func (server *BgpServer) DeletePeer(neighbor *bgpapi.BgpPeerSpec) error {
 	delete := false
 	fn := func(peer *api.Peer) {
 		if peer.Conf.NeighborAddress == neighbor.Config.NeighborAddress {
-			delete = false
+			delete = true
 		}
 	}
 
@@ -93,13 +72,15 @@ func (server *BgpServer) DeletePeer(neighbor *BgpPeerSpec) error {
 			return err
 		}
 
-		return nettool.DeletePortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		if response.Global.As != 0 {
+			nettool.DeletePortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		}
 	}
 
 	return nil
 }
 
-func (server *BgpServer) AddOrUpdatePeer(neighbor *BgpPeerSpec) error {
+func (server *BgpServer) AddOrUpdatePeer(neighbor *bgpapi.BgpPeerSpec) error {
 	ip := net.ParseIP(neighbor.Config.NeighborAddress)
 
 	if ip == nil {
@@ -107,9 +88,24 @@ func (server *BgpServer) AddOrUpdatePeer(neighbor *BgpPeerSpec) error {
 	}
 
 	add := true
+	foundPeer := &bgpapi.BgpPeerSpec{}
 	fn := func(peer *api.Peer) {
 		if peer.Conf.NeighborAddress == neighbor.Config.NeighborAddress {
 			add = false
+			foundPeer = &bgpapi.BgpPeerSpec{
+				Config: bgpapi.NeighborConfig{
+					PeerAs:          peer.Conf.PeerAs,
+					NeighborAddress: peer.Conf.NeighborAddress,
+				},
+				AddPaths: bgpapi.AddPaths{
+					SendMax: uint8(peer.AfiSafis[0].AddPaths.Config.SendMax),
+				},
+				Transport: bgpapi.Transport{
+					PassiveMode: peer.Transport.PassiveMode,
+					RemotePort:  uint16(peer.Transport.RemotePort),
+				},
+				UsingPortForward: neighbor.UsingPortForward,
+			}
 		}
 	}
 
@@ -155,6 +151,7 @@ func (server *BgpServer) AddOrUpdatePeer(neighbor *BgpPeerSpec) error {
 		},
 	}
 
+	response, _ := server.bgpServer.GetBgp(context.Background(), nil)
 	if add {
 		if err := server.bgpServer.AddPeer(context.Background(), &api.AddPeerRequest{
 			Peer: peer,
@@ -162,10 +159,20 @@ func (server *BgpServer) AddOrUpdatePeer(neighbor *BgpPeerSpec) error {
 			return err
 		}
 
-		response, _ := server.bgpServer.GetBgp(context.Background(), nil)
-
-		return nettool.AddPortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		if response.Global.As != 0 && neighbor.UsingPortForward {
+			nettool.AddPortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		}
 	} else {
+		if neighbor.UsingPortForward {
+			nettool.AddPortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		} else {
+			nettool.DeletePortForwardOfBGP(server.bgpIptable, neighbor.Config.NeighborAddress, "", response.Global.ListenPort)
+		}
+
+		if reflect.DeepEqual(foundPeer, neighbor) {
+			return nil
+		}
+
 		if _, err := server.bgpServer.UpdatePeer(context.Background(), &api.UpdatePeerRequest{
 			Peer: peer,
 		}); err != nil {

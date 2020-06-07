@@ -4,13 +4,9 @@ go 1.12
 
 require (
 	cloud.google.com/go v0.44.3 // indirect
-	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/coreos/go-iptables v0.4.2
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v1.13.1
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
@@ -26,16 +22,14 @@ require (
 	github.com/mikioh/ipaddr v0.0.0-20190404000644-d465c8ab6721
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1
-	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/osrg/gobgp v0.0.0-20190401195721-805d02fdfbc5
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0 // indirect
-	github.com/vishvananda/netlink v1.0.0 // indirect
+	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
-	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	google.golang.org/grpc v1.26.0
 	k8s.io/api v0.18.2

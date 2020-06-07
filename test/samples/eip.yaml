@@ -1,7 +1,0 @@
-apiVersion: network.kubesphere.io/v1alpha1
-kind: Eip
-metadata:
-    name: eip-sample-pool
-spec:
-    address: 10.11.11.0/24
-    disable: false

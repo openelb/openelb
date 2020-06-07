@@ -24,45 +24,33 @@ func (r *ServiceReconciler) findEIP(svc *corev1.Service) string {
 	return ""
 }
 
-func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (string, bool, error) {
+func (r *ServiceReconciler) ensureEIP(serv *corev1.Service, foundOrError bool) (string, error) {
 	if ip := r.findEIP(serv); ip != "" {
-		status := r.IPAM.CheckEIPStatus(ip)
+		status := r.DS.GetEIPStatus(ip)
 		if !status.Exist {
-			return "", false, portererror.NewEIPNotFoundError(ip)
+			return "", portererror.PorterError{Code: portererror.EIPNotExist}
 		}
 		if !status.Used {
 			r.Log.Info("Service has eip but not in pool", "Service", serv.Name, "eip", ip)
-			_, err := r.IPAM.AssignSpecifyIP(serv, ip)
+			_, err := r.DS.AssignSpecifyIP(ip, serv.Annotations[constant.PorterProtocolAnnotationKey], serv.Name, serv.Namespace)
 			if err != nil {
 				r.Log.Info("Failed to mark eip as used", "eip", ip)
-				return "", false, err
+				return "", err
 			}
 		}
-		return ip, false, nil
+		return ip, nil
 	}
 
 	if foundOrError {
-		return "", false, portererror.NewEIPNotFoundError("")
+		return "", portererror.PorterError{Code: portererror.EIPNotExist}
 	}
-	resp, err := r.IPAM.AssignIP(serv)
+
+	resp, err := r.DS.AssignIP(serv.Name, serv.Namespace, serv.Annotations[constant.PorterProtocolAnnotationKey])
 	if err != nil {
 		r.Log.Error(nil, "Failed to get an ip from pool")
-		return "", true, err
+		return "", err
 	}
-	return resp.Address, true, nil
-}
-
-func (r *ServiceReconciler) advertiseIP(serv *corev1.Service, ip string, nexthops []string) error {
-
-	if err := r.BgpServer.ReconcileRoutes(ip, 32, nexthops); err != nil {
-		return err
-	}
-	r.Log.Info("Routed added successfully")
-	for _, nexthop := range nexthops {
-		r.Log.Info("Add Route to ", "ip", nexthop)
-	}
-	r.Event(serv, corev1.EventTypeNormal, "BGP Route Pulished", "Route to external-ip added successfully")
-	return nil
+	return resp.Address, nil
 }
 
 func (r *ServiceReconciler) createLB(serv *corev1.Service) error {
@@ -75,110 +63,92 @@ func (r *ServiceReconciler) createLB(serv *corev1.Service) error {
 		r.Log.Error(nil, "Failed to get ip of nodes where endpoints locate in")
 		return err
 	}
-	if nexthops == nil {
-		r.Log.Info("No endpoints is ready now")
-		return nil
-	}
-	ip, newAssign, err := r.ensureEIP(serv, false)
+
+	ip, err := r.ensureEIP(serv, false)
 	if err != nil {
 		return err
 	}
 
-	protocol := r.IPAM.ProtocolForEIP(ip)
-	switch protocol {
-	case constant.PorterProtocolBGP:
-		err = r.advertiseIP(serv, ip, nexthops)
-	case constant.PorterProtocolLayer2:
-		err = r.announcer.SetBalancer(ip, nexthops[0])
-	default:
-		r.Log.Info("invalid protocol", "protocol", protocol, "ip", ip)
-		err = portererror.NewEIPProtocolNotFoundError()
+	if err = r.updateService(serv, ip, false); err != nil {
+		return err
 	}
 
-	if err != nil {
-		if newAssign {
-			r.Log.Info("Failed to advertise ip,try to revoke ip", "ip", ip)
-			revokeErr := r.IPAM.RevokeIP(ip)
-			if revokeErr != nil {
-				panic(revokeErr)
-			}
+	err = r.DS.SetBalancer(ip, nexthops)
+	if err == nil {
+		for _, nexthop := range nexthops {
+			r.Log.Info("Add Route to ", "ip", nexthop)
 		}
-		return err
 	}
 
-	if err = r.updateService(serv, ip, newAssign); err != nil {
-		return err
-	}
 	r.Log.Info(fmt.Sprintf("Pls visit %s:%d to check it out", ip, serv.Spec.Ports[0].Port))
 	return nil
 }
 
-func (r *ServiceReconciler) updateService(serv *corev1.Service, ip string, newAssign bool) error {
+func (r *ServiceReconciler) updateService(serv *corev1.Service, ip string, delete bool) error {
+	log := r.Log.WithValues("ip", ip, "namespace", serv.Namespace, "name", serv.Name)
+
 	found := false
+	var tmpIngress []corev1.LoadBalancerIngress
 	for _, item := range serv.Status.LoadBalancer.Ingress {
 		if item.IP == ip {
 			found = true
-			break
+			if !delete {
+				break
+			} else {
+				continue
+			}
 		}
+		tmpIngress = append(tmpIngress, item)
 	}
-	if !found {
-		r.Log.V(2).Info("Updating service status")
+
+	if found && !delete {
+		return nil
+	}
+
+	if !delete {
+		log.V(2).Info("Updating service status & metadata")
 		serv.Status.LoadBalancer.Ingress = append(serv.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{
 			IP: ip,
 		})
-		if err := r.Status().Update(context.TODO(), serv); err != nil {
-			if newAssign {
-				r.IPAM.RevokeIP(ip)
-			}
-			return err
+
+		if serv.Annotations == nil {
+			serv.Annotations = make(map[string]string)
 		}
-	}
-	r.Log.V(2).Info("Updating service metadata")
-	if serv.Annotations == nil {
-		serv.Annotations = make(map[string]string)
-	}
-	if store, ok := serv.Annotations[constant.PorterEIPAnnotationKey]; !ok || store != ip {
 		serv.Annotations[constant.PorterEIPAnnotationKey] = ip
+	} else {
+		log.V(2).Info("remove ingress from service")
+		serv.Status.LoadBalancer.Ingress = tmpIngress
 	}
-	if _, ok := serv.Annotations[constant.PorterProtocolAnnotationKey]; !ok {
-		serv.Annotations[constant.PorterProtocolAnnotationKey] = r.IPAM.ProtocolForEIP(ip)
-	}
-	if err := r.Update(context.Background(), serv); err != nil {
-		r.Log.Error(err, "Faided to add annotations")
+
+	if err := r.Status().Update(context.TODO(), serv); err != nil {
+		r.DS.UnassignIP(ip)
 		return err
+	} else if delete {
+		return nil
 	}
+
 	r.Event(serv, corev1.EventTypeNormal, "LB Created", fmt.Sprintf("Successfully assign EIP %s", ip))
 	return nil
 }
 
 func (r *ServiceReconciler) deleteLB(serv *corev1.Service) error {
-	ip, _, err := r.ensureEIP(serv, true)
+	log := r.Log.WithValues("namespace", serv.Namespace, "name", serv.Name)
+	ip, err := r.ensureEIP(serv, true)
 	if err != nil {
-		if _, ok := err.(portererror.EIPNotFoundError); ok {
-			r.Log.Info("Have not assign a ip, skip deleting LB")
-			return nil
-		}
-		return err
+		log.Info("EIP not exist, so we can delete service safely")
+		return nil
 	}
-	err = r.IPAM.RevokeIP(ip)
-	if err != nil {
-		r.Log.Info("Failed to revoke ip on service", "ip", ip)
+
+	if err = r.DS.DelBalancer(ip); err != nil {
+		log.Info("Failed to delete router on service", "ip", ip)
 		return err
 	}
 
-	protocol := r.IPAM.ProtocolForEIP(ip)
-	switch protocol {
-	case constant.PorterProtocolBGP:
-		err := r.BgpServer.DeleteAllRoutesOfIP(ip)
-		if err != nil {
-			return err
-		}
-		r.Log.Info("Routed deleted successful")
-	case constant.PorterProtocolLayer2:
-		r.announcer.DeleteBalancer(ip)
-	default:
-		return portererror.NewEIPProtocolNotFoundError()
+	if err = r.DS.UnassignIP(ip); err != nil {
+		log.Info("Failed to revoke ip on service", "ip", ip)
+		return err
 	}
+
 	return nil
 }
 

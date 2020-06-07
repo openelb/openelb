@@ -2,19 +2,19 @@ package serverd
 
 import (
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
+
 	"github.com/go-logr/logr"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/kubesphere/porter/pkg/nettool/iptables"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
-
 	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
-	"strconv"
-	"strings"
 )
 
 type BgpOptions struct {
@@ -37,11 +37,11 @@ func (options *BgpOptions) AddFlags(fs *pflag.FlagSet, c *BgpOptions) {
 type BgpServer struct {
 	bgpServer  *server.BgpServer
 	bgpOptions *BgpOptions
-	Log        logr.Logger
+	log        logr.Logger
 	bgpIptable iptables.IptablesIface
 }
 
-func NewBgpServer(bgpOptions *BgpOptions) *BgpServer {
+func NewBgpServer(bgpOptions *BgpOptions, log logr.Logger, iptable iptables.IptablesIface) *BgpServer {
 	maxSize := 256 << 20
 	grpcOpts := []grpc.ServerOption{grpc.MaxRecvMsgSize(maxSize), grpc.MaxSendMsgSize(maxSize)}
 
@@ -51,7 +51,8 @@ func NewBgpServer(bgpOptions *BgpOptions) *BgpServer {
 	return &BgpServer{
 		bgpServer:  bgpServer,
 		bgpOptions: bgpOptions,
-		bgpIptable: iptables.NewIPTables(),
+		bgpIptable: iptable,
+		log:        log,
 	}
 }
 
@@ -142,10 +143,10 @@ func (server *BgpServer) retriveRoutes(ip string, prefix uint32, nexthops []stri
 	found := false
 	fn := func(d *api.Destination) {
 		found = true
-		server.Log.Info("list paths:", "paths", d.Paths)
+		server.log.Info("list paths:", "paths", d.Paths)
 		for _, path := range d.Paths {
 			nexthop, _ := fromAPIPath(path)
-			server.Log.Info("path nexthop", "nexthop", nexthop)
+			server.log.Info("path nexthop", "nexthop", nexthop)
 			origins[nexthop.String()] = true
 		}
 		//compare
@@ -172,13 +173,28 @@ func (server *BgpServer) retriveRoutes(ip string, prefix uint32, nexthops []stri
 	return
 }
 
-func (server *BgpServer) ReconcileRoutes(ip string, prefix uint32, nexthops []string) error {
+func (server *BgpServer) ready() bool {
+	response, _ := server.bgpServer.GetBgp(context.Background(), nil)
+	if response.Global.As == 0 {
+		server.log.Info("Bgp not ready, please config bgpconf/bgppeer")
+		return false
+	}
+
+	return true
+}
+
+func (server *BgpServer) SetBalancer(ip string, nexthops []string) error {
+	if !server.ready() {
+		return nil
+	}
+
+	prefix := uint32(32)
 	err, toAdd, toDelete := server.retriveRoutes(ip, prefix, nexthops)
 	if err != nil {
 		return err
 	}
 
-	server.Log.Info("update router:", "toAdd", toAdd, "toDelete", toDelete)
+	server.log.Info("update router:", "toAdd", toAdd, "toDelete", toDelete)
 	err = server.addMultiRoutes(ip, prefix, toAdd)
 	if err != nil {
 		return err
@@ -193,7 +209,7 @@ func (server *BgpServer) ReconcileRoutes(ip string, prefix uint32, nexthops []st
 func (server *BgpServer) addMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
-		server.Log.Info("add path:", "apiPath", apipath)
+		server.log.Info("add path:", "apiPath", apipath)
 		_, err := server.bgpServer.AddPath(context.Background(), &api.AddPathRequest{
 			Path: apipath,
 		})
@@ -207,7 +223,7 @@ func (server *BgpServer) addMultiRoutes(ip string, prefix uint32, nexthops []str
 func (server *BgpServer) deleteMultiRoutes(ip string, prefix uint32, nexthops []string) error {
 	for _, nexthop := range nexthops {
 		apipath := toAPIPath(ip, prefix, nexthop)
-		server.Log.Info("delete path:", "apiPath", apipath)
+		server.log.Info("delete path:", "apiPath", apipath)
 		err := server.bgpServer.DeletePath(context.Background(), &api.DeletePathRequest{
 			Path: apipath,
 		})
@@ -218,7 +234,11 @@ func (server *BgpServer) deleteMultiRoutes(ip string, prefix uint32, nexthops []
 	return nil
 }
 
-func (server *BgpServer) DeleteAllRoutesOfIP(ip string) error {
+func (server *BgpServer) DelBalancer(ip string) error {
+	if !server.ready() {
+		return nil
+	}
+
 	lookup := &api.TableLookupPrefix{
 		Prefix: ip,
 	}
@@ -246,4 +266,9 @@ func (server *BgpServer) DeleteAllRoutesOfIP(ip string) error {
 		return errDelete
 	}
 	return nil
+}
+
+type AnnounceBgp interface {
+	SetBalancer(ip string, nexthops []string) error
+	DelBalancer(ip string) error
 }

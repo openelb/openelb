@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,8 +38,68 @@ type BgpPeer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   bgpserver.BgpPeerSpec `json:"spec,omitempty"`
-	Status BgpPeerStatus         `json:"status,omitempty"`
+	Spec   BgpPeerSpec   `json:"spec,omitempty"`
+	Status BgpPeerStatus `json:"status,omitempty"`
+}
+
+type BgpPeerSpec struct {
+	// original -> bgp:neighbor-address
+	// original -> bgp:neighbor-config
+	// Configuration parameters relating to the BGP neighbor or
+	// group.
+	Config NeighborConfig `mapstructure:"config" json:"config,omitempty"`
+
+	// original -> bgp:add-paths
+	// Parameters relating to the advertisement and receipt of
+	// multiple paths for a single NLRI (add-paths).
+	AddPaths AddPaths `mapstructure:"add-paths" json:"addPaths,omitempty"`
+
+	// original -> bgp:transport
+	// Transport session parameters for the BGP neighbor or group.
+	Transport Transport `mapstructure:"transport" json:"transport,omitempty"`
+
+	UsingPortForward bool `json:"usingPortForward,omitempty" mapstructure:"using-port-forward"`
+}
+
+// struct for container bgp:transport.
+// Transport session parameters for the BGP neighbor or group.
+type Transport struct {
+	// original -> bgp:passive-mode
+	// bgp:passive-mode's original type is boolean.
+	// Wait for peers to issue requests to open a BGP session,
+	// rather than initiating sessions from the local router.
+	PassiveMode bool `mapstructure:"passive-mode" json:"passiveMode,omitempty"`
+
+	// original -> gobgp:remote-port
+	// gobgp:remote-port's original type is inet:port-number.
+	RemotePort uint16 `mapstructure:"remote-port" json:"remotePort,omitempty"`
+}
+
+// struct for container bgp:add-paths.
+// Parameters relating to the advertisement and receipt of
+// multiple paths for a single NLRI (add-paths).
+type AddPaths struct {
+	// original -> bgp:send-max
+	// The maximum number of paths to advertise to neighbors
+	// for a single NLRI.
+	SendMax uint8 `mapstructure:"send-max" json:"sendMax,omitempty"`
+}
+
+// struct for container bgp:config.
+// Configuration parameters relating to the BGP neighbor or
+// group.
+type NeighborConfig struct {
+	// original -> bgp:peer-as
+	// bgp:peer-as's original type is inet:as-number.
+	// AS number of the peer.
+	PeerAs uint32 `mapstructure:"peer-as" json:"peerAs,required"`
+
+	// original -> bgp:neighbor-address
+	// bgp:neighbor-address's original type is inet:ip-address.
+	// Address of the BGP peer, either in IPv4 or IPv6.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	NeighborAddress string `mapstructure:"neighbor-address" json:"neighborAddress,required"`
 }
 
 // +kubebuilder:object:root=true
