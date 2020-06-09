@@ -35,8 +35,8 @@ Porter LB controller 是基于 [Kubernetes controller runtime](https://github.co
 
 ## 部署插件
 
-1. [在物理部署的 k8s 集群上部署](doc/deploy_baremetal.md)
-2. [在青云上用模拟路由器的方式测试](doc/simulate_with_bird.md)
+1. [在物理部署的 k8s 集群上部署](doc/zh/deploy_baremetal.md)
+2. [在青云上用模拟路由器的方式测试](doc/zh/simulate_with_bird.md)
 
 ## 从代码构建新的插件
 
