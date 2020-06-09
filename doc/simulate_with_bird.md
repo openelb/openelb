@@ -49,7 +49,7 @@
     $sudo systemctl restart bird 
    ```
 
-4. Configure the public IP. Apply for an **internal binding** public network IP on the QingCloud console. Note that it must be an internal binding IP. If it is external binding, the public IP cannot be found. Bind this IP to the host where the simulated router is located. You only need to complete the binding. There is no need to follow up with the QingCloud documentation.
+4. Configure the Elastic IP. Apply an Elastic IP that **Associate Mode is Internal** on the QingCloud console. Please note that EIP must be an internal associate mode. If it is an external associate mode, EIP cannot be found in VM. Associate this EIP to the VM where the simulated router is located. You only need to complete the associate. There is no need to follow up with the QingCloud documentation.
 
 5. A new network card (usually eth1) will be created when the IP is bound to the QingCloud host. Run `ip a` on the host to check whether the network card is `UP`.  If not, execute `ip link set up eth1`. 
 
