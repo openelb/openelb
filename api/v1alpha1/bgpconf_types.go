@@ -58,6 +58,8 @@ type BgpConfSpec struct {
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
 	RouterId string `mapstructure:"router-id" json:"routerID,required"`
 	// original -> gobgp:port
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `mapstructure:"port" json:"port,required"`
 }
 

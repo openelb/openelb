@@ -72,6 +72,8 @@ type Transport struct {
 
 	// original -> gobgp:remote-port
 	// gobgp:remote-port's original type is inet:port-number.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	RemotePort uint16 `mapstructure:"remote-port" json:"remotePort,omitempty"`
 }
 
