@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter:v0.1.1
-IMG_AGENT ?= kubespheredev/porter-agent:v0.1.1
+IMG_MANAGER ?= kubespheredev/porter:v0.3-dev
+IMG_AGENT ?= kubespheredev/porter-agent:v0.3-dev
 NAMESPACE ?= porter-system
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
