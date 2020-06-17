@@ -12,34 +12,9 @@ import (
 	"github.com/kubesphere/porter/pkg/nettool/iptables"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
-	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
-
-type BgpOptions struct {
-	GrpcHosts       string `long:"api-hosts" description:"specify the hosts that gobgpd listens on" default:":50051"`
-	GracefulRestart bool   `short:"r" long:"graceful-restart" description:"flag restart-state in graceful-restart capability"`
-}
-
-func NewBgpOptions() *BgpOptions {
-	return &BgpOptions{
-		GrpcHosts:       ":50051",
-		GracefulRestart: true,
-	}
-}
-
-func (options *BgpOptions) AddFlags(fs *pflag.FlagSet, c *BgpOptions) {
-	fs.StringVar(&options.GrpcHosts, "api-hosts", c.GrpcHosts, "specify the hosts that gobgpd listens on")
-	fs.BoolVar(&options.GracefulRestart, "r", false, "flag restart-state in graceful-restart capability")
-}
-
-type BgpServer struct {
-	bgpServer  *server.BgpServer
-	bgpOptions *BgpOptions
-	log        logr.Logger
-	bgpIptable iptables.IptablesIface
-}
 
 func NewBgpServer(bgpOptions *BgpOptions, log logr.Logger, iptable iptables.IptablesIface) *BgpServer {
 	maxSize := 256 << 20

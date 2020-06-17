@@ -44,6 +44,8 @@ spec:
             port:
               description: original -> gobgp:port
               format: int32
+              maximum: 65535
+              minimum: 1
               type: integer
             routerID:
               description: original -> bgp:router-id bgp:router-id's original type

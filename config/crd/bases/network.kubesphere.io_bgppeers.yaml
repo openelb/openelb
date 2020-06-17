@@ -73,6 +73,8 @@ spec:
                 remotePort:
                   description: original -> gobgp:remote-port gobgp:remote-port's original
                     type is inet:port-number.
+                  maximum: 65535
+                  minimum: 1
                   type: integer
               type: object
             usingPortForward:

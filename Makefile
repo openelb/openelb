@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter:v0.1.1
-IMG_AGENT ?= kubespheredev/porter-agent:v0.1.1
+IMG_MANAGER ?= kubespheredev/porter:v0.3-dev
+IMG_AGENT ?= kubespheredev/porter-agent:v0.3-dev
 NAMESPACE ?= porter-system
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
@@ -56,9 +56,6 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-debug: vet
-	./hack/test.sh -m debug
-
 clean-up:
 	./hack/cleanup.sh
 
@@ -79,11 +76,3 @@ endif
 install-travis:
 	chmod +x ./hack/*.sh
 	./hack/install_tools.sh
-
-e2e-test: vet
-	./hack/test.sh
-e2e-nobuild:
-	./hack/test.sh --skip-build
-
-docker-ut:
-	docker run --rm -v "${PWD}":/usr/src/github.com/kubesphere/porter -w /usr/src/github.com/kubesphere/porter golang:1.13-alpine  go test -v ./pkg/nettool/

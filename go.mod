@@ -25,6 +25,7 @@ require (
 	github.com/osrg/gobgp v0.0.0-20190401195721-805d02fdfbc5
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/prometheus/client_golang v1.1.0 // indirect
+	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0 // indirect
@@ -34,6 +35,8 @@ require (
 	google.golang.org/grpc v1.26.0
 	k8s.io/api v0.18.2
 	k8s.io/apimachinery v0.18.2
+	k8s.io/apiserver v0.18.2
 	k8s.io/client-go v0.18.2
+	k8s.io/component-base v0.18.2
 	sigs.k8s.io/controller-runtime v0.6.0
 )
