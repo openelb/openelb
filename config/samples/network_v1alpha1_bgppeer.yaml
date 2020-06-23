@@ -7,5 +7,5 @@ spec:
   config:
     peerAs : 65001
     neighborAddress: 192.168.0.6
-  addAaths:
+  addPaths:
     sendMax: 10
