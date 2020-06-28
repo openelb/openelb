@@ -1,6 +1,6 @@
-# porter chart
+# Porter Chart
 
-# install porter chart
+# Install Porter using Helm Chart
 
 ```bash 
 helm repo add test https://charts.kubesphere.io/test
@@ -8,9 +8,9 @@ help repo update
 helm install porter test/porter
 ```
 
-# layer2 mode
+# Layer 2 mode
 
-## pre-requisites
+## Prerequistes
 
 - Requires Kubernetes `1.17.3` or above
 
