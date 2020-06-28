@@ -95,7 +95,7 @@ $ curl 192.168.3.100:8088
 
 # BGP mode
 
-## pre-requisites
+## Prerequistes
 
 - Requires Kubernetes `1.17.3` or above.
 
