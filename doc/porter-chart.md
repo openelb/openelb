@@ -188,7 +188,7 @@ kind: Eip
 metadata:
     name: eip-sample-pool
 spec:
-    # 修改ip地址段为实际环境的ip地址段。
+    # Modify the ip address segment to the ip address segment of the actual environment.
     address: 10.55.0.100
     protocol: bgp
     disable: false
@@ -198,7 +198,7 @@ kind: BgpConf
 metadata:
   name: bgpconf-sample
 spec:
-  # 设置porter的as域
+  # the as of porter
   as : 65000
   routerID : 10.55.0.124
   port: 17900
@@ -208,7 +208,7 @@ kind: BgpPeer
 metadata:
   name: bgppeer-sample
 spec:
-  # 设置需要建立连接的as域，这里使用route的as域
+  # the as of the router
   config:
     peerAs : 65001
     neighborAddress: 10.55.0.127
