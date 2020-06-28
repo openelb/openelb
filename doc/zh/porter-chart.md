@@ -3,16 +3,16 @@
 # 安装porter chart
 
 ```bash 
-git clone https://github.com/kubesphere/helm-charts.git
-cd helm-charts/src/test
-helm install porter porter
+helm repo add test https://charts.kubesphere.io/test
+help repo update
+helm install porter test/porter
 ```
 
 # layer2模式
 
 ## 前提条件
 
-- kubernetes集群，版本1.17.3及以上
+- Kubernetes集群，版本1.17.3及以上
 
 - 局域网内一台linux机器hostA，用于检测nginx的LoadBalancer
 
@@ -36,7 +36,7 @@ eip.network.kubesphere.io/eip-sample-pool created
 
 ## 部署nginx
 
-在kubernetes集群上:
+在Kubernetes集群上:
 
 ```bash
 $ cat << EOF > nginx-layer2.yaml
@@ -97,9 +97,9 @@ $ curl 192.168.3.100:8088
 
 ## 前提条件
 
-- kubernetes集群，版本1.17.3及以上。
+- Kubernetes集群，版本1.17.3及以上。
 
-- 开启bgp的路由器。在这里我们将在Centos7系统上安装bird，使用bird实现bgp路由功能。我们以route称这台机器。
+- 开启bgp的路由器。在这里我们将在Centos7系统上安装bird，使用bird实现bgp路由功能。我们以router称这台机器。
 
 - 局域网内一台linux机器hostA，用于检测nginx的LoadBalancer
 
@@ -108,26 +108,26 @@ $ curl 192.168.3.100:8088
 ```bash
  ________________             ________________              ________________
 |               |            |                |            |                | 
-| k8s cluster   | <--------- |     route      | <--------- |   other host   |
+| k8s cluster   | <--------- |     router     | <--------- |   other host   |
 |_______________|            |________________|            |________________|
 ```
 
-- route在这里是一个路由器，实验中我们没有具有bgp功能的路由器，因此使用一台主机替代。
+- router在这里是一个路由器，实验中我们没有具有bgp功能的路由器，因此使用一台主机替代。
 
-- 其他主机将包发送个route，route在将包发送给k8s cluster。
+- 其他主机将包发送个router，router在将包发送给k8s cluster。
 
-- k8s cluster需要使用bgp和route建立连接，因此两者的as域必须不一样。
+- k8s cluster需要使用bgp和router建立连接，因此两者的as域必须不一样。
 
-## route配置
+## router配置
 
-在route上安装bgp
+在router上安装bgp
 
 ```bash
 $ yum install bird 
 $ systemctl enable bird
 ```
 
-在route上配置bgp，如下
+在router上配置bgp，如下
 
 ```bash
 cat /etc/bird.conf
@@ -157,14 +157,14 @@ protocol bgp mymaster {
 }
 ```
 
-在route上启动bird，并设置ipv4转发。
+在router上启动bird，并设置ipv4转发。
 
 ```bash
 $ systemctl restart bird
 $ sysctl -w net.ipv4.ip_forward=1
 ```
 
-在route上查看配置是否生效,你会看到新添一条mymaster规则。
+在router上查看配置是否生效,你会看到新添一条mymaster规则。
 
 ```bash
 $ birdc show protocol
@@ -177,9 +177,9 @@ mymaster BGP      master   start  18:01:55    Active        Socket: Connection r
 ```
 
 
-## 在porter和route上建立bgp连接
+## 在porter和router上建立bgp连接
 
-在kubernetes上:
+在Kubernetes上:
 
 ```bash 
 $ cat << EOF > bgp.yaml
@@ -221,7 +221,7 @@ bgpconf.network.kubesphere.io/bgpconf-sample created
 bgppeer.network.kubesphere.io/bgppeer-sample created
 ```
 
-在route上查看是否建立连接,info信息显示Established表示建立连接。
+在router上查看是否建立连接,info信息显示Established表示建立连接。
 
 ```bash
 $ birdc show protocol
@@ -281,7 +281,7 @@ service/nginx-service created
 
 ## 访问nginx服务
 
-如果局域网内其他机器想要访问nginx，需要在设置路由。将包转发给route。
+如果局域网内其他机器想要访问nginx，需要在设置路由。将包转发给router。
 
 ```bash
 $ #-host指单台机器，如果需要指定网段请使用-net
