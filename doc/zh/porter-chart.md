@@ -93,13 +93,13 @@ default       nginx-service   LoadBalancer   10.100.5.90   192.168.3.100   8088:
 $ curl 192.168.3.100:8088
 ```
 
-# bgp 模式
+# BGP 模式
 
 ## 前提条件
 
 - Kubernetes集群，版本1.17.3及以上。
 
-- 开启bgp的路由器。在这里我们将在Centos7系统上安装bird，使用bird实现bgp路由功能。我们以router称这台机器。
+- 开启BGP的路由器。在这里我们将在Centos7系统上安装bird，使用bird实现BGP路由功能。我们以router称这台机器。
 
 - 局域网内一台linux机器hostA，用于检测nginx的LoadBalancer
 
@@ -116,18 +116,18 @@ $ curl 192.168.3.100:8088
 
 - 其他主机将包发送个router，router在将包发送给k8s cluster。
 
-- k8s cluster需要使用bgp和router建立连接，因此两者的as域必须不一样。
+- k8s cluster需要使用BGP协议和router建立连接，因此两者的as域必须不一样。
 
 ## router配置
 
-在router上安装bgp
+在router上安装bird
 
 ```bash
 $ yum install bird 
 $ systemctl enable bird
 ```
 
-在router上配置bgp，如下
+在router上配置BGP，如下
 
 ```bash
 cat /etc/bird.conf
@@ -177,7 +177,7 @@ mymaster BGP      master   start  18:01:55    Active        Socket: Connection r
 ```
 
 
-## 在porter和router上建立bgp连接
+## 在porter和router上建立BGP连接
 
 在Kubernetes上:
 
