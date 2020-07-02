@@ -1,8 +1,8 @@
-# 使用 Helm Chart 安装 Porter
+# Porter Chart
 
-> [English](../porter-chart.md) | 中文
+> English | [中文](zh/porter-chart.md)
 
-# 安装 Porter
+# Install Porter using Helm Chart
 
 ```bash 
 helm repo add test https://charts.kubesphere.io/test
@@ -10,15 +10,15 @@ helm repo update
 helm install porter test/porter
 ```
 
-# layer2模式
+# Layer 2 mode
 
-## 前提条件
+## Prerequistes
 
-- Kubernetes集群，版本1.17.3及以上
+- Requires Kubernetes `1.17.3` or above
 
-- 局域网内一台linux机器hostA，用于检测nginx的LoadBalancer
+- A linux machine, used to detect LoadBalancer of nginx
 
-## 配置layer2
+## Configure layer2 in kubernetes
 
 ```bash 
 $ cat << EOF > layer2.yaml
@@ -27,7 +27,7 @@ kind: Eip
 metadata:
     name: eip-sample-pool
 spec:
-    # 修改ip地址段为实际环境的ip地址段。可以为单个地址或者是地址段
+    # Modify the ip address segment to the ip address segment of the actual environment. It can be a single address or an address segment
     address: 192.168.3.100
     protocol: layer2
     disable: false
@@ -36,9 +36,9 @@ $ kubectl apply -f layer2.yaml
 eip.network.kubesphere.io/eip-sample-pool created
 ```
 
-## 部署nginx
+## Deploy Nginx App
 
-在Kubernetes集群上:
+Execute commands on Kubernetes cluster:
 
 ```bash
 $ cat << EOF > nginx-layer2.yaml
@@ -87,25 +87,25 @@ default       kubernetes      ClusterIP      10.96.0.1     <none>          443/T
 default       nginx-service   LoadBalancer   10.100.5.90   192.168.3.100   8088:32063/TCP           50s
 ```
 
-## 访问nginx服务
+## Access Nginx Service
 
-在hostA访问nginx
+Execute commands on linux:
 
 ```bash
 $ curl 192.168.3.100:8088
 ```
 
-# BGP 模式
+# BGP mode
 
-## 前提条件
+## Prerequistes
 
-- Kubernetes集群，版本1.17.3及以上。
+- Requires Kubernetes `1.17.3` or above.
 
-- 开启BGP的路由器。在这里我们将在Centos7系统上安装bird，使用bird实现BGP路由功能。我们以Router称这台机器。
+- Require `Router` to start BGP mode.We will install bird on Centos7 system and use bird to implement BGP routing function. We call this machine `Router`.
 
-- 局域网内一台linux机器hostA，用于检测nginx的LoadBalancer
+- A linux machine, used to detect LoadBalancer of nginx
 
-## 网络图
+## Network diagram
 
 ```bash
  ________________             ________________              ________________
@@ -114,22 +114,22 @@ $ curl 192.168.3.100:8088
 |_______________|            |________________|            |________________|
 ```
 
-- Router在这里是一个路由器，实验中我们没有具有bgp功能的路由器，因此使用一台主机替代。
+- We use bird to implement BGP mode on centos7 system.
 
-- 其他主机将包发送个Router，Router在将包发送给k8s cluster。
+- Other hosts send packets to a `Router`, and the `Router` is sending packets to the k8s cluster.
 
-- k8s cluster需要使用BGP协议和Router建立连接，因此两者的as域必须不一样。
+- The k8s cluster needs to use BGP to establish a connection with the `Router`, so the `as`  of the two must be different.
 
-## Router 配置
+## Configure on Router
 
-在 Router 上安装 Bird
+Install bird on `Router`:
 
 ```bash
 $ yum install bird 
 $ systemctl enable bird
 ```
 
-在 Router 上配置 BGP，如下
+Configure BGP on the `Router` as follows:
 
 ```bash
 cat /etc/bird.conf
@@ -148,10 +148,10 @@ protocol static {
 }
 
 protocol bgp mymaster {   
-    description "10.55.0.127";                  # 本机ip地址
-    local as 65001;                             # as域，必须和port-manager的as域不一样
-    neighbor 10.55.0.124 port 17900 as 65000;   # port-manager的as域不一样
-    source address 10.55.0.127;                 # 本机ip地址
+    description "10.55.0.127";                  # local ip
+    local as 65001;                             # local as.It must be different from the as of the port-manager
+    neighbor 10.55.0.124 port 17900 as 65000;   # Master node IP and AS number
+    source address 10.55.0.127;                 # Router IP 
     import all; 
     export all;
     enable route refresh off;
@@ -159,14 +159,14 @@ protocol bgp mymaster {
 }
 ```
 
-在Router上启动bird，并设置ipv4转发。
+Start bird on the `Router` and set ipv4 forwarding:
 
 ```bash
 $ systemctl restart bird
 $ sysctl -w net.ipv4.ip_forward=1
 ```
 
-在Router上查看配置是否生效,你会看到新添一条mymaster规则。
+Check whether the configuration takes effect on the `Router`, you will see `mymaster` rule.
 
 ```bash
 $ birdc show protocol
@@ -178,9 +178,10 @@ static1  Static   master   up     18:01:55
 mymaster BGP      master   start  18:01:55    Active        Socket: Connection refused
 ```
 
-## 在 Porter 和 Router 上建立 BGP 连接
 
-在Kubernetes上:
+## Establish BGP connection on porter and Router
+
+Execute commands on Kubernetes cluster:
 
 ```bash 
 $ cat << EOF > bgp.yaml
@@ -189,7 +190,7 @@ kind: Eip
 metadata:
     name: eip-sample-pool
 spec:
-    # 修改ip地址段为实际环境的ip地址段。
+    # Modify the ip address segment to the ip address segment of the actual environment.
     address: 10.55.0.100
     protocol: bgp
     disable: false
@@ -199,7 +200,7 @@ kind: BgpConf
 metadata:
   name: bgpconf-sample
 spec:
-  # 设置porter的as域
+  # the as of porter
   as : 65000
   routerID : 10.55.0.124
   port: 17900
@@ -209,7 +210,7 @@ kind: BgpPeer
 metadata:
   name: bgppeer-sample
 spec:
-  # 设置需要建立连接的as域，这里使用route的as域
+  # the as of the Router
   config:
     peerAs : 65001
     neighborAddress: 10.55.0.127
@@ -222,7 +223,7 @@ bgpconf.network.kubesphere.io/bgpconf-sample created
 bgppeer.network.kubesphere.io/bgppeer-sample created
 ```
 
-在Router上查看是否建立连接,info信息显示Established表示建立连接。
+Check whether the connection is established on the `Router`, and the info information shows `Established` means the connection is established.
 
 ```bash
 $ birdc show protocol
@@ -234,7 +235,7 @@ static1  Static   master   up     18:10:39
 mymaster BGP      master   up     18:15:45    Established
 ```
 
-## 部署nginx
+## Deploy Nginx App
 
 ```bash 
 $ cat << EOF > nginx-bgp.yaml
@@ -280,15 +281,14 @@ deployment.apps/nginx-deployment created
 service/nginx-service created
 ```
 
-## 访问nginx服务
+## Access Nginx Service
 
-如果局域网内其他机器想要访问nginx，需要在设置路由。将包转发给Router。
+If other machines in the LAN want to access nginx, you need to set up routing. Forward the packet to the `Router`.
 
 ```bash
-$ #-host指单台机器，如果需要指定网段请使用-net
-$ #192.168.3.100指应用服务的地址，这里使用nginx service地址
-$ #192.168.3.85指route地址。
-$ #eth0指网卡
+$ # "-host" refers to a single machine, if you need to specify a network segment, please use "-net"
+$ #"192.168.3.100" refers to the address of the application service.This use the nginx service address
+$ #"192.168.3.85" refers to the Router address.
 $ route add -host 192.168.3.100 gw 192.168.3.85 eth0
 ```
 
