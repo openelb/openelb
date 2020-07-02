@@ -116,7 +116,6 @@
     spec:
         address: 139.198.121.228
         protocol: bgp
-        disable: false
     EOF 
    ```
 6. Deploy a service in kubernetes. The Service must add the following annotations, and the type must also be specified as LoadBalancer:

@@ -1,5 +1,6 @@
 #Preparation
-Normally, Nic will answer arp request which ip not reside on it. In order to let porter-manager
+
+Normally, Nic will answer ARP request which ip not reside on it. In order to let porter-manager
 control all arp reply for layer2 eip, we should config kube-proxy strictARP.
 ```yaml
 kubectl edit configmap -n kube-system kube-proxy
@@ -27,7 +28,6 @@ metadata:
 spec:
     address: 10.11.11.0/24
     protocol: layer2
-    disable: false
 EOF
 ```
 

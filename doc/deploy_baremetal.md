@@ -87,7 +87,6 @@
         name: eip-sample-pool
     spec:
         address: 10.11.11.0/24
-        disable: false
     EOF
     ```
     Sample: [EIP](https://github.com/kubesphere/porter/blob/master/test/samples/eip.yaml)   
