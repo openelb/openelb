@@ -81,8 +81,8 @@ Apparently, Porter is similar to MetalLB, both are service proxy, and they are d
 
 ## Documentation
 
-[Porter Documentation (En)](doc)
-[Porter Documentation (中)](doc/zh)
+- [Porter Documentation (En)](doc)
+- [Porter Documentation (中)](doc/zh)
 
 ## Landscapes
 
