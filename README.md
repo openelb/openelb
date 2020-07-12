@@ -3,6 +3,8 @@
 
 # Porter
 
+![logo](doc/img/porter-logo.png)
+
 > English | [中文](README_zh.md)
 
 ## What is Porter
@@ -13,18 +15,17 @@
 
 As we know, In the cloud-hosted Kubernetes cluster, the cloud providers (AWS, GCP, Azure, etc.) usually provide the Load Balancer to assign IPs and expose the service to outside.
 
-However, the service is hard to expose in a bare metal cluster since Kubernetes does not provide a load-balancer for bare metal environment. Fortunately, Porter allows you to create Kubernetes services of type "LoadBalancer" in bare metal clusters, which makes you have consistent experience with the cloud.
+However, the service is hard to expose in a bare metal cluster since Kubernetes does not provide a load-balancer solution for bare metal environment. Fortunately, Porter allows you to create Kubernetes services of type "LoadBalancer" in bare metal clusters, which makes you have consistent experience with the cloud.
 
 ## Core Features
 
-Porter has two components which provide the following core features:
-
-- LB Controller & Agent: The controller is responsible for synchronizing BGP routes to the physical switch; The agent is deployed to each node as DaemonSet to maintain the drainage rules;
-
-- EIP service, including the EIP pool management and EIP controller, the controller is responsible for dynamically updating the EIP information of the service.
-
-> Note: Porter is a subproject of [KubeSphere](https://github.com/kubesphere/kubesphere).
-
+- ECMP routing load balancing
+- BGP dynamic routing configuration
+- VIP management
+- LoadBalancerIP assignment in Kubernetes services
+- Installation with Helm Chart
+- Dynamic BGP server configuration through CRD
+- Dynamic BGP peer configuration through CRD
 
 ## Principle
 
@@ -35,6 +36,14 @@ The following figure describes the principle of Porter. Assuming there is a dist
 ## Deployment Architecture
 
 Porter serves as a Load-Balancer plugin, monitoring the changes of the service in the cluster through a `Manager`, and advertises related routes. At the same time, all the nodes in the cluster are deployed with an agent. Each time an EIP is used, a host routing rule will be added to the host, diverting the IP packets sent to the EIP to the local.
+
+### Components
+
+Porter has two components:
+
+- LB Controller & Agent: The controller is responsible for synchronizing BGP routes to the physical switch; The agent is deployed to each node as DaemonSet to maintain the drainage rules;
+
+- EIP service, including the EIP pool management and EIP controller, the controller is responsible for dynamically updating the EIP information of the service.
 
 ![porter deployment](doc/img/porter-deployment.png)
 
@@ -48,27 +57,42 @@ The Porter LB controller is a custom controller based on the [Kubernetes control
 
 ## Installation
 
-1. [Deploy Porter on Bare Metal Kubernetes Cluster](doc/deploy_baremetal.md)
-2. [Test Porter on QingCloud with a Simulated Router](doc/simulate_with_bird.md)
+1. [Porter Helm Chart: Deploy Porter on Kubernetes Cluster (Recommend)](doc/porter-chart.md)
+2. [Deploy Porter on Bare Metal Kubernetes Cluster](doc/deploy_baremetal.md)
+3. [Test Porter on Cloud Platform with a Simulated Router](doc/simulate_with_bird.md)
 
 ## Build
 
-### Prerequisites
+See [How to Build Porter Project](doc/how-to-build.md) for more details.
 
-1. Go 1.11, the plugin uses [gobgp](https://github.com/osrg/gobgp) to create BGP client, and godgp requires Go 1.11.
-2. Docker
-3. Kustomize，it uses [kustomize](https://github.com/kubernetes-sigs/kustomize/blob/master/docs/INSTALL.md) to dynamically generate the k8s yaml files needed for the cluster.
-4. If you need to push the plugin image to the remote private repository, you need to execute `docker login` in advance.
+## Compared with MetalLB
 
-### Steps
+Apparently, Porter is similar to MetalLB, both are service proxy, and they are designed for bare metal Kubernetes clusters as well.
 
-1. Execute `git clone https://github.com/kubesphere/porter.git`, then enter into the folder.
-2. Following with the above guides to modify the config.toml (Under `config/bgp/`).
-3. (Optional）Modify the code according to your needs.
-4. (Optional）Modify the parameters of the image according to your needs (Under `config/manager`).
-5. (Optional）Follow the [Simulation Tutorial](doc/simulate_with_bird.md) to deploy a Bird node, then modify the BirdIP in `hack/test.sh`, and run `make e2e-test` for e2e testing.
-6. Modify the IMG name in the Makefile, then run `make release`, and the final yaml file is under `/deploy`.
-7. Execute `kubectl apply -f deploy/release.yaml` to deploy porter as a plugin.
+### Pros
+- Support most BGP features and multiple network architectures.
+- A Kubernetes-friendly tool based on CRD-Controller that can be controlled entirely by kubectl.
+- The configuration file can be updated dynamically without any restart. BGP configurations are automatically updated based on the network environment. Various BGP features can be dynamically adopted.
+- Provide Passive mode and support DNAT.
+- Conflicts with Calico can be handled in a more friendly way.
+
+### Cons
+- Support Linux only.
+
+## Documentation
+
+[Porter Documentation (En)](doc)
+[Porter Documentation (中)](doc/zh)
+
+## Landscapes
+
+<p align="center">
+<br/><br/>
+<img src="https://landscape.cncf.io/images/left-logo.svg" width="150"/>&nbsp;&nbsp;<img src="https://landscape.cncf.io/images/right-logo.svg" width="200"/>&nbsp;&nbsp;
+<br/><br/>
+Porter is a promising newcomer in service proxy, which enriches the <a href="https://landscape.cncf.io/landscape=observability-and-analysis&license=apache-license-2-0">CNCF CLOUD NATIVE Landscape.
+</a>
+</p>
 
 ## License
 
