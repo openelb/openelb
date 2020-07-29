@@ -1,4 +1,4 @@
-#Layer2
+# Layer2
 
 [Layer2 guide](layer2.md) demonstrates how to install Porter and use Layer 2 on Kubernetes.
 
