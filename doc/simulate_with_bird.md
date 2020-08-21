@@ -81,7 +81,7 @@
     ```
     In the above output, `139.198.121.228` is the bound IP, and the left side of the `>` is the address of the upper router. Configure the rules for returning packets through routing policies:
     ```bash
-    sudo ip rule add from 139.198.254.4/32 lookup 101 # If the packet comes from this IP, then go to the routing table 101
+    sudo ip rule add to 139.198.254.4/32 lookup 101 # If the packet comes from this IP, then go to the routing table 101
     sudo ip route replace default dev eth1 table 101  # Set the default network card of routing table 101 to eth1
     ```
     The actual physical router does not need to configure the above rules, because the router knows how to configure this IP correctly. **If you need to access and test ECMP from multiple IP addresses, then these IPs also need to be configured with the same steps**

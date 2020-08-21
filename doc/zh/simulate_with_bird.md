@@ -80,7 +80,7 @@
     ```
     上述打印输出中，`139.198.121.228`是绑定的ip，左边即上层路由器的地址。获取到这个地址之后，通过路由策略配置回去的规则：
     ```bash
-    sudo ip rule add from 139.198.254.4/32 lookup 101 #返回这个ip的包走路由表101
+    sudo ip rule add to 139.198.254.4/32 lookup 101 #返回这个ip的包走路由表101
     sudo ip route replace default dev eth1 table 101 #路由表101的默认网卡是eth1
     ```
     实际物理路由器不需要配置上述规则，因为路由器知道如何正确配置这个ip。**如果需要从多个ip地址访问测试ECMP，那么这些IP也需要相同的步骤**
