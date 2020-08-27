@@ -1,0 +1,26 @@
+name: Docker
+
+on:
+  push:
+    branches: [ master ]
+    tags: ['*']
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v1.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: kubesphere/porter
+          dockerfile: ./Dockerfile
+          tag_with_ref: true
+          push: true
