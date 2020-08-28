@@ -10,7 +10,7 @@ WORKDIR /go/src/github.com/kubesphere/porter
 RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/kubesphere/porter/cmd/...
 
 FROM alpine:3.9
-RUN apk add --update ca-certificates && update-ca-certificates
+RUN apk add --update ca-certificates iptables && update-ca-certificates
 COPY --from=porter-builder /go/bin/agent /usr/local/bin/
 COPY --from=porter-builder /go/bin/manager /usr/local/bin/
 CMD ["sh"]

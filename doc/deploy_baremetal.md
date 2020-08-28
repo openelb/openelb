@@ -117,8 +117,8 @@
         type:  LoadBalancer 
         ports:
         - name:  http
-        port:  8088
-        targetPort:  80
+          port:  8088
+          targetPort:  80
     ```
     Sample: [Service](https://github.com/kubesphere/porter/blob/master/test/samples/test.yaml)  
 
