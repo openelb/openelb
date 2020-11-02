@@ -60,9 +60,14 @@ clean-up:
 	./hack/cleanup.sh
 
 release:
-	./hack/deploy.sh ${IMG_MANAGER} manager
-	./hack/deploy.sh ${IMG_AGENT} agent
-	
+	export DOCKER_CLI_EXPERIMENTAL=enabled
+	GOOS=linux GOARCH=amd64 go build -o bin/manager-linux-amd64 github.com/kubesphere/porter/cmd/manager
+	GOOS=linux GOARCH=amd64 go build -o bin/agent-linux-amd64 github.com/kubesphere/porter/cmd/agent
+	GOOS=linux GOARCH=arm64 go build -o bin/manager-linux-arm64 github.com/kubesphere/porter/cmd/manager
+	GOOS=linux GOARCH=arm64 go build -o bin/agent-linux-arm64 github.com/kubesphere/porter/cmd/agent
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .  --push
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .  --push
+
 ifeq ($(uname), Darwin)
 	sed -i '' -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/release/agent_image_patch.yaml
 	sed -i '' -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/release/manager_image_patch.yaml	
