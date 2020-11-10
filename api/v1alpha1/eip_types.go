@@ -16,7 +16,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/kubesphere/porter/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,8 +64,4 @@ type EipList struct {
 
 func init() {
 	SchemeBuilder.Register(&Eip{}, &EipList{})
-}
-
-func (e Eip) GetEIPSize() int {
-	return util.GetValidAddressCount(e.Spec.Address)
 }

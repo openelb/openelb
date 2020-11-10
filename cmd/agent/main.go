@@ -17,57 +17,59 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"os"
 
-	networkv1alpha1 "github.com/kubesphere/porter/api/v1alpha1"
-	"github.com/kubesphere/porter/controllers/eip"
+	"github.com/kubesphere/porter/pkg/log"
+
+	networkv1alpha2 "github.com/kubesphere/porter/api/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var (
-	metricsAddr string
-
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 )
 
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = networkv1alpha1.AddToScheme(scheme)
+	_ = networkv1alpha2.AddToScheme(scheme)
 	_ = corev1.AddToScheme(scheme)
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8081", "The address the metric endpoint binds to.")
 }
 
 func main() {
-	flag.Parse()
-	ctrl.SetLogger(zap.Logger(true))
-	setupLog.Info("setting up client for agent")
+	log.InitLog(log.NewOptions())
+
+	setupLog := ctrl.Log.WithName("setup")
+
+	setupLog.Info("setting up porter agent")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
+		Scheme: scheme,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "unable to start porter agent")
 		os.Exit(1)
 	}
 
-	if err = (&eip.EipReconciler{
-		Log: ctrl.Log.WithName("controllers").WithName("Eip"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Eip")
-		os.Exit(1)
-	}
+	mgr.Add(Fake{})
+
 	// Start the Cmd
-	setupLog.Info("Starting the Cmd.")
+	setupLog.Info("Starting the porter agent")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "unable to run the manager")
+		setupLog.Error(err, "unable to run the porter agent")
 		os.Exit(1)
 	}
+}
+
+// At the moment, the agent has no tasks to do, but it may
+//be needed for future extensions, so it is kept here.
+type Fake struct {
+}
+
+func (f Fake) Start(stopCh <-chan struct{}) error {
+	<-stopCh
+	return nil
 }

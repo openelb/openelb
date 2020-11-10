@@ -1,22 +1,23 @@
 package options
 
 import (
-	bgpserver "github.com/kubesphere/porter/pkg/bgp/serverd"
 	"github.com/kubesphere/porter/pkg/log"
+	"github.com/kubesphere/porter/pkg/manager"
+	"github.com/kubesphere/porter/pkg/speaker/bgp"
 	cliflag "k8s.io/component-base/cli/flag"
 )
 
 type PorterManagerOptions struct {
-	Bgp *bgpserver.BgpOptions
-	*GenericOptions
-	LogOptions *log.LogOptions
+	Bgp *bgp.BgpOptions
+	*manager.GenericOptions
+	LogOptions *log.Options
 }
 
 func NewPorterManagerOptions() *PorterManagerOptions {
 	return &PorterManagerOptions{
-		Bgp:            bgpserver.NewBgpOptions(),
-		GenericOptions: NewGenericOptions(),
-		LogOptions:     log.NewLogOptions(),
+		Bgp:            bgp.NewBgpOptions(),
+		GenericOptions: manager.NewGenericOptions(),
+		LogOptions:     log.NewOptions(),
 	}
 }
 

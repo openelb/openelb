@@ -1,0 +1,53 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mylbapp-svc-layer2
+  annotations:
+    lb.kubesphere.io/v1alpha1: porter
+    protocol.porter.kubesphere.io/v1alpha1: layer2
+spec:
+  selector:
+    app: mylbapp
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 8088
+      targetPort: 80
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mylbapp-svc
+  annotations:
+    lb.kubesphere.io/v1alpha1: porter
+    protocol.porter.kubesphere.io/v1alpha1: bgp
+spec:
+  selector:
+    app: mylbapp
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 8088
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mylbapp
+  name: mylbapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mylbapp
+  template:
+    metadata:
+      labels:
+        app: mylbapp
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: nginx
+          ports:
+            - containerPort: 80

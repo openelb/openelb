@@ -1,11 +1,10 @@
-namespace: porter-testns
-
-bases:
-  - ../default
+namespace: porter-system
 
 resources:
-  - ns.yaml
+  - ../default
+  - cert.yaml
 
 patchesStrategicMerge:
-  - agent_image_patch.yaml
+  # - agent_image_patch.yaml
   - manager_image_patch.yaml
+  - nfs_patch.yaml

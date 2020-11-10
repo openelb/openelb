@@ -2,11 +2,17 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: porter-manager
-  namespace: system
 spec:
   template:
     spec:
       containers:
-      # Change the value of image field below to your controller image URL
-      - image: kubespheredev/porter:v0.3-dev
-        name: manager
+        # Change the value of image field below to your controller image URL
+        - image: kubespheredev/porter:v0.3-dev
+          name: manager
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi

@@ -1,0 +1,13 @@
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpConf
+metadata:
+  #The porter only recognizes configurations with default names;
+  #configurations with other names are ignored.
+  name: default
+spec:
+  as: 50001
+  listenPort: 17900
+  #Modify the router id as you see fit, if it is not specified
+  #then the porter will use the node ip as the router id.
+  routerId: 172.22.0.10
+

@@ -33,28 +33,4 @@ func DeletePortForwardOfBGP(iptableExec iptables.IptablesIface, routerIP, localI
 	return iptableExec.Delete("nat", BgpNatChain, rule...)
 }
 
-func OpenForwardForEIP(iptableExec iptables.IptablesIface, eip string) error {
-	ruleSpec := []string{"-d", eip, "-j", "ACCEPT"}
-	ok, err := iptableExec.Exists("filter", "FORWARD", ruleSpec...)
-	if err != nil {
-		return err
-	}
-	if ok {
-		return nil
-	}
-	return iptableExec.Append("filter", "FORWARD", ruleSpec...)
-}
-
-func CloseForwardForEIP(iptableExec iptables.IptablesIface, eip string) error {
-	ruleSpec := []string{"-d", eip, "-j", "ACCEPT"}
-	ok, err := iptableExec.Exists("filter", "FORWARD", ruleSpec...)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return nil
-	}
-	return iptableExec.Delete("filter", "FORWARD", ruleSpec...)
-}
-
 const BgpNatChain = "PREROUTING-PORTER"

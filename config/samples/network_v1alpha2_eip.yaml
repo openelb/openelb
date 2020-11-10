@@ -1,0 +1,6 @@
+apiVersion: network.kubesphere.io/v1alpha2
+kind: Eip
+metadata:
+  name: eip-sample
+spec:
+  address: 139.198.121.228

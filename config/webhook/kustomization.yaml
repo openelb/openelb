@@ -1,0 +1,4 @@
+resources:
+  - service.yaml
+  #- manifests.yaml
+  - webhook.yaml

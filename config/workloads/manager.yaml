@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: porter-manager
-  namespace: system
   labels:
     control-plane: porter-manager
     app: porter-manager
@@ -17,59 +16,70 @@ spec:
         control-plane: porter-manager
         app: porter-manager
     spec:
-      hostNetwork: true
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                    - porter-manager
-            topologyKey: "kubernetes.io/hostname"
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - porter-manager
+              topologyKey: "kubernetes.io/hostname"
       tolerations:
-      - key: "CriticalAddonsOnly"
-        operator: "Exists"
-      # cloud controller manages should be able to run on masters
-      - key: "node-role.kubernetes.io/master"
-        effect: NoSchedule
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        # cloud controller manages should be able to run on masters
+        - key: "node-role.kubernetes.io/master"
+          effect: NoSchedule
       containers:
-      - command:
-        - /manager
-        image: controller:latest
-        imagePullPolicy: IfNotPresent
-        name: manager
-        readinessProbe:
-          httpGet:
-            path: /hello
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 3
-        securityContext:
-          capabilities:
-            add: ["NET_ADMIN", "SYS_TIME"]
-        env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          # - name: SECRET_NAME
-          #   value: $(WEBHOOK_SECRET_NAME)
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
-        # ports:
-        # - containerPort: 9876
-        #   name: webhook-server
-        #   protocol: TCP
-        # volumeMounts:
-        # - mountPath: /tmp/cert
-        #   name: cert
-        #   readOnly: true
+        - command:
+            - /manager
+          image: controller:latest
+          imagePullPolicy: IfNotPresent
+          name: manager
+          readinessProbe:
+            httpGet:
+              path: /hello
+              port: readness-port
+            initialDelaySeconds: 5
+            periodSeconds: 3
+          securityContext:
+            capabilities:
+              add: [ "NET_ADMIN", "SYS_TIME" ]
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_ROLE
+              value: manager
+            # - name: SECRET_NAME
+            #   value: $(WEBHOOK_SECRET_NAME)
+          ports:
+            - containerPort: 8443
+              name: webhook-server
+              protocol: TCP
+            - containerPort: 8000
+              name: readness-port
+              protocol: TCP
+          volumeMounts:
+            - name: webhook-cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs/
+              readOnly: true
       terminationGracePeriodSeconds: 10
+      hostNetwork: true
+      volumes:
+        - name: webhook-cert
+          secret:
+            secretName: porter-admission
+            items:
+              - key: key
+                path: tls.key
+              - key: cert
+                path: tls.crt
 
