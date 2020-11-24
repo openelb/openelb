@@ -1,3 +1,4 @@
 resources:
-- manager.yaml
+  - manager.yaml
 #- agent.yaml
+- cert.yaml

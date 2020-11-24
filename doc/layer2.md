@@ -11,9 +11,7 @@ When a client accesses the server via IP, since the configured Eip is on the sam
 
 Due to the one-to-one correspondence between IP and MAC, the LoadBalancer Service can only answer the MAC address of the same Node during its lifetime, unless Endpoints change. To achieve this, Porter uses Kubernetes' own Leader Election feature, which allows only one copy to answer ARP/NDP requests.
 
-**Limitations: There is a single point of failure when the client connects to the server via Eip, and all traffic from Eip is sent to the same Node**.
-
-Translated with www.DeepL.com/Translator (free version)
+** Limitations: There is a single point of failure when the client connects to the server via Eip, and all traffic from Eip is sent to the same Node **
 
 
 ## The use of layer2
