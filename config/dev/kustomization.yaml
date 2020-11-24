@@ -2,7 +2,6 @@ namespace: porter-system
 
 resources:
   - ../default
-  - cert.yaml
 
 patchesStrategicMerge:
   # - agent_image_patch.yaml
