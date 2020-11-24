@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: porter-agent
-  namespace: system
   labels:
     control-plane: porter-agent
     controller-tools.k8s.io: "1.0"
@@ -27,18 +26,18 @@ spec:
               cpu: 100m
               memory: 20Mi
           env:
-          - name: MY_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: MY_NODE_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.hostIP
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
           securityContext:
             capabilities:
               add:
-              - "NET_ADMIN"
+                - "NET_ADMIN"
       hostNetwork: true 
 
 

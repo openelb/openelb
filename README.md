@@ -21,7 +21,7 @@ However, the service is hard to expose in a bare metal cluster since Kubernetes 
 
 - ECMP routing load balancing
 - BGP dynamic routing configuration
-- VIP management
+- EIP management
 - LoadBalancerIP assignment in Kubernetes services
 - Installation with Helm Chart
 - Dynamic BGP server configuration through CRD

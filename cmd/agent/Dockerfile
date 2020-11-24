@@ -1,6 +1,6 @@
 FROM alpine
 WORKDIR /
-RUN apk add iptables
+RUN apk update && apk add iptables
 ARG TARGETOS
 ARG TARGETARCH
 COPY bin/agent-${TARGETOS}-${TARGETARCH} agent

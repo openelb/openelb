@@ -2,174 +2,192 @@
 
 > [English](../simulate_with_bird.md) | 中文
 
-> 本文是在[青云平台](https://www.qingcloud.com/)上做的实验，不同的平台有一些配置有区别。模拟的好处是能够不接触实际硬件的情况下体验Porter的功能，但和实际路由器还是有差别，模拟路由器有个默认的网卡（不用于路由），会导致报文回去的时候走这个默认路由。另外在配置模拟路由器时，有很多额外的细节参数，请按照本文所述的参数进行设置。
+作为普通开发者，日常工作中很难接触到硬件路由器，幸运地是很多软件可以提供物理路由器类似的功能，例如[bird](https://bird.network.cz/)、[gobgp](https://osrg.github.io/gobgp/)，它们同样能够协助我们开发。
 
 ## 前提
-1. 已经拥有一个正常运行的k8s集群
-2. 确保用于模拟路由器的主机和k8s集群相互连通，包括集群中的bgp端口，和应用使用的端口。
-3. 有可供实验的公网ip
 
+1. 拥有一个正常运行的Kubernetes集群
+2. Porter已正确安装
+3. 用于模拟路由器的主机和Kubernetes集群网络互通
 
-## 创建路由器
+## 创建并配置路由器
 
-1. 在k8s所在的网络内创建一个主机，最小配置即可。进入主机安装bird，青云平台主机上默认只有bird 1.5，1.5不支持ECMP，要体验Porter的全部功能需要至少1.6，执行下面的脚本安装bird 1.6
-    ```
-     $sudo add-apt-repository ppa:cz.nic-labs/bird ##这里引入了Bird 1.6
-     $sudo apt-get update 
-     $sudo apt-get install bird
-     $sudo systemctl enable bird  
-    ```
-2. 配置路由器的BGP服务。修改`/etc/bird/bird.conf`，添加如下参数：
-    ```
-    protocol bgp mymaster {   
-        description "192.168.1.4"; ##填本交换机ID，一般是主IP   
-        local as 65001; ##填本地AS域，必须和k8s集群的AS不同   
-        neighbor 192.168.1.5 port 17900 as 65000; ##填master节点IP和 AS域   
-        source address 192.168.1.4; ##填本交换机IP    
-        import all;   
-        export all;
-        enable route refresh off; #由于bird1.6的BGP协议较低，和Porter的bgp连接会将多路由变成单个路由，这个参数能够作为一个workaround修正这个问题。
-        add paths on; #这个参数开启之后，就可以收到porter发来的多个路由并同时存在而不会覆盖。
-    }
-     ```
-   上述参数给模拟路由器配置了一个邻居，邻居即是集群主节点，**这里假设了porter的controller部署在了主节点，如果不想限制porter部署在主节点，或者master不能部署pod，那么在这里需要按照上述配置，将所有可能的邻居节点按照上述规则添加到这个配置文件中**。修改该文件中的kernel部分，将其中的export all的注释取消，并开启ECMP功能。修改为：
-   ```
-   protocol kernel {
-        scan time 60;
-        import none;
-        export all;   # Actually insert routes into the kernel routing table
-        merge paths on; #开启ECMP功能，这个参数至少需要 bird 1.6
-   }
+1. 安装bird。 
+    
+`1.5不支持ECMP，要体验Porter的全部功能需要至少1.6`, 在ubuntu中可以执行下面的脚本安装bird 1.6
+    
+```
+$sudo add-apt-repository ppa:cz.nic-labs/bird ##这里引入了bird 1.6
+$sudo apt-get update 
+$sudo apt-get install bird
+$sudo systemctl enable bird  
+```
+   
+2. 配置bird
 
-   ```
+bird的配置文件为`/etc/bird/bird.conf`, 具体配置可以参考[bird官方文档](https://bird.network.cz/?get_doc&f=bird.html&v=16)
+  
+* 配置router id
+
+`router id`格式为合法的ip地址， 请根据实际环境修改   
+
+```
+router id 172.22.0.2;
+```
+
+* 配置bgp neighbor
+
+根据`Porter Manager`实际部署节点配置bgp neighbor， **如有多个请对应添加多个neighbor**。
+
+```
+protocol bgp neighbor1 {   
+    local as 65001; #填本地AS域，必须和Kubernetes集群的AS不同   
+    neighbor 172.22.03 port 17900 as 65000; ##填master节点IP和 AS域   
+    source address 172.22.0.2; #填本交换机IP    
+    import all;   
+    export all;
+    enable route refresh off; #由于bird1.6的bgp较低，和Porter的bgp连接会将多路由变成单个路由，这个参数能够作为一个workaround修正这个问题。
+    add paths on; #这个参数开启之后，就可以收到porter发来的多个路由并同时存在而不会覆盖。
+}
+```
+  
+* 配置bird kernel
+   
+添加`export all;` 和 `merge paths on;` 用于向linux kernel添加路由。
+   
+```
+protocol kernel {
+    scan time 60;
+    import none;
+    export all;
+    merge paths on; #开启ECMP功能，这个参数至少需要 bird 1.6
+}
+```
 
 3. 重启bird
-   ```bash
-    $sudo systemctl restart bird 
-   ```
 
-4. 配置公网ip。在青云控制台上申请一个**内部绑定**的公网IP，注意必须是一个内部绑定的IP，如果是外部绑定的话是无法感知这个公网ip的。将这个ip绑定到模拟路由器所在主机上。绑定完成即可，不需要按照青云文档进行后续的操作。
-
-5. 观察网卡。青云平台内部绑定的IP绑定到主机上时，会在主机上创建一个新的网卡（一般是eth1）,登录主机执行`ip a`查看这个网卡是否启动（状态是否为`UP`），如果没有启动，执行`ip link set up eth1`。eth1是这个ip的入口网卡。
-
-6. 打开模拟路由器的端口转发并关闭包过滤  
-    ```
-    sysctl -w net.ipv4.ip_forward=1   
-    sysctl -w net.ipv4.conf.all.rp_filter=0    
-    sysctl -w net.ipv4.conf.eth1.rp_filter=0
-    sysctl -w net.ipv4.conf.eth0.rp_filter=0
-    ```
-7. 配置防火墙。在青云控制台上打开一些测试端口，如8000-30000等。
-
-8. 配置路由回路。由于模拟路由器的默认网卡是eth0，在集群返回ip包之后，默认会从eth0发出，而用户访问这个公网ip是从eth1进来的，这样就会导致信息发送失败，所以需要将从绑定的IP发来的包导流到eth1。在浏览器上访问这个地址，同时在模拟路由器上使用`tcpdump -i eth1`抓包，观察上层路由地址，如：
-
-    ```bash
-    root@i-7bwamgny:~# tcpdump -i eth1
-    tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-    listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
-    14:24:07.401555 IP 139.198.254.4.1395 > 139.198.121.228.omniorb: Flags [S], seq 3677905607, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532475097 ecr 0], length 0
-    14:24:07.403573 IP 139.198.254.4.1396 > 139.198.121.228.omniorb: Flags [S], seq 2462558694, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532475100 ecr 0], length 0
-    14:24:07.654341 IP 139.198.254.4.1397 > 139.198.121.228.omniorb: Flags [S], seq 1471601642, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532475350 ecr 0], length 0
-    14:24:10.400770 IP 139.198.254.4.1395 > 139.198.121.228.omniorb: Flags [S], seq 3677905607, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532478097 ecr 0], length 0
-    14:24:10.404100 IP 139.198.254.4.1396 > 139.198.121.228.omniorb: Flags [S], seq 2462558694, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532478100 ecr 0], length 0
-    14:24:10.658557 IP 139.198.254.4.1397 > 139.198.121.228.omniorb: Flags [S], seq 1471601642, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532478351 ecr 0], length 0
-    14:24:16.401591 IP 139.198.254.4.1395 > 139.198.121.228.omniorb: Flags [S], seq 3677905607, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532484098 ecr 0], length 0
-    14:24:16.404605 IP 139.198.254.4.1396 > 139.198.121.228.omniorb: Flags [S], seq 2462558694, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532484101 ecr 0], length 0
-    14:24:16.656750 IP 139.198.254.4.1397 > 139.198.121.228.omniorb: Flags [S], seq 1471601642, win 64240, options [mss 1394,nop,wscale 8,sackOK,TS val 532484351 ecr 0], length 0
-
-    ```
-    上述打印输出中，`139.198.121.228`是绑定的ip，左边即上层路由器的地址。获取到这个地址之后，通过路由策略配置回去的规则：
-    ```bash
-    sudo ip rule add from 139.198.254.4/32 lookup 101 #返回这个ip的包走路由表101
-    sudo ip route replace default dev eth1 table 101 #路由表101的默认网卡是eth1
-    ```
-    实际物理路由器不需要配置上述规则，因为路由器知道如何正确配置这个ip。**如果需要从多个ip地址访问测试ECMP，那么这些IP也需要相同的步骤**
-    
-9.  这样模拟路由器就配置完成了，可以执行`birdc show protocol`查看连接信息。
-
-> 注：如果连接主机的方式是通过公网IP的方式，那么执行上述操作之后**有可能**会导致SSH连接断掉（当且仅当SSH的公网IP和你测试用的公网IP在青云网络中都会NAT成上述的139.198.254.4/32）。断掉之后可以使用青云网页上的VNC的方式。建议使用VPN的方式连接。下面在k8s集群中的操作会同样的影响。
-
-## 配置插件
-> 所有的操作都在k8s集群的主节点中
-
-1. 获取yaml文件
-    ```
-    wget https://github.com/kubesphere/porter/releases/download/v0.1.1/porter.yaml
-    ```
-2. 修改yaml文件中的configmap `bgp-cfg`，请按照<https://github.com/kubesphere/porter/blob/master/doc/bgp_config.md>配置这个文件，并且需要和刚才模拟器配置相对应。
-3. 配置公网ip回路规则。和模拟路由器的问题一致，公网ip导流至集群中之后，ip包发出默认都是eth0，eth0会将此包丢弃，需要将此ip包导向模拟路由器。**这一步需要在k8s所有节点上配置，因为实际的服务可能部署在任何节点。**
-    ```bash
-    sudo ip rule add to 139.198.254.0/24 lookup 101 #返回这个ip的包走路由表101
-    sudo ip route replace default via 192.168.98.5 dev eth0 table 101 #路由表101的默认网关是192.168.98.5这个模拟路由器
-    ```
-    上面的`192.168.98.5`即模拟路由器的地址，模拟路由器上已经配置了一条回路规则，所以此包就不会被丢弃了。实际k8s集群不需要配置，因为k8s集群的默认网关就是这个路由器。
-
-4. 安装porter到集群中，`kubectl apply -f porter.yaml`
-5. 添加一个EIP到集群中。
-   ```bash
-   kubectl apply -f - <<EOF
-    apiVersion: network.kubesphere.io/v1alpha1
-    kind: Eip
-    metadata:
-        name: eip-sample
-    spec:
-        address: 139.198.121.228 #这里替换为你申请的EIP，私有环境可以换成任意的不冲突的IP
-        protocol: bgp
-        disable: false
-    EOF 
-   ```
-6. 部署测试Service. Service必须要添加如下一个annotations，type也要指定为LoadBalancer,如下：
-
-    ```yaml
-    kind: Service
-    apiVersion: v1
-    metadata:
-    name:  mylbapp
-    annotations:
-        lb.kubesphere.io/v1alpha1: porter
-        #protocol.porter.kubesphere.io/v1alpha1: bgp  如果没有指定eip，那么必须添加这个标记
-    spec:
-        selector:
-            app:  mylbapp
-        type:  LoadBalancer 
-        ports:
-        - name:  http
-            port:  8088
-            targetPort:  80
-    ```
-    可以使用我们提供的样例[Service](https://github.com/kubesphere/porter/blob/master/test/samples/test.yaml)
-    > 使用这个样例之前需先替换里面的EIP
-    ```
-    kubectl apply -f service.yaml
-    ``` 
-7. 检查一下Porter日志和EIP events，如果没问题，就可以按照Service中的EIP和其端口访问服务了。
-   ```bash
-   kubectl logs -n porter-system controller-manager-0 -c manager
-   kubectl describe eip eip-sample ##观察是否有对应的event
-   ```
-8. 检查模拟路由器上，是否有两个等价路由：
-   ```bash
-   root@i-7bwamgny:~# ip route
-   default via 192.168.98.1 dev eth0
-   139.198.121.228  proto bird
-        nexthop via 192.168.98.2  dev eth0 weight 1
-        nexthop via 192.168.98.4  dev eth0 weight 1
-   ```
-
-## 测试ECMP带来的Load Balancing 功能
-> 注，模拟路由器所在的主机内核版本要高于3.6，青云平台默认内核为4.4，使用的ECMP Hash算法是`L3`的，ECMP只会根据源IP调整访问的路由。4.12以上的内核支持设置`L4`的。，可以设置`sysctl net.ipv4.fib_multipath_hash_policy 1`改变负载均衡hash算法，那么利用curl访问这个eip也可以实现测试负载均衡的效果。
-
-实际路由器只需要开启ECMP功能就可以实现负载均衡，为了测试负载均衡有效，需要从不同的源IP访问这个EIP，同时在Pod分布的节点上用tcpdump观察是否有流量。
-1. 首先观察Pod所在节点
 ```bash
-kubectl get pod -o wide
+$sudo systemctl restart bird 
 ```
-2. 观察各个节点是否设置了引流规则
-```bash
-root@master-k8s:~# ip rule
-0:      from all lookup local
-32763:  from all to 139.198.121.228 lookup 101
-```
-3. 然后在这些节点上运行tcpdump -i eth0 port $port, $port就是服务对外暴露的端口，上面的例子中就是8088。
-4. 从不同的IP访问这个EIP，观察在这些节点上是否有对应的流量，如果都有，那么负载均衡就没有问题。
 
+4. 确认bird
+
+通过以下命令查看bird配置是否正常启动。如果状态为非`active`, 可以执行`journalctl -f -u  bird`查看错误。
+
+```bash
+$sudo systemctl status bird 
+```
+
+## 配置Porter
+
+* 配置BgpConf
+
+请参考[bgp_config](./bgp_config.md)， 按照自己需求修改下面配置
+
+```yaml
+kubectl apply -f - <<EOF
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpConf
+metadata:
+  #The porter only recognizes configurations with default names;
+  #configurations with other names are ignored.
+  name: default
+spec:
+  as: 50001
+  listenPort: 17900
+  #Modify the router id as you see fit, if it is not specified
+  #then the porter will use the node ip as the router id.
+  routerId: 172.22.0.10
+EOF
+```
+
+* 配置BgpPeer
+
+请参考[bgp_config](./bgp_config.md)， 按照自己需求修改下面配置
+
+```yaml
+kubectl apply -f - <<EOF
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpPeer
+metadata:
+  name: bgppeer-sample
+spec:
+  conf:
+    peerAs: 50000
+    neighborAddress: 172.22.0.2
+EOF
+```
+
+* 配置Eip
+
+请参考[eip_config](./eip_config.md)， 按照自己需求修改下面配置
+
+```yaml
+kubectl apply -f - <<EOF
+apiVersion: network.kubesphere.io/v1alpha2
+kind: Eip
+metadata:
+  name: eip-sample
+spec:
+  address: 139.198.121.228
+EOF
+```
+
+## 部署测试工作负载与服务
+
+执行如下命令创建工作负载以及LoadBalancer Service
+
+```yaml
+kubectl apply -f - <<EOF
+kind: Service
+apiVersion: v1
+metadata:
+  name:  mylbapp-svc
+  annotations:
+    lb.kubesphere.io/v1alpha1: porter
+    protocol.porter.kubesphere.io/v1alpha1: bgp
+spec:
+  selector:
+    app:  mylbapp
+  type:  LoadBalancer
+  ports:
+    - name:  http
+      port:  8088
+      targetPort:  80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mylbapp
+  name: mylbapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mylbapp
+  template:
+    metadata:
+      labels:
+        app: mylbapp
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: nginx
+          ports:
+            - containerPort: 80
+EOF
+```
+
+Service必须要添加annotations `lb.kubesphere.io/v1alpha1: porter`，type也要指定为`LoadBalancer`
+
+## 检查路由
+
+执行以下命令，检查模拟路由器上是否有等价路由：
+```bash
+root@i-7iisycou:/tmp# ip route
+139.198.121.228 proto bird metric 64
+        nexthop via 172.22.0.3 dev eth0 weight 1
+        nexthop via 172.22.0.9 dev eth0 weight 1
+        nexthop via 172.22.0.10 dev eth0 weight 1
+```

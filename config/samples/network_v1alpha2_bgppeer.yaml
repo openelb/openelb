@@ -1,0 +1,18 @@
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpPeer
+metadata:
+  name: bgppeer-sample
+spec:
+  conf:
+    peerAs: 50000
+    neighborAddress: 172.22.0.2
+  #afiSafis:
+  #  - config:
+  #      family:
+  #        afi: AFI_IP
+  #        safi: SAFI_UNICAST
+  #      enabled: true
+  #    addPaths:
+  #      config:
+  #        sendMax: 10
+
