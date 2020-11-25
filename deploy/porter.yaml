@@ -872,53 +872,53 @@ rules:
       - update
       - watch
   - apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgpconfs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgppeers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgppeers/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - eips
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - eips/status
-  verbs:
-  - get
-  - patch
-  - update
+      - network.kubesphere.io
+    resources:
+      - bgpconfs/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - network.kubesphere.io
+    resources:
+      - bgppeers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - network.kubesphere.io
+    resources:
+      - bgppeers/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - network.kubesphere.io
+    resources:
+      - eips
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - network.kubesphere.io
+    resources:
+      - eips/status
+    verbs:
+      - get
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -1011,59 +1011,59 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values:
-                - porter-manager
-            topologyKey: kubernetes.io/hostname
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - porter-manager
+              topologyKey: kubernetes.io/hostname
       containers:
-      - command:
-          - /manager
-        env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: POD_ROLE
-            value: manager
-        image: kubespheredev/porter:v0.4
-        imagePullPolicy: IfNotPresent
-        name: manager
-        ports:
-          - containerPort: 8443
-            name: webhook-server
-            protocol: TCP
-          - containerPort: 8000
-            name: readness-port
-            protocol: TCP
-        readinessProbe:
-          httpGet:
-            path: /hello
-            port: readness-port
-          initialDelaySeconds: 5
-          periodSeconds: 3
-        resources:
-          limits:
-            cpu: 100m
-            memory: 300Mi
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        securityContext:
-          capabilities:
-            add:
-              - NET_ADMIN
-              - SYS_TIME
-        volumeMounts:
-          - mountPath: /tmp/k8s-webhook-server/serving-certs/
-            name: webhook-cert
-            readOnly: true
+        - command:
+            - /manager
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_ROLE
+              value: manager
+          image: kubespheredev/porter:v0.4
+          imagePullPolicy: IfNotPresent
+          name: manager
+          ports:
+            - containerPort: 8443
+              name: webhook-server
+              protocol: TCP
+            - containerPort: 8000
+              name: readness-port
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /hello
+              port: readness-port
+            initialDelaySeconds: 5
+            periodSeconds: 3
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_TIME
+          volumeMounts:
+            - mountPath: /tmp/k8s-webhook-server/serving-certs/
+              name: webhook-cert
+              readOnly: true
       hostNetwork: true
       terminationGracePeriodSeconds: 10
       tolerations:
