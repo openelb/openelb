@@ -32,9 +32,15 @@ spec:
         # cloud controller manages should be able to run on masters
         - key: "node-role.kubernetes.io/master"
           effect: NoSchedule
+      nodeSelector:
+        kubernetes.io/os: linux
       containers:
         - command:
             - /manager
+          args:
+            - --api-hosts=:50051
+            - --readiness-addr=:8000
+           # - --webhook-port=8443
           image: controller:latest
           imagePullPolicy: IfNotPresent
           name: manager
@@ -48,7 +54,7 @@ spec:
             capabilities:
               add: [ "NET_ADMIN", "SYS_TIME" ]
           env:
-            - name: POD_NAMESPACE
+            - name: PORTER_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
@@ -56,13 +62,9 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: POD_ROLE
-              value: manager
-            # - name: SECRET_NAME
-            #   value: $(WEBHOOK_SECRET_NAME)
           ports:
-            - containerPort: 8443
-              name: webhook-server
+            - containerPort: 443
+              name: webhook
               protocol: TCP
             - containerPort: 8000
               name: readness-port

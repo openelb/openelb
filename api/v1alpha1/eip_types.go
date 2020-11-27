@@ -38,11 +38,10 @@ type EipStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="cidr",type=string,JSONPath=`.spec.address`
 // +kubebuilder:printcolumn:name="usage",type=integer,JSONPath=`.status.usage`
 // +kubebuilder:printcolumn:name="total",type=integer,JSONPath=`.status.poolSize`
-// +kubebuilder:resource:scope=Cluster,categories=ksnet
+// +kubebuilder:resource:scope=Cluster,categories=networking
 
 // Eip is the Schema for the eips API
 type Eip struct {

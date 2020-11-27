@@ -661,8 +661,7 @@ spec:
           type: object
       served: true
       storage: false
-      subresources:
-        status: { }
+      subresources: { }
     - additionalPrinterColumns:
         - jsonPath: .spec.address
           name: cidr
@@ -983,7 +982,7 @@ spec:
   ports:
     - name: https-webhook
       port: 443
-      targetPort: 443
+      targetPort: webhook
   selector:
     app: porter-manager
     control-plane: porter-manager
@@ -1019,10 +1018,13 @@ spec:
                       - porter-manager
               topologyKey: kubernetes.io/hostname
       containers:
-        - command:
+        - args:
+            - --api-hosts=:50051
+            - --readiness-addr=:8000
+          command:
             - /manager
           env:
-            - name: POD_NAMESPACE
+            - name: PORTER_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
@@ -1030,14 +1032,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: POD_ROLE
-              value: manager
           image: kubespheredev/porter:v0.4
           imagePullPolicy: IfNotPresent
           name: manager
           ports:
-            - containerPort: 8443
-              name: webhook-server
+            - containerPort: 443
+              name: webhook
               protocol: TCP
             - containerPort: 8000
               name: readness-port
@@ -1065,6 +1065,8 @@ spec:
               name: webhook-cert
               readOnly: true
       hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: linux
       terminationGracePeriodSeconds: 10
       tolerations:
         - key: CriticalAddonsOnly
