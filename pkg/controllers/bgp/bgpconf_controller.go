@@ -28,6 +28,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -99,9 +100,43 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if !reflect.DeepEqual(clone.Status, instance.Status) {
 		err = r.Client.Status().Update(context.Background(), clone)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
-	return ctrl.Result{}, err
+	return ctrl.Result{}, r.reconfigPeers()
+}
+
+func (r *BgpConfReconciler) reconfigPeers() error {
+	ctx := context.Background()
+
+	//Add all the neighbor that exist and match node back in, since
+	//the neighbor was reset when the global configuration was updated earlier.
+	var peers v1alpha2.BgpPeerList
+	err := r.List(ctx, &peers)
+	if err != nil {
+		return err
+	}
+	node := &v1.Node{}
+	err = r.Get(ctx, types.NamespacedName{Name: util.GetNodeName()}, node)
+	if err != nil {
+		return err
+	}
+	for _, peer := range peers.Items {
+		match, err := peerMatchNode(&peer, node)
+		if err != nil {
+			return err
+		}
+		if match {
+			err = r.BgpServer.HandleBgpPeer(&peer, false)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r *BgpConfReconciler) getRouterID() (string, error) {
