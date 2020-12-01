@@ -57,9 +57,8 @@ The Porter LB controller is a custom controller based on the [Kubernetes control
 
 ## Installation
 
-1. [Porter Helm Chart: Deploy Porter on Kubernetes Cluster (Recommend)](doc/porter-chart.md)
-2. [Deploy Porter on Bare Metal Kubernetes Cluster](doc/deploy_baremetal.md)
-3. [Test Porter on Cloud Platform with a Simulated Router](doc/simulate_with_bird.md)
+1. [Deploy Porter on Bare Metal Kubernetes Cluster](doc/deploy.md)
+2. [Test Porter with a Simulated Router](doc/simulate_with_bird.md)
 
 ## Build
 

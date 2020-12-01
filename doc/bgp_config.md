@@ -111,3 +111,13 @@ spec:
 ```
 
 The above configuration means that only Porter Manager on node4 will establish a BGP connection with 172.22.0.2.
+
+## FAQ
+
+* A: Why is it that after I modify bgpconf, the routers are gone and the neighbors are all disconnected?
+  
+  Q: There is a [bug](https://github.com/osrg/gobgp/issues/2357) in GoBGP that causes a panic when you dynamically update bgpconf, so it doesn't support dynamic updates of bgpconf at the moment. For now, we recommend that you modify bgpconf and run this command `kubectl rollout restart -n porter-system deployment porter-manager`
+
+* A: The router does not support the unexpected bgp port 179, but to some cni plugins such as calico, kube-router they all occupy port 179, and in order to handle conflicts with them, other ports are usually configured for the porter, such as 17900. What should I do at this time?
+
+  Q: You can execute DNAT on the node where the porter manager is located, converting port 179 to your corresponding port, for example, like this `iptables -t nat -A PREROUTING -s ${SWITCH_IP} -p tcp --dport 179 -j DNAT --to-destination ${MANAGER_POD_IP}:17900`

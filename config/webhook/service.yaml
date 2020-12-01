@@ -7,7 +7,7 @@ spec:
   ports:
     - name: https-webhook
       port: 443
-      targetPort: 443
+      targetPort: webhook
   selector:
     control-plane: porter-manager
     app: porter-manager
