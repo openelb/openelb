@@ -149,9 +149,6 @@ func (e Eip) ValidateUpdate(old runtime.Object) error {
 }
 
 func (e Eip) ValidateDelete() error {
-	if e.Status.Usage > 0 {
-		return fmt.Errorf("eip is using")
-	}
 	return nil
 }
 

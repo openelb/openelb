@@ -6,21 +6,22 @@ metadata:
   creationTimestamp: null
   name: validating-webhook-configuration
 webhooks:
-  - clientConfig:
-      caBundle: Cg==
-      service:
-        name: webhook-service
-        namespace: system
-        path: /validate-network-kubesphere-io-v1alpha2-eip
-    failurePolicy: Fail
-    name: validate.eip.network.kubesphere.io
-    rules:
-      - apiGroups:
-          - network.kubesphere.io
-        apiVersions:
-          - v1alpha2
-        operations:
-          - CREATE
-          - UPDATE
-        resources:
-          - eips
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-network-kubesphere-io-v1alpha2-eip
+  failurePolicy: Fail
+  name: validate.eip.network.kubesphere.io
+  rules:
+  - apiGroups:
+    - network.kubesphere.io
+    apiVersions:
+    - v1alpha2
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - eips

@@ -26,6 +26,7 @@ import (
 
 type NodeConfStatus struct {
 	RouterId string `json:"routerId,omitempty"`
+	As       uint32 `json:"as,omitempty"`
 }
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -55,6 +56,8 @@ type BgpConf struct {
 }
 
 func (c BgpConfSpec) ConverToGoBgpGlabalConf() (*api.Global, error) {
+	c.AsPerRack = nil
+
 	jsonBytes, err := json.Marshal(c)
 	if err != nil {
 		return nil, err
@@ -65,27 +68,16 @@ func (c BgpConfSpec) ConverToGoBgpGlabalConf() (*api.Global, error) {
 	return &result, m.Unmarshal(bytes.NewReader(jsonBytes), &result)
 }
 
-func ConverFromGoBgpGlobalConf(global *api.Global) (*BgpConfSpec, error) {
-	m := jsonpb.Marshaler{}
-	jsonStr, err := m.MarshalToString(global)
-	if err != nil {
-		return nil, err
-	}
-
-	var result BgpConfSpec
-
-	return &result, json.Unmarshal([]byte(jsonStr), &result)
-}
-
 // Configuration parameters relating to the global BGP router.
 type BgpConfSpec struct {
-	As               uint32           `json:"as,omitempty"`
-	RouterId         string           `json:"routerId,omitempty"`
-	ListenPort       int32            `json:"listenPort,omitempty"`
-	ListenAddresses  []string         `json:"listenAddresses,omitempty"`
-	Families         []uint32         `json:"families,omitempty"`
-	UseMultiplePaths bool             `json:"useMultiplePaths,omitempty"`
-	GracefulRestart  *GracefulRestart `json:"gracefulRestart,omitempty"`
+	As               uint32            `json:"as,omitempty"`
+	AsPerRack        map[string]uint32 `json:"asPerRack,omitempty"`
+	RouterId         string            `json:"routerId,omitempty"`
+	ListenPort       int32             `json:"listenPort,omitempty"`
+	ListenAddresses  []string          `json:"listenAddresses,omitempty"`
+	Families         []uint32          `json:"families,omitempty"`
+	UseMultiplePaths bool              `json:"useMultiplePaths,omitempty"`
+	GracefulRestart  *GracefulRestart  `json:"gracefulRestart,omitempty"`
 }
 
 type GracefulRestart struct {

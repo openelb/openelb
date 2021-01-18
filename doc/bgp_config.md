@@ -26,6 +26,24 @@ spec:
 ```
 
 1. `as` is the number of Autonomous System, which must be different from the Autonomous System of the connected routers, the same will cause the route to be incorrectly transmitted.
+Note: When the cluster nodes are distributed under different tor switches, you can assign different as
+```yaml
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpConf
+metadata:
+  #The porter only recognizes configurations with default names;
+  #configurations with other names are ignored.
+  name: default
+spec:
+  as: 50005
+  asPerRack:
+    leaf3: 50003
+    leaf4: 50004
+  listenPort: 179
+  #Modify the router id as you see fit, if it is not specified
+  #then the porter will use the node ip as the router id.
+  routerId: 172.28.3.4
+```
 2. `routerId` denotes the cluster's Id, usually taking the IP of the master NIC of the Kubernetes master node. If you don't specify it, Porter will select the first IP of the node as the routerId.
 3. `listenPort` is the port on which gobgp listens, which defaults to 179. Since Calico also uses BGP and occupies port 179, a different port must be specified here.
 

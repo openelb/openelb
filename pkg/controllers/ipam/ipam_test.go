@@ -23,8 +23,8 @@ func TestIpam(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	speaker.RegisteSpeaker(e.GetSpeakerName(), speaker.NewFake())
-	speaker.RegisteSpeaker(e2.GetSpeakerName(), speaker.NewFake())
+	speaker.RegisterSpeaker(e.GetSpeakerName(), speaker.NewFake())
+	speaker.RegisterSpeaker(e2.GetSpeakerName(), speaker.NewFake())
 	IPAMAllocator = &IPAM{
 		Client:        nil,
 		log:           nil,
@@ -279,13 +279,5 @@ var _ = Describe("IPAM", func() {
 			Expect(e.Status.Usage).Should(Equal(256 - i - 1))
 			Expect(e.Status.Occupied).Should(Equal(false))
 		}
-	})
-
-	It("delete eip", func() {
-		Expect(IPAMAllocator.removeEip(&e)).Should(HaveOccurred())
-		IPAMArgs{
-			Key: "testsvc255",
-		}.unAssignIPFromEip(&e, false)
-		Expect(IPAMAllocator.removeEip(&e)).ShouldNot(HaveOccurred())
 	})
 })

@@ -39,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"testing"
 	"time"
-
 	// +kubebuilder:scaffold:imports
 )
 
@@ -132,6 +131,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
+	syncStatusPeriod = 3
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -224,7 +224,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 			}
 
 			return false
-		}), 3*time.Second).Should(Equal(true))
+		}), 35*time.Second).Should(Equal(true))
 	})
 
 	It("update BgpConf routerId", func() {
@@ -242,7 +242,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 			}
 
 			return false
-		}), 3*time.Second).Should(Equal(true))
+		}), 35*time.Second).Should(Equal(true))
 	})
 
 	Context("has bgpPeer", func() {

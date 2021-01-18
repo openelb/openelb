@@ -18,8 +18,8 @@ package bgp
 
 import (
 	"context"
-	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/kubesphere/porter/api/v1alpha2"
 	"github.com/kubesphere/porter/pkg/constant"
@@ -35,6 +35,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+var (
+	syncStatusPeriod = 30
 )
 
 // BgpConfReconciler reconciles a BgpConf object
@@ -42,6 +47,7 @@ type BgpConfReconciler struct {
 	client.Client
 	BgpServer *bgp.Bgp
 	record.EventRecorder
+	cleaned bool
 }
 
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs,verbs=get;list;watch;create;update;patch;delete
@@ -62,7 +68,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	clone := instance.DeepCopy()
 
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
-		err := r.BgpServer.HandleBgpGlobalConfig(clone, true)
+		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true)
 		if err != nil {
 			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
 		}
@@ -80,29 +86,37 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
-	if clone.Spec.RouterId == "" {
-		clone.Spec.RouterId, err = r.getRouterID()
-		if err != nil {
-			return ctrl.Result{}, err
+	node := &v1.Node{}
+	rack := ""
+	err = r.Get(context.Background(), types.NamespacedName{Name: util.GetNodeName()}, node)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if node.Labels != nil && node.Labels[constant.PorterNodeRack] != "" && clone.Spec.AsPerRack != nil {
+		rack = node.Labels[constant.PorterNodeRack]
+		as := clone.Spec.AsPerRack[rack]
+		if as > 0 {
+			clone.Spec.As = as
 		}
+		clone.Spec.RouterId = ""
 	}
-	if clone.Status.NodesConfStatus == nil {
-		clone.Status.NodesConfStatus = make(map[string]v1alpha2.NodeConfStatus)
-	}
-	clone.Status.NodesConfStatus[util.GetNodeName()] = v1alpha2.NodeConfStatus{
-		RouterId: clone.Spec.RouterId,
+	if clone.Spec.RouterId == "" {
+		clone.Spec.RouterId = util.GetNodeIP(*node).String()
 	}
 
-	err = r.BgpServer.HandleBgpGlobalConfig(clone, false)
+	err = r.BgpServer.HandleBgpGlobalConfig(clone, rack, false)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if !reflect.DeepEqual(clone.Status, instance.Status) {
-		err = r.Client.Status().Update(context.Background(), clone)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	if clone.Annotations == nil {
+		clone.Annotations = make(map[string]string)
+	}
+	clone.Spec = instance.Spec
+	clone.Annotations[constant.PorterAnnotationKey] = time.Now().String()
+	err = r.Client.Update(context.Background(), clone)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, r.reconfigPeers()
@@ -139,29 +153,6 @@ func (r *BgpConfReconciler) reconfigPeers() error {
 	return nil
 }
 
-func (r *BgpConfReconciler) getRouterID() (string, error) {
-	var nodes v1.NodeList
-
-	err := r.List(context.Background(), &nodes)
-	if err != nil {
-		return "", err
-	}
-
-	nodeName := util.GetNodeName()
-
-	for _, node := range nodes.Items {
-		if node.Name == nodeName {
-			ip := util.GetNodeIP(node)
-			if ip == nil {
-				return "", fmt.Errorf("%s: has no valild ip", nodeName)
-			}
-			return ip.String(), nil
-		}
-	}
-
-	return "", fmt.Errorf("nodename %s not match", nodeName)
-}
-
 func shouldReconcile(obj runtime.Object) bool {
 	if conf, ok := obj.(*v1alpha2.BgpConf); ok {
 		if conf.Name == "default" {
@@ -173,28 +164,63 @@ func shouldReconcile(obj runtime.Object) bool {
 }
 
 func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha2.BgpConf{}).
-		WithEventFilter(predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return shouldReconcile(e.Object)
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if shouldReconcile(e.ObjectNew) {
-					old := e.ObjectOld.(*v1alpha2.BgpConf)
-					new := e.ObjectNew.(*v1alpha2.BgpConf)
-					if !reflect.DeepEqual(old.DeletionTimestamp, new.DeletionTimestamp) {
-						return true
-					}
-
-					if !reflect.DeepEqual(old.Spec, new.Spec) {
-						return true
-					}
+	p := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return shouldReconcile(e.Object)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if shouldReconcile(e.ObjectNew) {
+				old := e.ObjectOld.(*v1alpha2.BgpConf)
+				new := e.ObjectNew.(*v1alpha2.BgpConf)
+				if !reflect.DeepEqual(old.DeletionTimestamp, new.DeletionTimestamp) {
+					return true
 				}
 
-				return false
-			},
-		}).Complete(r)
+				if !reflect.DeepEqual(old.Spec, new.Spec) {
+					return true
+				}
+			}
+
+			return false
+		},
+	}
+
+	ctl, err := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha2.BgpConf{}).
+		WithEventFilter(p).
+		Named("BgpConfController").
+		Build(r)
+	if err != nil {
+		return err
+	}
+
+	np := predicate.Funcs{
+		UpdateFunc: func(evt event.UpdateEvent) bool {
+			old := evt.ObjectOld.(*v1.Node)
+			new := evt.ObjectNew.(*v1.Node)
+
+			oldHaveLabel := false
+			if old.Labels != nil {
+				_, oldHaveLabel = old.Labels[constant.PorterNodeRack]
+			}
+			newHaveLabel := false
+			if new.Labels != nil {
+				_, newHaveLabel = old.Labels[constant.PorterNodeRack]
+			}
+			if oldHaveLabel != newHaveLabel {
+				return true
+			}
+
+			return false
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+	return ctl.Watch(&source.Kind{Type: &v1.Node{}}, &EnqueueRequestForNode{Client: r.Client, peer: false}, np)
 }
 
 func SetupBgpConfReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {
@@ -206,6 +232,68 @@ func SetupBgpConfReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {
 	if err := bgpConf.SetupWithManager(mgr); err != nil {
 		return err
 	}
+
+	return mgr.Add(bgpConf)
+}
+
+func (r *BgpConfReconciler) CleanBgpConfStatus() error {
+	instance := &v1alpha2.BgpConf{}
+	err := r.Client.Get(context.Background(), client.ObjectKey{Name: "default"}, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	clone := instance.DeepCopy()
+	clone.Status = v1alpha2.BgpConfStatus{}
+	if reflect.DeepEqual(clone.Status, instance.Status) {
+		return nil
+	}
+	return r.Client.Status().Update(context.Background(), clone)
+}
+
+func (r BgpConfReconciler) updateConfStatus() {
+	instance := &v1alpha2.BgpConf{}
+	err := r.Client.Get(context.Background(), client.ObjectKey{Name: "default"}, instance)
+	if err != nil {
+		return
+	}
+	clone := instance.DeepCopy()
+	if clone.Status.NodesConfStatus == nil {
+		clone.Status.NodesConfStatus = make(map[string]v1alpha2.NodeConfStatus)
+	}
+	result := r.BgpServer.GetBgpConfStatus()
+	nodeName := util.GetNodeName()
+	clone.Status.NodesConfStatus[nodeName] = result.Status.NodesConfStatus[nodeName]
+
+	if reflect.DeepEqual(clone.Status, instance.Status) {
+		return
+	}
+	r.Client.Status().Update(context.Background(), clone)
+}
+
+func (r BgpConfReconciler) run(stopCh <-chan struct{}) {
+	t := time.NewTicker(time.Duration(syncStatusPeriod) * time.Second)
+
+	for {
+		select {
+		case <-t.C:
+			r.updateConfStatus()
+
+		case <-stopCh:
+			return
+		}
+	}
+}
+
+func (r BgpConfReconciler) Start(stopCh <-chan struct{}) error {
+	err := r.CleanBgpConfStatus()
+	if err != nil {
+		return err
+	}
+
+	go r.run(stopCh)
 
 	return nil
 }

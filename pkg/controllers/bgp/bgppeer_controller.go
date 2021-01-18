@@ -121,6 +121,11 @@ func (r BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r BgpPeerReconciler) Start(stopCh <-chan struct{}) error {
+	err := r.CleanBgpPeerStatus()
+	if err != nil {
+		return err
+	}
+
 	go r.run(stopCh)
 
 	return nil
@@ -158,7 +163,7 @@ func (r BgpPeerReconciler) updatePeerStatus() {
 }
 
 func (r BgpPeerReconciler) run(stopCh <-chan struct{}) {
-	t := time.NewTicker(30 * time.Second)
+	t := time.NewTicker(time.Duration(syncStatusPeriod) * time.Second)
 
 	for {
 		select {
@@ -204,4 +209,29 @@ func SetupBgpPeerReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {
 	}
 
 	return mgr.Add(bgpPeer)
+}
+
+func (r *BgpPeerReconciler) CleanBgpPeerStatus() error {
+	peers := &v1alpha2.BgpPeerList{}
+	err := r.Client.List(context.Background(), peers)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	for _, peer := range peers.Items {
+		clone := peer.DeepCopy()
+		clone.Status = v1alpha2.BgpPeerStatus{}
+		if reflect.DeepEqual(clone.Status, peer.Status) {
+			continue
+		}
+		err = r.Client.Status().Update(context.Background(), &peer)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

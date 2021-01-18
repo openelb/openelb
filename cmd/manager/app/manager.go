@@ -4,19 +4,18 @@ import (
 	"flag"
 	"fmt"
 	networkv1alpha2 "github.com/kubesphere/porter/api/v1alpha2"
+	"github.com/kubesphere/porter/pkg/constant"
 	"github.com/kubesphere/porter/pkg/leader-elector"
+	"github.com/kubesphere/porter/pkg/speaker"
 	clientset "k8s.io/client-go/kubernetes"
-	"net/http"
 	"os"
 
 	"github.com/kubesphere/porter/cmd/manager/app/options"
-	"github.com/kubesphere/porter/pkg/constant"
 	"github.com/kubesphere/porter/pkg/controllers/bgp"
 	"github.com/kubesphere/porter/pkg/controllers/ipam"
 	"github.com/kubesphere/porter/pkg/controllers/lb"
 	"github.com/kubesphere/porter/pkg/log"
 	"github.com/kubesphere/porter/pkg/manager"
-	"github.com/kubesphere/porter/pkg/speaker"
 	bgpd "github.com/kubesphere/porter/pkg/speaker/bgp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -70,16 +69,6 @@ func NewPorterManagerCommand() *cobra.Command {
 	return cmd
 }
 
-func serveReadinessHandler(w http.ResponseWriter, r *http.Request) {
-	if readinessProbe {
-		w.WriteHeader(200)
-		w.Write([]byte("Ready"))
-	} else {
-		w.WriteHeader(500)
-		w.Write([]byte("Not Ready"))
-	}
-}
-
 func Run(c *options.PorterManagerOptions) error {
 	log.InitLog(c.LogOptions)
 
@@ -92,11 +81,6 @@ func Run(c *options.PorterManagerOptions) error {
 	}
 
 	bgpServer := bgpd.NewGoBgpd(c.Bgp)
-	err = speaker.RegisteSpeaker(constant.PorterProtocolBGP, bgpServer)
-	if err != nil {
-		setupLog.Error(err, "unable to register bgp speaker")
-		return err
-	}
 
 	// Setup all Controllers
 	err = ipam.SetupIPAM(mgr)
@@ -122,19 +106,14 @@ func Run(c *options.PorterManagerOptions) error {
 	}
 
 	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	leader.LeaderElector(k8sClient)
+	leader.LeaderElector(k8sClient, *c.Leader)
 
-	serverMuxA := http.NewServeMux()
-	serverMuxA.HandleFunc("/hello", serveReadinessHandler)
-	go func() {
-		err := http.ListenAndServe(c.ReadinessAddr, serverMuxA)
-		if err != nil {
-			setupLog.Error(err, "Failed to start readiness probe")
-			os.Exit(1)
-		}
-	}()
+	err = speaker.RegisterSpeaker(constant.PorterProtocolBGP, bgpServer)
+	if err != nil {
+		setupLog.Error(err, "unable to register bgp speaker")
+		return err
+	}
 
-	readinessProbe = true
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "unable to run the manager")
 		return err
@@ -142,7 +121,3 @@ func Run(c *options.PorterManagerOptions) error {
 
 	return nil
 }
-
-var (
-	readinessProbe bool
-)

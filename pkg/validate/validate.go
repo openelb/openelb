@@ -6,13 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func IsPorterService(obj runtime.Object) bool {
-	if svc, ok := obj.(*corev1.Service); ok {
-		return HasPorterLBAnnotation(svc.Annotations) && IsTypeLoadBalancer(svc)
-	}
-	return false
-}
-
 func HasPorterLBAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
