@@ -82,7 +82,7 @@ $sudo systemctl status bird
 
 * Configuring BgpConf
 
-Please refer to [bgp_config] (. /bgp_config.md), and modify the following configuration as you see fit.
+Please refer to [bgp_config](./bgp_config.md), and modify the following configuration as you see fit.
 
 ```yaml
 kubectl apply -f - <<EOF
@@ -103,7 +103,7 @@ EOF
 
 * Configuring BgpPeer
 
-Please refer to [bgp_config] (. /bgp_config.md), and modify the following configuration as you see fit.
+Please refer to [bgp_config](./bgp_config.md), and modify the following configuration as you see fit.
 
 ```yaml
 kubectl apply -f - <<EOF
@@ -120,7 +120,7 @@ EOF
 
 * Configuring Eip
 
-Please refer to [eip_config] (.eip_config.md) and modify the following configuration according to your needs. /eip_config.md), and modify the following configuration as you see fit.
+Please refer to [eip_config](./eip_config.md) and modify the following configuration according to your needs. /eip_config.md), and modify the following configuration as you see fit.
 
 ```yaml
 kubectl apply -f - <<EOF
