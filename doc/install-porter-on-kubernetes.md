@@ -27,7 +27,7 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
    kubectl get po -n porter-system
    ```
 
-   ![1](.\img\install-porter-on-kubernetes\1.jpg)
+   ![1](./img/install-porter-on-kubernetes/1.jpg)
 
 3. To delete Porter, run the following command:
 
@@ -57,7 +57,7 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
    kubectl get po -A
    ```
 
-   ![2](.\img\install-porter-on-kubernetes\2.jpg)
+   ![2](./img/install-porter-on-kubernetes/2.jpg)
 
 3. To delete Porter, run the following command:
 
