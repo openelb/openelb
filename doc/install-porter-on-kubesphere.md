@@ -1,37 +1,17 @@
-# Install Porter
+# Install Porter on KubeSphere (Web Console)
 
-This document describes how to install Porter in a Kubernetes cluster.
+This document describes how to install Porter on the [KubeSphere](https://kubesphere.io/) web console. For details about how to install Porter in a Kubernetes cluster without KubeSphere, see [Install Porter on Kubernetes (kubectl and Helm)](./install-porter-on-kubernetes.md).
 
 ## Prerequisites
 
-You need to prepare a Kubernetes cluster and ensure that the Kubernetes version is 1.15 or later. Porter requires CustomResourceDefinition (CRD) v1, which is only supported by Kubernetes 1.15 or later. You can use the following methods to deploy a Kubernetes cluster:
+You need to prepare a Kubernetes cluster with KubeSphere, and ensure that the Kubernetes version is 1.15 or later. Porter requires CustomResourceDefinition (CRD) v1, which is only supported by Kubernetes 1.15 or later. You can use the following methods to install KubeSphere:
 
-* Use [KubeKey](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/) (recommended).
-* Follow [official Kubernetes guides](https://kubernetes.io/docs/home/).
+* [Deploy a new Kubernetes cluster with KubeSphere](https://kubesphere.io/docs/installing-on-linux/).
+* [Install KubeSphere in an existing Kubernetes cluster](https://kubesphere.io/docs/installing-on-kubernetes/).
 
 Porter is designed to be used in bare-metal Kubernetes environments. However, you can also use a cloud-based Kubernetes cluster for learning and testing.
 
-## Install Porter Using kubectl
-
-Log in to the Kubernetes cluster over SSH and run the following command:
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/kubesphere/porter/master/deploy/porter.yaml
-```
-
-## Install Porter Using Helm Charts
-
-Log in to the Kubernetes cluster over SSH and run the following commands:
-
-```bash 
-helm repo add test https://charts.kubesphere.io/test
-helm repo update
-helm install porter test/porter
-```
-
-## Install Porter on KubeSphere
-
-If you have deployed [KubeSphere](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/#step-3-create-a-cluster), you can install Porter on the KubeSphere console. For more information about KubeSphere, visit the [official KubeSphere website](https://kubesphere.io/).
+## Install Porter on the KubeSphere Web Console
 
 1. Log in to the KubeSphere console and go to your workspace.
 
