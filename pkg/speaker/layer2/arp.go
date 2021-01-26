@@ -2,8 +2,6 @@ package layer2
 
 import (
 	"fmt"
-	"github.com/kubesphere/porter/pkg/leader-elector"
-	"github.com/kubesphere/porter/pkg/speaker"
 	"io"
 	"net"
 	"reflect"
@@ -11,10 +9,14 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/j-keck/arping"
+	"github.com/kubesphere/porter/pkg/constant"
+	"github.com/kubesphere/porter/pkg/leader-elector"
+	"github.com/kubesphere/porter/pkg/speaker"
 	"github.com/mdlayher/arp"
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
 	"github.com/vishvananda/netlink"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -25,9 +27,10 @@ var _ speaker.Speaker = &arpSpeaker{}
 type arpSpeaker struct {
 	logger logr.Logger
 
-	intf *net.Interface
-	conn *arp.Client
-	p    *raw.Conn
+	intf  *net.Interface
+	addrs []netlink.Addr
+	conn  *arp.Client
+	p     *raw.Conn
 
 	lock   sync.Mutex
 	ip2mac map[string]net.HardwareAddr
@@ -61,9 +64,12 @@ func newARPSpeaker(ifi *net.Interface) (*arpSpeaker, error) {
 		return nil, fmt.Errorf("creating ARP Speaker for %s, err=%v", ifi.Name, err)
 	}
 
+	link, _ := netlink.LinkByIndex(ifi.Index)
+	addrs, _ := netlink.AddrList(link, netlink.FAMILY_V4)
 	ret := &arpSpeaker{
 		logger: ctrl.Log.WithName("arpSpeaker"),
 		intf:   ifi,
+		addrs:  addrs,
 		conn:   client,
 		p:      p,
 		ip2mac: make(map[string]net.HardwareAddr),
@@ -117,7 +123,12 @@ func (a *arpSpeaker) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err erro
 		for i := 0; i < 3; i++ {
 			hwAddr, _, err = arping.PingOverIface(nodeIP, *iface)
 			if err != nil {
-				continue
+				hwAddr, _, err = arping.Ping(nodeIP)
+				if err != nil {
+					continue
+				} else {
+					break
+				}
 			} else {
 				break
 			}
@@ -138,7 +149,7 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 
 	hwAddr, err := a.resolveIP(nodeIP)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to resolve ip %s, err=%v", nodeIP, err)
 	}
 
 	tmp := a.getMac(ip.String())
@@ -166,7 +177,28 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 	return nil
 }
 
-func (a *arpSpeaker) SetBalancer(ip string, nexthops []string) error {
+func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
+	if nodes[0].Annotations != nil {
+		nexthop := nodes[0].Annotations[constant.PorterLayer2Annotation]
+		if net.ParseIP(nexthop) != nil {
+			return a.setBalancer(ip, []string{nexthop})
+		}
+	}
+
+	for _, addr := range a.addrs {
+		for _, tmp := range nodes[0].Status.Addresses {
+			if tmp.Type == corev1.NodeInternalIP || tmp.Type == corev1.NodeExternalIP {
+				if addr.Contains(net.ParseIP(tmp.Address)) {
+					return a.setBalancer(ip, []string{tmp.Address})
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("node %s has no nexthop", nodes[0].Name)
+}
+
+func (a *arpSpeaker) setBalancer(ip string, nexthops []string) error {
 	return a.gratuitous(net.ParseIP(ip), net.ParseIP(nexthops[0]))
 }
 

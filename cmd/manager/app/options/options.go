@@ -1,6 +1,7 @@
 package options
 
 import (
+	"github.com/kubesphere/porter/pkg/leader-elector"
 	"github.com/kubesphere/porter/pkg/log"
 	"github.com/kubesphere/porter/pkg/manager"
 	"github.com/kubesphere/porter/pkg/speaker/bgp"
@@ -11,6 +12,7 @@ type PorterManagerOptions struct {
 	Bgp *bgp.BgpOptions
 	*manager.GenericOptions
 	LogOptions *log.Options
+	Leader     *leader.Options
 }
 
 func NewPorterManagerOptions() *PorterManagerOptions {
@@ -18,6 +20,7 @@ func NewPorterManagerOptions() *PorterManagerOptions {
 		Bgp:            bgp.NewBgpOptions(),
 		GenericOptions: manager.NewGenericOptions(),
 		LogOptions:     log.NewOptions(),
+		Leader:         leader.NewOptions(),
 	}
 }
 
@@ -32,6 +35,7 @@ func (s *PorterManagerOptions) Flags() cliflag.NamedFlagSets {
 	s.Bgp.AddFlags(fss.FlagSet("bgp"))
 	s.GenericOptions.AddFlags(fss.FlagSet("generic"))
 	s.LogOptions.AddFlags(fss.FlagSet("log"))
+	s.Leader.AddFlags(fss.FlagSet("leader"))
 
 	return fss
 }

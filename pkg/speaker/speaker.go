@@ -2,11 +2,12 @@ package speaker
 
 import (
 	"github.com/projectcalico/libcalico-go/lib/set"
+	corev1 "k8s.io/api/core/v1"
 	"sync"
 )
 
 type Speaker interface {
-	SetBalancer(ip string, nexthops []string) error
+	SetBalancer(ip string, nexthops []corev1.Node) error
 	DelBalancer(ip string) error
 	Start(stopCh <-chan struct{}) error
 }
@@ -22,14 +23,19 @@ func NewFake() *Fake {
 	}
 }
 
-func (f *Fake) SetBalancer(ip string, nexthops []string) error {
+func (f *Fake) SetBalancer(ip string, nexthops []corev1.Node) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
-	if len(nexthops) == 0 {
+	var names []string
+	for _, nexthop := range nexthops {
+		names = append(names, nexthop.Name)
+	}
+
+	if len(names) == 0 {
 		f.nextHops[ip] = nil
 	} else {
-		f.nextHops[ip] = set.FromArray(nexthops)
+		f.nextHops[ip] = set.FromArray(names)
 	}
 
 	return nil
@@ -81,7 +87,7 @@ var (
 	lock     sync.Mutex
 )
 
-func RegisteSpeaker(name string, s Speaker) error {
+func RegisterSpeaker(name string, s Speaker) error {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -99,7 +105,7 @@ func RegisteSpeaker(name string, s Speaker) error {
 	return err
 }
 
-func UnRegisteSpeaker(name string) {
+func UnRegisterSpeaker(name string) {
 	lock.Lock()
 	defer lock.Unlock()
 

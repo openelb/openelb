@@ -22,7 +22,7 @@ func NewGenericOptions() *GenericOptions {
 	return &GenericOptions{
 		WebhookPort:   443,
 		MetricsAddr:   "0",
-		ReadinessAddr: ":8000",
+		ReadinessAddr: "0",
 	}
 }
 

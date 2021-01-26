@@ -209,12 +209,12 @@ var _ = BeforeSuite(func(done Done) {
 	err = client.Client.Create(context.Background(), node2)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = speaker.RegisteSpeaker(eip.GetSpeakerName(), bgpFakeSpeak)
+	err = speaker.RegisterSpeaker(eip.GetSpeakerName(), bgpFakeSpeak)
 	Expect(err).ToNot(HaveOccurred())
 	err = client.Client.Create(context.Background(), eip)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = speaker.RegisteSpeaker(eipLayer2.GetSpeakerName(), layer2FakeSpeak)
+	err = speaker.RegisterSpeaker(eipLayer2.GetSpeakerName(), layer2FakeSpeak)
 	Expect(err).ToNot(HaveOccurred())
 	err = client.Client.Create(context.Background(), eipLayer2)
 	Expect(err).ToNot(HaveOccurred())
@@ -330,8 +330,8 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 		Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
 			return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
 				[]string{
-					node2.Status.Addresses[0].Address,
-					node1.Status.Addresses[0].Address,
+					node2.Name,
+					node1.Name,
 				})
 		}), 3*time.Second).Should(Equal(true))
 	})
@@ -340,8 +340,8 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 		Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
 			return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
 				[]string{
-					node2.Status.Addresses[0].Address,
-					node1.Status.Addresses[0].Address,
+					node2.Name,
+					node1.Name,
 				})
 		}), 3*time.Second).Should(Equal(true))
 	})
@@ -385,7 +385,7 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
 				return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
 					[]string{
-						node1.Status.Addresses[0].Address,
+						node1.Name,
 					})
 			}), 3*time.Second).Should(Equal(true))
 		})
@@ -419,7 +419,7 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
 				return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
 					[]string{
-						node2.Status.Addresses[0].Address,
+						node2.Name,
 					})
 			}), 3*time.Second).Should(Equal(true))
 		})
@@ -436,8 +436,8 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
 				return !layer2FakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
 					[]string{
-						node2.Status.Addresses[0].Address,
-						node1.Status.Addresses[0].Address,
+						node2.Name,
+						node1.Name,
 					})
 			}), 3*time.Second).Should(Equal(true))
 		})
@@ -454,12 +454,12 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 				Eventually(checkEipUsage(eipLayer2, 1), 3*time.Second).Should(BeTrue())
 
 				Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-					if dst.Annotations[constant.PorterLayer2Annotation] == node1.Status.Addresses[0].Address {
+					if dst.Annotations[constant.PorterLayer2Annotation] == node1.Name {
 						return true
 					}
 
 					return layer2FakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP, []string{
-						node1.Status.Addresses[0].Address,
+						node1.Name,
 					})
 				}), 3*time.Second).Should(Equal(true))
 
@@ -490,12 +490,12 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 				})
 
 				Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-					if dst.Annotations[constant.PorterLayer2Annotation] == node2.Status.Addresses[0].Address {
+					if dst.Annotations[constant.PorterLayer2Annotation] == node2.Name {
 						return true
 					}
 
 					return layer2FakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP, []string{
-						node2.Status.Addresses[0].Address,
+						node2.Name,
 					})
 				}), 3*time.Second).Should(Equal(true))
 			})

@@ -10,6 +10,10 @@ spec:
     matchLabels:
       control-plane: porter-manager
       app: porter-manager
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -36,20 +40,24 @@ spec:
         kubernetes.io/os: linux
       containers:
         - command:
-            - /manager
+            - porter-manager
           args:
             - --api-hosts=:50051
-            - --readiness-addr=:8000
-           # - --webhook-port=8443
+            - --webhook-port=443
           image: controller:latest
           imagePullPolicy: IfNotPresent
-          name: manager
+          name: porter-manager
           readinessProbe:
-            httpGet:
-              path: /hello
-              port: readness-port
-            initialDelaySeconds: 5
-            periodSeconds: 3
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  gobgp -p 50051 global
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           securityContext:
             capabilities:
               add: [ "NET_ADMIN", "SYS_TIME" ]
@@ -65,9 +73,6 @@ spec:
           ports:
             - containerPort: 443
               name: webhook
-              protocol: TCP
-            - containerPort: 8000
-              name: readness-port
               protocol: TCP
           volumeMounts:
             - name: webhook-cert

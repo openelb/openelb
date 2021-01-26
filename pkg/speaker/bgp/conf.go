@@ -6,7 +6,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, delete bool) error {
+func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete bool) error {
+	b.rack = rack
+
 	if delete {
 		return b.bgpServer.StopBgp(context.Background(), nil)
 	}

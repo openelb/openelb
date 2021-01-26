@@ -190,18 +190,6 @@ func (c BgpPeerSpec) ConverToGoBgpPeer() (*api.Peer, error) {
 	return &result, m.Unmarshal(bytes.NewReader(jsonBytes), &result)
 }
 
-func ConverFromGoBgpPeer(peer *api.Peer) (*BgpPeerSpec, error) {
-	m := jsonpb.Marshaler{}
-	jsonStr, err := m.MarshalToString(peer)
-	if err != nil {
-		return nil, err
-	}
-
-	var result BgpPeerSpec
-
-	return &result, json.Unmarshal([]byte(jsonStr), &result)
-}
-
 func ConverStatusFromGoBgpPeer(peer *api.Peer) (NodePeerStatus, error) {
 	var (
 		nodePeerStatus NodePeerStatus
@@ -228,8 +216,14 @@ func ConverStatusFromGoBgpPeer(peer *api.Peer) (NodePeerStatus, error) {
 	return nodePeerStatus, err
 }
 
+type EbgpMultihop struct {
+	Enabled     bool   `json:"enabled,omitempty"`
+	MultihopTtl uint32 `json:"multihopTtl,omitempty"`
+}
+
 type BgpPeerSpec struct {
 	Conf            *PeerConf        `json:"conf,omitempty"`
+	EbgpMultihop    *EbgpMultihop    `json:"ebgpMultihop,omitempty"`
 	Timers          *Timers          `json:"timers,omitempty"`
 	Transport       *Transport       `json:"transport,omitempty"`
 	GracefulRestart *GracefulRestart `json:"gracefulRestart,omitempty"`

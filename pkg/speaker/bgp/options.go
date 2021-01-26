@@ -22,5 +22,6 @@ func (options *BgpOptions) AddFlags(fs *pflag.FlagSet) {
 
 type Bgp struct {
 	bgpServer *server.BgpServer
+	rack      string
 	log       logr.Logger
 }

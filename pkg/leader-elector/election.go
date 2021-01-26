@@ -31,7 +31,7 @@ func envNodename() string {
 	return name
 }
 
-func LeaderElector(client *clientset.Clientset) {
+func LeaderElector(client *clientset.Clientset, opts Options) {
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      constant.PorterSpeakerLocker,
@@ -47,9 +47,9 @@ func LeaderElector(client *clientset.Clientset) {
 	go leaderelection.RunOrDie(context.Background(), leaderelection.LeaderElectionConfig{
 		Lock:            lock,
 		ReleaseOnCancel: true,
-		LeaseDuration:   10 * time.Second,
-		RenewDeadline:   5 * time.Second,
-		RetryPeriod:     2 * time.Second,
+		LeaseDuration:   time.Duration(opts.LeaseDuration) * time.Second,
+		RenewDeadline:   time.Duration(opts.RenewDeadline) * time.Second,
+		RetryPeriod:     time.Duration(opts.RetryPeriod) * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				Leader = true

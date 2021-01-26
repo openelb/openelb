@@ -105,22 +105,23 @@ var _ = Describe("new responder", func() {
 })
 
 var _ = Describe("ARP Speak", func() {
-	var sp speaker.Speaker
+	var sp *arpSpeaker
 
 	BeforeEach(func() {
 		var err error
-		sp, err = NewSpeaker(VethIfName, true)
+		iface, _ := net.InterfaceByName(VethIfName)
+		sp, err = newARPSpeaker(iface)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		Expect(speaker.RegisteSpeaker(VethIfName, sp)).ShouldNot(HaveOccurred())
+		Expect(speaker.RegisterSpeaker(VethIfName, sp)).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		speaker.UnRegisteSpeaker(VethIfName)
+		speaker.UnRegisterSpeaker(VethIfName)
 	})
 
 	It("set loadbalancer", func() {
-		err := sp.SetBalancer("192.168.166.3", []string{"192.168.166.1"})
+		err := sp.setBalancer("192.168.166.3", []string{"192.168.166.1"})
 		Expect(err).ShouldNot(HaveOccurred())
 		peer, _ := net.InterfaceByName(VethPeerIfName)
 		mac, _, err := arping.PingOverIface(net.ParseIP("192.168.166.3"), *peer)

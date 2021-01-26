@@ -78,6 +78,33 @@ func (b *Bgp) HandleBgpPeerStatus(bgpPeers []bgpapi.BgpPeer) []*bgpapi.BgpPeer {
 	return result
 }
 
+func (b *Bgp) GetBgpConfStatus() bgpapi.BgpConf {
+	result, err := b.bgpServer.GetBgp(context.Background(), nil)
+	if err != nil {
+		ctrl.Log.Error(err, "failed to get bgpconf status")
+		return bgpapi.BgpConf{
+			Status: bgpapi.BgpConfStatus{
+				NodesConfStatus: map[string]bgpapi.NodeConfStatus{
+					util.GetNodeName(): bgpapi.NodeConfStatus{
+						RouterId: "",
+						As:       0,
+					},
+				},
+			},
+		}
+	}
+	return bgpapi.BgpConf{
+		Status: bgpapi.BgpConfStatus{
+			NodesConfStatus: map[string]bgpapi.NodeConfStatus{
+				util.GetNodeName(): bgpapi.NodeConfStatus{
+					RouterId: result.Global.RouterId,
+					As:       result.Global.As,
+				},
+			},
+		},
+	}
+}
+
 func (b *Bgp) HandleBgpPeer(neighbor *bgpapi.BgpPeer, delete bool) error {
 	// set default afisafi
 	if len(neighbor.Spec.AfiSafis) == 0 {

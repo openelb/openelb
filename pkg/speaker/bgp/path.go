@@ -3,20 +3,21 @@ package bgp
 import (
 	"context"
 	"fmt"
-	"net"
-	"strconv"
-	"strings"
-
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/kubesphere/porter/pkg/constant"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
+	"hash/fnv"
+	corev1 "k8s.io/api/core/v1"
+	"net"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func generateIdentifier(nexthop string) uint32 {
-	index := strings.LastIndex(nexthop, ".")
-	n, _ := strconv.ParseUint(nexthop[index+1:], 0, 32)
-	return uint32(n)
+func getPathIdentifier(nexthop string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(nexthop))
+	return h.Sum32()
 }
 
 func getFamily(ip string) *api.Family {
@@ -51,7 +52,7 @@ func toAPIPath(ip string, prefix uint32, nexthop string) *api.Path {
 		Family:     getFamily(ip),
 		Nlri:       nlri,
 		Pattrs:     attrs,
-		Identifier: generateIdentifier(nexthop),
+		Identifier: getPathIdentifier(nexthop),
 	}
 }
 
@@ -130,7 +131,7 @@ func (b *Bgp) ready() error {
 	return nil
 }
 
-func (b *Bgp) SetBalancer(ip string, nexthops []string) error {
+func (b *Bgp) setBalancer(ip string, nexthops []string) error {
 	err := b.ready()
 	if err != nil {
 		return err
@@ -151,6 +152,38 @@ func (b *Bgp) SetBalancer(ip string, nexthops []string) error {
 		return err
 	}
 	return nil
+}
+
+func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
+	var nexthops []string
+
+	for _, node := range nodes {
+		rack := ""
+		if node.Labels != nil {
+			rack = node.Labels[constant.PorterNodeRack]
+		}
+		if rack == b.rack || b.rack == "" {
+			nexthop, err := b.getNodeNextHop(node)
+			if err != nil {
+				return err
+			}
+			nexthops = append(nexthops, nexthop)
+		}
+	}
+
+	ctrl.Log.Info("bgp setBalancer", "nexthops", nexthops)
+
+	return b.setBalancer(ip, nexthops)
+}
+
+func (b *Bgp) getNodeNextHop(node corev1.Node) (string, error) {
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == corev1.NodeInternalIP {
+			return addr.Address, nil
+		}
+	}
+
+	return "", fmt.Errorf("node has no internal ip")
 }
 
 func (b *Bgp) addMultiRoutes(ip string, prefix uint32, nexthops []string) error {

@@ -47,7 +47,7 @@ var _ = Describe("BGP test", func() {
 					RouterId:   "10.0.255.254",
 					ListenPort: 17900,
 				},
-			}, false)
+			}, "", false)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -56,9 +56,9 @@ var _ = Describe("BGP test", func() {
 				Spec: bgpapi.BgpConfSpec{
 					As:         65002,
 					RouterId:   "10.0.255.253",
-					ListenPort: 17901,
+					ListenPort: 17902,
 				},
-			}, false)
+			}, "", false)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -67,7 +67,7 @@ var _ = Describe("BGP test", func() {
 				Spec: bgpapi.BgpConfSpec{
 					RouterId: "10.0.255.254",
 				},
-			}, true)
+			}, "", true)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -91,7 +91,7 @@ var _ = Describe("BGP test", func() {
 					RouterId:   "10.0.255.254",
 					ListenPort: 17900,
 				},
-			}, false)
+			}, "", false)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -132,15 +132,6 @@ var _ = Describe("BGP test", func() {
 				}, false)).ShouldNot(HaveOccurred())
 			})
 
-			It("Should generate right number", func() {
-				a := generateIdentifier("192.168.98.1")
-				b := generateIdentifier("192.168.98.11")
-				c := generateIdentifier("192.168.98.133")
-				Expect(a).To(BeEquivalentTo(1))
-				Expect(b).To(BeEquivalentTo(11))
-				Expect(c).To(BeEquivalentTo(133))
-			})
-
 			It("Should correctly add/delete all routes", func() {
 				ip := "100.100.100.100"
 				nexthops := []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}
@@ -152,7 +143,7 @@ var _ = Describe("BGP test", func() {
 				Expect(len(toDelete)).Should(Equal(0))
 
 				By("Add nexthops to bgp")
-				err = b.SetBalancer(ip, nexthops)
+				err = b.setBalancer(ip, nexthops)
 				Expect(err).ShouldNot(HaveOccurred())
 				err, toAdd, toDelete = b.retriveRoutes(ip, 32, nexthops)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -162,7 +153,7 @@ var _ = Describe("BGP test", func() {
 				By("Append a nexthop to bgp")
 				nexthops = append(nexthops, "4.4.4.4")
 				Expect(len(nexthops)).Should(Equal(4))
-				err = b.SetBalancer(ip, nexthops)
+				err = b.setBalancer(ip, nexthops)
 				Expect(err).ShouldNot(HaveOccurred())
 				err, toAdd, toDelete = b.retriveRoutes(ip, 32, nexthops)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -172,7 +163,7 @@ var _ = Describe("BGP test", func() {
 				By("Delete two nexthops from bgp")
 				nexthops = nexthops[:len(nexthops)-2]
 				Expect(len(nexthops)).Should(Equal(2))
-				err = b.SetBalancer(ip, nexthops)
+				err = b.setBalancer(ip, nexthops)
 				Expect(err).ShouldNot(HaveOccurred())
 				err, toAdd, toDelete = b.retriveRoutes(ip, 32, nexthops)
 				Expect(err).ShouldNot(HaveOccurred())
