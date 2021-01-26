@@ -1,6 +1,6 @@
 # Install Porter on Kubernetes (kubectl and Helm)
 
-This document describes how to use kubectl and Helm to install Porter in a Kubernetes cluster. For details about how to install Porter on the [KubeSphere](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/#step-3-create-a-cluster) web console, see [Install Porter on KubeSphere (Web Console)](./install-porter-on-kubesphere.md).
+This document describes how to use kubectl and [Helm](https://helm.sh/) to install Porter in a Kubernetes cluster. For details about how to install Porter on the [KubeSphere](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/#step-3-create-a-cluster) web console, see [Install Porter on KubeSphere (Web Console)](./install-porter-on-kubesphere.md).
 
 ## Prerequisites
 
@@ -15,18 +15,58 @@ This document describes how to use kubectl and Helm to install Porter in a Kuber
 
 ## Install Porter Using kubectl
 
-Log in to the Kubernetes cluster over SSH and run the following command:
+1. Log in to the Kubernetes cluster over SSH and run the following command:
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/kubesphere/porter/master/deploy/porter.yaml
-```
+   ```bash
+   kubectl apply -f https://raw.githubusercontent.com/kubesphere/porter/master/deploy/porter.yaml
+   ```
+   
+2. Run the following command to check whether the status of porter-manager is **READY**: **1/1** and **STATUS**: **Running**. If yes, Porter has been installed successfully.
+
+   ```bash
+   kubectl get po -n porter-system
+   ```
+
+   ![1](.\img\install-porter-on-kubernetes\1.jpg)
+
+3. To delete Porter, run the following command:
+
+   ```bash
+   kubectl delete -f https://raw.githubusercontent.com/kubesphere/porter/master/deploy/porter.yaml
+   ```
+   
+   {{< notice note}}
+   
+   Before deleting Porter, you must first delete all services that use Porter.
+   
+   {{</ notice>}}
 
 ## Install Porter Using Helm
 
-Log in to the Kubernetes cluster over SSH and run the following commands:
+1. Log in to the Kubernetes cluster over SSH and run the following commands:
 
-```bash 
-helm repo add test https://charts.kubesphere.io/test
-helm repo update
-helm install porter test/porter
-```
+   ```bash 
+   helm repo add test https://charts.kubesphere.io/test
+   helm repo update
+   helm install porter test/porter
+   ```
+
+2. Run the following command to check whether the status of porter-manager is **READY**: **1/1** and **STATUS**: **Running**. If yes, Porter has been installed successfully.
+
+   ```bash
+   kubectl get po -A
+   ```
+
+   ![2](.\img\install-porter-on-kubernetes\2.jpg)
+
+3. To delete Porter, run the following command:
+
+   ```bash
+   helm delete porter
+   ```
+
+   {{< notice note}}
+
+   Before deleting Porter, you must first delete all services that use Porter.
+
+   {{</ notice>}}
