@@ -1,0 +1,92 @@
+# Configure Porter in BGP Mode
+
+This document describes how to configure Porter in Border Gateway Protocol (BGP) mode. If Porter is used in Layer 2 mode, you do not need to configure Porter.
+
+## Network Topology
+
+The following figure shows the topology of the network between a Kubernetes cluster where Porter is installed and a peer BGP router.
+
+![porter-network-topology](./img/configure-porter-in-bgp-mode/porter-network-topology.jpg)
+
+IP addresses and Autonomous System Numbers (ASNs) in the preceding figure are examples only. The topology is described as follows:
+
+* A service backed by two pods is deployed in the Kubernetes cluster, and is assigned a virtual IP (VIP) address 172.22.0.2 for external access.
+* Porter installed in the Kubernetes cluster establishes a BGP connection with the BGP router, and publishes routes destined for the service to the BGP router.
+* When an external client machine attempts to access the service, the BGP router load balances the traffic among the master, worker 1, and work 2 nodes based on the routes obtained from Porter.
+
+Porter uses [GoBGP](https://github.com/osrg/gobgp) (integrated in Porter) to establish a BGP connection for route publishing. Two [CustomResourceDefinitions (CRDs)](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/), BgpConf and BgpPeer, are provided for users to configure the local and peer BGP properties on Porter. BgpConf and BgpPeer are designed according to the [GoBGP API](https://github.com/osrg/gobgp/blob/master/api/gobgp.pb.go).
+
+## Configure Local BGP Properties Using BgpConf
+
+You can create a BgpConf object in the Kubernetes cluster to configure the local BGP properties on Porter. The following is an example of the BgpConf YAML configuration:
+
+```yaml
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpConf
+metadata:
+  name: default
+spec:
+  as: 50000
+  listenPort: 17900
+  routerId: 192.168.0.2
+```
+
+The fields are described as follows:
+
+`metadata`:
+
+* `name`: BgpConf object name. Porter recognizes only the name `default`. BgpConf objects with other names will be ignored.
+
+`spec`:
+
+* `as`: Local ASN, which must be different from the value of `spec.conf.peerAS` in the BgpPeer configuration.
+* `listenPort`: Port on which Porter listens. The default value is `179` (default BGP port number). If other components (such as Calico) in the Kubernetes cluster also use BGP and port 179, you must set a different value to avoid the conflict.
+* `routerID`: Local router ID, which is usually set to the IP address of the master NIC of the Kubernetes master node. If this field is not specified, the first IP address of the node where porter-manager is located will be used.
+
+## Configure Peer BGP Properties Using BgpPeer
+
+You can create a BgpPeer object in the Kubernetes cluster to configure the peer BGP properties on Porter. The following is an example of the BgpPeer YAML configuration:
+
+```yaml
+apiVersion: network.kubesphere.io/v1alpha2
+kind: BgpPeer
+metadata:
+  name: bgppeer-sample
+spec:
+  conf:
+    peerAs: 50001
+    neighborAddress: 192.168.0.5
+  afiSafis:
+    - config:
+        family:
+          afi: AFI_IP
+          safi: SAFI_UNICAST
+        enabled: true
+      addPaths:
+        config:
+          sendMax: 10
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: master1
+```
+
+The fields are described as follows:
+
+`metadata`:
+
+* `name`: Name of the BgpPeer object. If there are multiple peer BGP routers, you can create multiple BgpPeer objects with different names.
+
+`spec.conf`:
+
+* `peerAS`: ASN of the peer BGP router, which must be different from the value of `spec.as` in the BgpConf configuration.
+* `neighborAddress`: IP address of the peer BGP router.
+
+`spec.afiSafis.addPaths.config`:
+
+* `sendMax`: Maximum number of equivalent routes that Porter can send to the peer BGP router for Equal-Cost Multi-Path (ECMP) routing. The default value is `10`.
+
+`spec.nodeSelector.matchLabels`:
+
+* `kubernetes.io/hostname`: By default, all porter-manager replicas will respond to the BgpPeer configuration and establish a BGP connection with the peer BGP router. However, if the Kubernetes cluster nodes are deployed under different routers, certain nodes may not be able to connect to the peer BGP router. In this case, you need to configure this field to specify which node establishes a BGP connection with the peer BGP router.
+
+Other fields under `spec.afiSafis` specify the address family. Currently, Porter supports only IPv4 and you can directly use the values in the example configuration.
