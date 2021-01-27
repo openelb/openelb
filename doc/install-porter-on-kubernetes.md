@@ -1,6 +1,6 @@
 # Install Porter on Kubernetes (kubectl and Helm)
 
-This document describes how to use kubectl and [Helm](https://helm.sh/) to install Porter in a Kubernetes cluster. For details about how to install Porter on the [KubeSphere](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/#step-3-create-a-cluster) web console, see [Install Porter on KubeSphere (Web Console)](./install-porter-on-kubesphere.md).
+This document describes how to use kubectl and [Helm](https://helm.sh/) to install and delete Porter in a Kubernetes cluster. For details about how to install and delete Porter on the [KubeSphere](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/#step-3-create-a-cluster) web console, see [Install Porter on KubeSphere (Web Console)](./install-porter-on-kubesphere.md).
 
 ## Prerequisites
 
@@ -29,17 +29,27 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
 
    ![verify-porter-kubectl](./img/install-porter-on-kubernetes/verify-porter-kubectl.jpg)
 
-3. To delete Porter, run the following command:
+## Delete Porter Using kubectl
+
+1. To delete Porter, log in to the Kubernetes cluster and run the following command:
 
    ```bash
    kubectl delete -f https://raw.githubusercontent.com/kubesphere/porter/master/deploy/porter.yaml
    ```
-   
+
    {{< notice note}}
-   
+
    Before deleting Porter, you must first delete all services that use Porter.
-   
+
    {{</ notice>}}
+
+2. Run the following command to check the result. If the porter-system name space does not exist, Porter has been deleted successfully.
+
+   ```bash
+   kubectl get ns
+   ```
+   
+   ![verify-porter-deletion-kubectl](./img/install-porter-on-kubernetes/verify-porter-deletion-kubectl.jpg)
 
 ## Install Porter Using Helm
 
@@ -59,7 +69,9 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
 
    ![verify-porter-helm](./img/install-porter-on-kubernetes/verify-porter-helm.jpg)
 
-3. To delete Porter, run the following command:
+## Delete Porter Using Helm
+
+1. To delete Porter, run the following command:
 
    ```bash
    helm delete porter
@@ -70,3 +82,11 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
    Before deleting Porter, you must first delete all services that use Porter.
 
    {{</ notice>}}
+
+2. Run the following command to check the result. If the Porter application does not exist, Porter has been deleted successfully.
+
+   ```bash
+   helm ls
+   ```
+
+   ![verify-porter-deletion-helm](./img/install-porter-on-kubernetes/verify-porter-deletion-helm.jpg)
