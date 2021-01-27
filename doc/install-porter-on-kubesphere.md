@@ -1,6 +1,6 @@
 # Install Porter on KubeSphere (Web Console)
 
-This document describes how to install Porter on the [KubeSphere](https://kubesphere.io/) web console. For details about how to install Porter in a Kubernetes cluster without KubeSphere, see [Install Porter on Kubernetes (kubectl and Helm)](./install-porter-on-kubernetes.md).
+This document describes how to install and delete Porter on the [KubeSphere](https://kubesphere.io/) web console. For details about how to install and delete Porter in a Kubernetes cluster without KubeSphere, see [Install Porter on Kubernetes (kubectl and Helm)](./install-porter-on-kubernetes.md).
 
 ## Prerequisites
 
