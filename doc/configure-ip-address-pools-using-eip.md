@@ -48,13 +48,13 @@ The fields are described as follows:
   
   * `IP address`, for example, `192.168.0.100`.
   * `IP address/Subnet mask`, for example, `192.168.0.0/24`.
-* `IP address 1-IP address 2`, for example, `192.168.0.91-192.168.0.100`.
+  * `IP address 1-IP address 2`, for example, `192.168.0.91-192.168.0.100`.
   
-
+  
   {{< notice note>}}
-
+  
   IP segments in different Eip objects cannot overlap. Otherwise, a resource creation error will occur.
-
+  
   {{</ notice>}}
 
 
