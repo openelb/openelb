@@ -2,7 +2,7 @@
 
 This document describes the network topology of Porter in Layer 2 mode and how Porter functions in Layer 2 mode.
 
-Generally, you are advised to use the BGP mode because it allows you to create a high availability system free of failover interruptions and bandwidth bottlenecks. However, BGP may be unavailable in certain systems because of security requirements or because the router does not support BGP. In such cases, you can use Porter in Layer 2 mode to achieve similar functionality.
+Generally, you are advised to use the BGP mode because it allows you to create a high availability system free of failover interruptions and bandwidth bottlenecks. However, BGP may be unavailable in certain systems because of security requirements or because the router does not support BGP. In this case, you can use Porter in Layer 2 mode to achieve similar functionality.
 
 ## Network Topology
 
