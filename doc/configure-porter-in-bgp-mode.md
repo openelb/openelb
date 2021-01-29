@@ -6,11 +6,11 @@ This document describes how to configure Porter in Border Gateway Protocol (BGP)
 
 The following figure shows the topology of the network between a Kubernetes cluster where Porter is installed and a peer BGP router.
 
-![porter-network-topology](./img/configure-porter-in-bgp-mode/porter-network-topology.jpg)
+![porter-bgp-topology](./img/configure-porter-in-bgp-mode/porter-bgp-topology.jpg)
 
 IP addresses and Autonomous System Numbers (ASNs) in the preceding figure are examples only. The topology is described as follows:
 
-* A service backed by two pods is deployed in the Kubernetes cluster, and is assigned a virtual IP (VIP) address 172.22.0.2 for external access.
+* A service backed by two pods is deployed in the Kubernetes cluster, and is assigned an IP address 172.22.0.2 for external access.
 * Porter installed in the Kubernetes cluster establishes a BGP connection with the BGP router, and publishes routes destined for the service to the BGP router.
 * When an external client machine attempts to access the service, the BGP router load balances the traffic among the master, worker 1, and work 2 nodes based on the routes obtained from Porter.
 
@@ -67,7 +67,7 @@ spec:
           sendMax: 10
   nodeSelector:
     matchLabels:
-      kubernetes.io/hostname: master1
+      porter.kubesphere.io/rack: master1
 ```
 
 The fields are described as follows:
@@ -87,6 +87,6 @@ The fields are described as follows:
 
 `spec.nodeSelector.matchLabels`:
 
-* `kubernetes.io/hostname`: If the Kubernetes cluster nodes are deployed under different routers and each node has one Porter replica, you need to configure this field so that the Porter replica on the correct node establishes a BGP connection with the peer BGP router. By default, all porter-manager replicas will respond to the BgpPeer configuration and attempt to establish a BGP connection with the peer BGP router.
+* `porter.kubesphere.io/rack`: If the Kubernetes cluster nodes are deployed under different routers and each node has one Porter replica, you need to configure this field so that the Porter replica on the correct node establishes a BGP connection with the peer BGP router. By default, all porter-manager replicas will respond to the BgpPeer configuration and attempt to establish a BGP connection with the peer BGP router.
 
 Other fields under `spec.afiSafis` specify the address family. Currently, Porter supports only IPv4 and you can directly use the values in the example configuration.
