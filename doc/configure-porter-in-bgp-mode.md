@@ -53,7 +53,7 @@ spec:
           sendMax: 10
   nodeSelector:
     matchLabels:
-      porter.kubesphere.io/rack: master1
+      porter.kubesphere.io/rack: leaf1
 ```
 
 The fields are described as follows:
