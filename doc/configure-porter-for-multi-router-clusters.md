@@ -34,7 +34,7 @@ This section describes the configuration result you need to achieve. The followi
 IP addresses in the preceding figure are examples only. The topology is described as follows:
 
 * After the configuration, Porter is installed on nodes under all leaf routers.
-* In addition to [what happens before the configuration](#network-topology-before-configuration), the Porter replica deployed under leaf 2 also establishes a BGP connection with leaf 2 and publishes the worker 2 IP address 192.168.1.2 to leaf 2 as the next hop destined for the service IP address 172.22.0.2.
+* In addition to [what happens before the configuration](#network-topology-before-configuration), the Porter replica installed under leaf 2 also establishes a BGP connection with leaf 2 and publishes the worker 2 IP address 192.168.1.2 to leaf 2 as the next hop destined for the service IP address 172.22.0.2.
 * Leaf 2 establishes a BGP connection with the spine router and publishes its own IP address 192.168.1.1 to the spine router as the next hop destined for the service IP address 172.22.0.2.
 * When an external client machine attempts to access the service, the spine router load balances the service traffic among leaf 1 and leaf 2. Leaf 1 load balances the traffic among the master node and worker 1. Leaf 2 forwards the traffic to worker 2. Therefore, the service traffic is load balanced among all three Kubernetes cluster nodes, and the service bandwidth of all three nodes can be utilized.
 
