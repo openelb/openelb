@@ -10,7 +10,7 @@ This document applies only to the BGP mode. The Layer 2 mode requires that all K
 
 ## Network Topology Before Configuration
 
-This section explains why you need to perform the configuration. The following figure shows the topology of a Kubernetes cluster before the configuration.
+This section explains why you need to perform the configuration. The following figure shows the network topology of a Kubernetes cluster before the configuration.
 
 ![multi-router-topology-1](./img/configure-porter-for-multi-router-clusters/multi-router-topology-1.jpg)
 
@@ -34,7 +34,7 @@ This section describes the configuration result you need to achieve. The followi
 IP addresses in the preceding figure are examples only. The topology is described as follows:
 
 * After the configuration, Porter is installed on nodes under all leaf routers.
-* In addition to [what happens before the configuration](#network-topology-before-configuration), the Porter replica deployed under leaf 2 also establishes a BGP connection with leaf 2 and  publishes the worker 2 IP address 192.168.1.2 to leaf 2 as the next hop destined for the service IP address 172.22.0.2.
+* In addition to [what happens before the configuration](#network-topology-before-configuration), the Porter replica deployed under leaf 2 also establishes a BGP connection with leaf 2 and publishes the worker 2 IP address 192.168.1.2 to leaf 2 as the next hop destined for the service IP address 172.22.0.2.
 * Leaf 2 establishes a BGP connection with the spine router and publishes its own IP address 192.168.1.1 to the spine router as the next hop destined for the service IP address 172.22.0.2.
 * When an external client machine attempts to access the service, the spine router load balances the service traffic among leaf 1 and leaf 2. Leaf 1 load balances the traffic among the master node and worker 1. Leaf 2 forwards the traffic to worker 2. Therefore, the service traffic is load balanced among all three Kubernetes cluster nodes, and the service bandwidth of all three nodes can be utilized.
 
@@ -48,19 +48,19 @@ You need to prepare a Kubernetes cluster where Porter has been installed. For de
 
 {{< notice note >}}
 
-Node names, leaf router names, and namespace in the following steps are examples only. You need to use the actual values in you environment.
+The node names, leaf router names, and namespace in the following steps are examples only. You need to use the actual values in your environment.
 
 {{</ notice>}}
 
-1. Log in to the the Kubernetes cluster and run the following commands to label the Kubernetes cluster nodes where Porter is to be installed:
+1. Log in to the Kubernetes cluster and run the following commands to label the Kubernetes cluster nodes where Porter is to be installed:
 
    ```bash
    kubectl label --overwrite nodes master1 worker-p002 lb.kubesphere.io/v1alpha1=porter
    ```
-   
+
    {{< notice note >}}
 
-   * Porter works properly if it is installed on only one node under each leaf router. In this example, Porter will be installed on master1 under leaf1 and worker-p002 under leaf2. However, to ensure high availability in a production environment, you are advised to installed Porter on at least two nodes under each leaf router.
+   Porter works properly if it is installed on only one node under each leaf router. In this example, Porter will be installed on master1 under leaf1 and worker-p002 under leaf2. However, to ensure high availability in a production environment, you are advised to installed Porter on at least two nodes under each leaf router.
 
    {{</ notice >}}
 
@@ -112,7 +112,7 @@ Node names, leaf router names, and namespace in the following steps are examples
    nodeSelector:
        matchLabels:
          porter.kubesphere.io/rack: leaf1
-```
+   ```
    
    ```yaml
    # BgpPeer YAML for worker-p002 and leaf2
