@@ -169,7 +169,7 @@ The following creates a deployment of two pods using the luksa/kubia image. Each
 
    {{</ notice>}}
 
-   3. Run the following command to create the service:
+3. Run the following command to create the service:
 
       ```bash
       kubectl apply -f porter-layer2-svc.yaml
