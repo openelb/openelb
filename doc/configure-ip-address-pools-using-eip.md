@@ -4,11 +4,11 @@ This document describes how to configure an Eip object, which functions as an IP
 
 Porter assigns IP addresses in Eip objects to LoadBalancer services in the Kubernetes cluster. After that, Porter publishes routes destined for the service IP addresses over BGP (in BGP mode), ARP (in Layer 2 mode for IPv4), or NDP (in Layer 2 mode for IPv6). 
 
-{{< notice note>}}
+{{< notice note >}}
 
 Currently, Porter supports only IPv4 and will soon support IPv6.
 
-{{</ notice>}}
+{{</ notice >}}
 
 ## Configure an Eip Object for Porter
 
@@ -51,11 +51,11 @@ The fields are described as follows:
   * `IP address 1-IP address 2`, for example, `192.168.0.91-192.168.0.100`.
   
   
-  {{< notice note>}}
+  {{< notice note >}}
   
   IP segments in different Eip objects cannot overlap. Otherwise, a resource creation error will occur.
   
-  {{</ notice>}}
+  {{</ notice >}}
 
 
 * `protocol`: Specifies which mode of Porter the Eip object is used for. The value can be either `layer2` or `bgp`. If this field is not specified, the default value `bgp` is used.
