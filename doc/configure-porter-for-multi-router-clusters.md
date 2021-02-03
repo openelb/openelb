@@ -50,7 +50,7 @@ You need to prepare a Kubernetes cluster where Porter has been installed. For de
 
 The node names, leaf router names, and namespace in the following steps are examples only. You need to use the actual values in your environment.
 
-{{</ notice>}}
+{{</ notice >}}
 
 1. Log in to the Kubernetes cluster and run the following commands to label the Kubernetes cluster nodes where Porter is to be installed:
 
