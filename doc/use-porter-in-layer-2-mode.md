@@ -82,7 +82,7 @@ The Eip object functions as an IP address pool for Porter.
 
    * For details about the fields in the Eip YAML configuration, see [Configure IP Address Pools Using Eip](./configure-ip-address-pools-using-eip.md).
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the Eip object:
 
@@ -169,7 +169,7 @@ The following creates a deployment of two pods using the luksa/kubia image. Each
    * If `spec.externalTrafficPolicy` is set to `Cluster` (default value), Porter randomly selects a node from all Kubernetes cluster nodes to handle service requests. Pods on other nodes can also be reached over kube-proxy.
    * If `spec.externalTrafficPolicy` is set to `Local`, Porter randomly selects a node that contains a pod in the Kubernetes cluster to handle service requests. Only pods on the selected node can be reached.
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the service:
 
@@ -209,7 +209,7 @@ The following verifies whether Porter functions properly.
 
    In this example, the pods are automatically assigned to different nodes. You can manually [assign pods to different nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
 
-   {{< notice >}}
+   {{</ notice >}}
 
 4. On the client machine, run the following commands to ping the service IP address and check the IP neighbors:
 
