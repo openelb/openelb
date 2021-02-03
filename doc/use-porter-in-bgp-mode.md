@@ -139,7 +139,7 @@ The BgpConf object is used to configure the local (Kubernetes cluster) BGP prope
 
    For details about the fields in the BgpConf YAML configuration, see [Configure Local BGP Properties Using BgpConf](./configure-porter-in-bgp-mode.md/#configure-local-bgp-properties-using-bgpconf).
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the BgpConf object:
 
@@ -174,7 +174,7 @@ The BgpPeer object is used to configure the peer (BIRD machine) BGP properties o
 
    For details about the fields in the BgpPeer YAML configuration, see [Configure Peer BGP Properties Using BgpPeer](./configure-porter-in-bgp-mode.md/#configure-peer-bgp-properties-using-bgppeer).
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the BgpPeer object:
 
@@ -207,7 +207,7 @@ The Eip object functions as an IP address pool for Porter.
 
    For details about the fields in the Eip YAML configuration, see [Configure IP Address Pools Using Eip](https://github.com/kubesphere/porter/blob/master/doc/configure-ip-address-pools-using-eip.md).
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the Eip object:
 
@@ -295,7 +295,7 @@ The following creates a deployment of two pods using the luksa/kubia image. Each
    - If `spec.externalTrafficPolicy` is set to `Cluster` (default value), Porter uses all Kubernetes cluster nodes as the next hops destined for the service.
    - If `spec.externalTrafficPolicy` is set to `Local`, Porter uses only Kubernetes cluster nodes that contain pods as the next hops destined for the service.
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the service:
 
