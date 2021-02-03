@@ -18,7 +18,7 @@ IP addresses and MAC addresses in the preceding figure are examples only. The to
 * When an external client machine attempts to access the service, the router forwards the service traffic to worker 1 based on the mapping between the service IP address and the MAC address of worker 1. After the service traffic reaches worker 1, kube-proxy can further forward the traffic to other nodes for load balancing (both pod 1 and pod 2 can be reached over kube-proxy).
 * If worker 1 fails, Porter re-sends an APR/NDP packet to the router to map the service IP address to the MAC address of worker 2, and the service traffic switches to worker 2.
 
-{{< notice note>}}
+{{< notice note >}}
 
 The Layer 2 mode has two limitations:
 
