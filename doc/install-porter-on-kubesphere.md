@@ -53,8 +53,8 @@ To delete Porter on the KubeSphere web console, go to your project, choose **App
 
 ![delete-porter](./img/install-porter-on-kubesphere/delete-porter.jpg)
 
-{{< notice note>}}
+{{< notice note >}}
 
 Before deleting Porter, you must first delete all services that use Porter.
 
-{{</ notice>}}
+{{</ notice >}}
