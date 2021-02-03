@@ -82,7 +82,7 @@ The Eip object functions as an IP address pool for Porter.
 
    * For details about the fields in the Eip YAML configuration, see [Configure IP Address Pools Using Eip](./configure-ip-address-pools-using-eip.md).
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the Eip object:
 
@@ -148,6 +148,7 @@ The following creates a deployment of two pods using the luksa/kubia image. Each
      annotations:
        lb.kubesphere.io/v1alpha1: porter
        protocol.porter.kubesphere.io/v1alpha1: layer2
+       eip.porter.kubesphere.io/v1alpha2: porter-layer2-eip
    spec:
      selector:
        app: porter-layer2
@@ -164,10 +165,11 @@ The following creates a deployment of two pods using the luksa/kubia image. Each
    * You must set `spec.type` to `LoadBalancer`.
    * The `lb.kubesphere.io/v1alpha1: porter` annotation specifies that the service uses Porter.
    * The `protocol.porter.kubesphere.io/v1alpha1: layer2` annotation specifies that Porter is used in Layer 2 mode.
+   * The `eip.porter.kubesphere.io/v1alpha2: porter-layer2-eip` annotation specifies the Eip object used by Porter. If this annotation is not configured, Porter automatically uses the first available Eip object that matches the protocol. You can also delete this annotation and add the `spec.loadBalancerIP` field (for example, `spec.loadBalancerIP: 192.168.0.91`) to assign a specific IP address to the service.
    * If `spec.externalTrafficPolicy` is set to `Cluster` (default value), Porter randomly selects a node from all Kubernetes cluster nodes to handle service requests. Pods on other nodes can also be reached over kube-proxy.
    * If `spec.externalTrafficPolicy` is set to `Local`, Porter randomly selects a node that contains a pod in the Kubernetes cluster to handle service requests. Only pods on the selected node can be reached.
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 3. Run the following command to create the service:
 
@@ -207,7 +209,7 @@ The following verifies whether Porter functions properly.
 
    In this example, the pods are automatically assigned to different nodes. You can manually [assign pods to different nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
 
-   {{< notice >}}
+   {{</ notice >}}
 
 4. On the client machine, run the following commands to ping the service IP address and check the IP neighbors:
 
