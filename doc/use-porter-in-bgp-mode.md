@@ -317,7 +317,7 @@ The following verifies whether Porter functions properly.
 
 2. In the Kubernetes cluster, run the following command to obtain the IP addresses of the cluster nodes:
 
-   ![node-ip](./img/use-porter-in-bgp-mode/node-ip.jpg)
+   ![node-ips](./img/use-porter-in-bgp-mode/node-ips.jpg)
 
 3. On the BIRD machine, run the following command to check the routing table. If equivalent routes using the Kubernetes cluster nodes as next hops destined for the service are displayed, Porter functions properly.
 
@@ -325,7 +325,15 @@ The following verifies whether Porter functions properly.
    ip route
    ```
 
-   ![bgp-routes](./img/use-porter-in-bgp-mode/bgp-routes.jpg)
+   If `spec.externalTrafficPolicy` in the [service YAML configuration](#step-6-create-a-service) is set to `Cluster`, all Kubernetes cluster nodes are used as the next hops.
+
+   ![bgp-routes-cluster](./img/use-porter-in-bgp-mode/bgp-routes-cluster.jpg)
+
+   If `spec.externalTrafficPolicy` in the [service YAML configuration](#step-6-create-a-service) is set to `Local`, only Kubernetes cluster nodes that contain pods are used as the next hops.
+
+   ![bgp-routes-local](./img/use-porter-in-bgp-mode/bgp-routes-local.jpg)
+
+   
 
 4. On the BIRD machine, run the following command to access the service:
 
