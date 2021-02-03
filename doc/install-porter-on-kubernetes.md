@@ -37,11 +37,11 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
    kubectl delete -f https://raw.githubusercontent.com/kubesphere/porter/master/deploy/porter.yaml
    ```
 
-   {{< notice note}}
+   {{< notice note >}}
 
    Before deleting Porter, you must first delete all services that use Porter.
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 2. Run the following command to check the result. If the porter-system name space does not exist, Porter has been deleted successfully.
 
@@ -77,11 +77,11 @@ This document describes how to use kubectl and [Helm](https://helm.sh/) to insta
    helm delete porter
    ```
 
-   {{< notice note}}
+   {{< notice note >}}
 
    Before deleting Porter, you must first delete all services that use Porter.
 
-   {{</ notice>}}
+   {{</ notice >}}
 
 2. Run the following command to check the result. If the Porter application does not exist, Porter has been deleted successfully.
 
