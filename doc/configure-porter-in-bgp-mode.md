@@ -73,6 +73,6 @@ The fields are described as follows:
 
 `spec.nodeSelector.matchLabels`:
 
-* `porter.kubesphere.io/rack`: If the Kubernetes cluster nodes are deployed under different routers and each node has one Porter replica, you need to configure this field so that the Porter replica on the correct node establishes a BGP connection with the peer BGP router. By default, all porter-manager replicas will respond to the BgpPeer configuration and attempt to establish a BGP connection with the peer BGP router.
+* `porter.kubesphere.io/rack`: If the Kubernetes cluster nodes are deployed under different routers and each node has one Porter replica, you need to configure this field so that the Porter replica on the correct node establishes a BGP connection with the peer BGP router. By default, all Porter replicas will respond to the BgpPeer configuration and attempt to establish a BGP connection with the peer BGP router.
 
 Other fields under `spec.afiSafis` specify the address family. Currently, Porter supports only IPv4 and you can directly use the values in the example configuration.
