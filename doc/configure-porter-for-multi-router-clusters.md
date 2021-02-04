@@ -52,7 +52,7 @@ The node names, leaf router names, and namespace in the following steps are exam
 
 {{</ notice >}}
 
-1. Log in to the Kubernetes cluster and run the following commands to label the Kubernetes cluster nodes where Porter is to be installed:
+1. Log in to the Kubernetes cluster and run the following command to label the Kubernetes cluster nodes where Porter is to be installed:
 
    ```bash
    kubectl label --overwrite nodes master1 worker-p002 lb.kubesphere.io/v1alpha1=porter
