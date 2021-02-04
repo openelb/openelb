@@ -21,6 +21,7 @@
 * [Configure IP Address Pools Using Eip](./configure-ip-address-pools-using-eip.md)
 * [Configure Porter in BGP Mode](./configure-porter-in-bgp-mode.md)
 * [Configure Porter for Multi-router Clusters (BGP Mode)](./configure-porter-for-multi-router-clusters.md)
+* [Configure Multiple Porter Replicas](./configure-multiple-porter-replicas.md)
 
 ### Usage
 
