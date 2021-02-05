@@ -2,8 +2,6 @@
 
 This document demonstrates how to use Porter in Layer 2 mode to expose a service backed by two pods. The Eip, deployment and service described in this document are examples only and you need to customize the commands and YAML configurations based on your requirements.
 
-For details about the network topology of Porter in Layer 2 mode, see [Layer 2 Mode Network Topology](./layer-2-mode-network-topology.md).
-
 ## Prerequisites
 
 * You need to prepare a Kubernetes cluster where Porter has been installed. For details, see [Install Porter on Kubernetes (kubectl and Helm)](https://github.com/Patrick-LuoYu/porter/blob/configure-porter-for-multi-router-clusters-en/doc/install-porter-on-kubernetes.md) and [Install Porter on KubeSphere (Web Console)](https://github.com/Patrick-LuoYu/porter/blob/configure-porter-for-multi-router-clusters-en/doc/install-porter-on-kubesphere.md). All Kubernetes cluster nodes must be on the same Layer 2 network (under the same router).
