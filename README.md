@@ -5,7 +5,7 @@
 
 ![logo](doc/img/porter-logo.png)
 
-[Porter](https://porter.kubesphere.io/) is an open-source load balancer implementation designed for bare-metal Kubernetes clusters.
+Porter is an open-source load balancer implementation designed for bare-metal Kubernetes clusters.
 
 ## Why Porter
 
