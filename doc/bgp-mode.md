@@ -1,4 +1,4 @@
-# BGP Mode Network Topology
+# BGP Mode
 
 This document describes the network topology of Porter in BGP mode and how Porter functions in BGP mode.
 
