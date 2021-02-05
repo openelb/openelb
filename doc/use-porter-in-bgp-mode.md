@@ -6,7 +6,7 @@ Instead of using a real router, this document uses a Linux server with [BIRD](ht
 
 ## Prerequisites
 
-* You need to prepare a Kubernetes cluster where Porter has been installed. For details, see [Install Porter on Kubernetes (kubectl and Helm)](https://github.com/Patrick-LuoYu/porter/blob/configure-porter-for-multi-router-clusters-en/doc/install-porter-on-kubernetes.md) and [Install Porter on KubeSphere (Web Console)](https://github.com/Patrick-LuoYu/porter/blob/configure-porter-for-multi-router-clusters-en/doc/install-porter-on-kubesphere.md).
+* You need to prepare a Kubernetes cluster where Porter has been installed. For details, see [Install Porter on Kubernetes (kubectl and Helm)](./install-porter-on-kubernetes.md) and [Install Porter on KubeSphere (Web Console)](./install-porter-on-kubesphere.md).
 
 * You need to prepare a Linux server that communicates with the Kubernetes cluster properly. BIRD will be installed on the server to simulate a BGP router. 
 * If you use a real router instead of BIRD, the router must support BGP and Equal-Cost Multi-Path (ECMP) routing. In addition, the router must also support receiving multiple equivalent routes from the same neighbor.
@@ -205,7 +205,7 @@ The Eip object functions as an IP address pool for Porter.
 
    {{< notice note >}}
 
-   For details about the fields in the Eip YAML configuration, see [Configure IP Address Pools Using Eip](https://github.com/kubesphere/porter/blob/master/doc/configure-ip-address-pools-using-eip.md).
+   For details about the fields in the Eip YAML configuration, see [Configure IP Address Pools Using Eip](./configure-ip-address-pools-using-eip.md).
 
    {{</ notice >}}
 
