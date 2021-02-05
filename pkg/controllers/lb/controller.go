@@ -28,6 +28,7 @@ import (
 	"github.com/kubesphere/porter/pkg/validate"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -49,6 +50,25 @@ import (
 type ServiceReconciler struct {
 	client.Client
 	record.EventRecorder
+}
+
+func (r *ServiceReconciler) shouldReconcileEP(e metav1.Object) bool {
+	if e.GetAnnotations() != nil {
+		if e.GetAnnotations()["control-plane.alpha.kubernetes.io/leader"] != "" {
+			return false
+		}
+	}
+
+	svc := &corev1.Service{}
+	err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.GetNamespace(), Name: e.GetName()}, svc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false
+		}
+		return true
+	}
+
+	return IsPorterService(svc)
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -76,29 +96,13 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//endpoints
 	ep := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			svc := &corev1.Service{}
-			err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.MetaOld.GetNamespace(), Name: e.MetaOld.GetName()}, svc)
-			if err != nil {
-				return true
-			}
-
-			return IsPorterService(svc)
+			return r.shouldReconcileEP(e.MetaNew)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			svc := &corev1.Service{}
-			err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.Meta.GetNamespace(), Name: e.Meta.GetName()}, svc)
-			if err != nil {
-				return true
-			}
-			return IsPorterService(svc)
+			return r.shouldReconcileEP(e.Meta)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			svc := &corev1.Service{}
-			err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.Meta.GetNamespace(), Name: e.Meta.GetName()}, svc)
-			if err != nil {
-				return true
-			}
-			return IsPorterService(svc)
+			return r.shouldReconcileEP(e.Meta)
 		},
 	}
 	err = ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, ep)
@@ -239,34 +243,6 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	if util.IsDeletionCandidate(svc, constant.FinalizerName) {
-		if result.ShouldUnAssignIP() {
-			err = r.callDelLoadBalancer(result, *svc)
-			if err != nil {
-				r.Event(svc, corev1.EventTypeWarning, ReasonDeleteLoadBalancer, fmt.Sprintf(DelLoadBalancerFailedMsg, err))
-				return ctrl.Result{}, err
-			}
-			_, err = ipam.IPAMAllocator.UnAssignIP(args, false)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-
-		controllerutil.RemoveFinalizer(svc, constant.FinalizerName)
-		return ctrl.Result{}, r.Update(context.Background(), svc)
-	}
-
-	if util.NeedToAddFinalizer(svc, constant.FinalizerName) {
-		controllerutil.AddFinalizer(svc, constant.FinalizerName)
-		err := r.Update(context.Background(), svc)
-		log.Info("AddFinalizer", "finalizer", svc.Finalizers, "err", err)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	clone := svc.DeepCopy()
-
 	// Check if the IP address specified by the service should be changed.
 	if args.ShouldUnAssignIP(result) {
 		err = r.callDelLoadBalancer(result, *svc)
@@ -282,53 +258,61 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		result.Clean()
 	}
 
-	// alloc eip
 	if !args.Unalloc {
-		if result.ShouldAssignIP() {
+		if !result.Assigned() {
 			result, err = ipam.IPAMAllocator.AssignIP(args)
 			if err != nil {
-				clone.Status.LoadBalancer.Ingress = nil
-				if !reflect.DeepEqual(svc.Status, clone.Status) {
-					r.Status().Update(context.Background(), clone)
-				}
+				r.updateServiceEipInfo(result, svc)
 				return ctrl.Result{}, err
 			}
 		}
-		err = r.callSetLoadBalancer(result, clone)
+
+		err = r.callSetLoadBalancer(result, svc)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	//update eip labels
+	return ctrl.Result{}, r.updateServiceEipInfo(result, svc)
+}
+
+func (r *ServiceReconciler) updateServiceEipInfo(result ipam.IPAMResult, svc *corev1.Service) error {
+	clone := svc.DeepCopy()
+
+	//update eip labels and annotations
 	if clone.Labels == nil {
 		clone.Labels = make(map[string]string)
 	}
-	if !args.Unalloc {
+	if result.Assigned() {
+		if !util.ContainsString(clone.Finalizers, constant.FinalizerName) {
+			controllerutil.AddFinalizer(clone, constant.FinalizerName)
+		}
 		clone.Labels[constant.PorterEIPAnnotationKeyV1Alpha2] = result.Eip
 	} else {
-		controllerutil.RemoveFinalizer(svc, constant.FinalizerName)
+		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
 		delete(clone.Labels, constant.PorterEIPAnnotationKeyV1Alpha2)
 	}
 	if !reflect.DeepEqual(svc.Labels, clone.Labels) {
-		err = r.Update(context.Background(), clone)
+		err := r.Update(context.Background(), clone)
 		if err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
 	//update ingress status
 	clone.Status.LoadBalancer.Ingress = nil
-	clone.Status.LoadBalancer.Ingress = append(clone.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{
-		IP: result.Addr,
-	})
+	if result.Assigned() {
+		clone.Status.LoadBalancer.Ingress = append(clone.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{
+			IP: result.Addr,
+		})
+	}
 	if !reflect.DeepEqual(svc.Status, clone.Status) {
-		err = r.Status().Update(context.Background(), clone)
+		err := r.Status().Update(context.Background(), clone)
 		if err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 	}
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *ServiceReconciler) constructIPAMArgs(svc *corev1.Service) ipam.IPAMArgs {
@@ -342,7 +326,9 @@ func (r *ServiceReconciler) constructIPAMArgs(svc *corev1.Service) ipam.IPAMArgs
 	}.String()
 
 	if svc.Annotations != nil {
-		if _, ok := svc.Annotations[constant.PorterAnnotationKey]; ok && svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		if _, ok := svc.Annotations[constant.PorterAnnotationKey]; ok &&
+			svc.Spec.Type == corev1.ServiceTypeLoadBalancer &&
+			svc.DeletionTimestamp == nil {
 			args.Unalloc = false
 		}
 

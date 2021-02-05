@@ -77,18 +77,9 @@ type IPAMResult struct {
 	Sp       speaker.Speaker
 }
 
-// Called when the service is deleted.
-func (i *IPAMResult) ShouldUnAssignIP() bool {
-	if i.Addr != "" {
-		return true
-	}
-
-	return false
-}
-
 // Called when the service is updated or created.
-func (i *IPAMResult) ShouldAssignIP() bool {
-	if i.Addr == "" {
+func (i *IPAMResult) Assigned() bool {
+	if i.Addr != "" {
 		return true
 	}
 
