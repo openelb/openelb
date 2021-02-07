@@ -1,4 +1,4 @@
-# BGP Mode Network Topology
+# BGP Mode
 
 This document describes the network topology of Porter in BGP mode and how Porter functions in BGP mode.
 
@@ -6,7 +6,7 @@ This document describes the network topology of Porter in BGP mode and how Porte
 
 The following figure shows the topology of the network between a Kubernetes cluster where Porter is installed and a peer BGP router.
 
-![porter-bgp-topology](./img/bgp-mode-network-topology/porter-bgp-topology.jpg)
+![porter-bgp-topology](./img/bgp-mode/porter-bgp-topology.jpg)
 
 IP addresses and Autonomous System Numbers (ASNs) in the preceding figure are examples only. The topology is described as follows:
 
