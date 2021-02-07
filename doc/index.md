@@ -6,8 +6,8 @@
 
 ## Concepts
 
-* [BGP Mode Network Topology](./bgp-mode-network-topology.md)
-* [Layer 2 Mode Network Topology](./layer-2-mode-network-topology.md)
+* [BGP Mode](./bgp-mode.md)
+* [Layer 2 Mode](./layer-2-mode.md)
 
 ## Getting Started
 
