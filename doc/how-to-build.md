@@ -1,5 +1,7 @@
 # Build the Porter Project
 
+This document describes how to build the Porter project.
+
 ## Prerequisites
 
 * You need to prepare a Linux environment.
