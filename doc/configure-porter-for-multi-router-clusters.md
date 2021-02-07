@@ -102,6 +102,9 @@ The node names, leaf router names, and namespace in the following steps are exam
 
    ```bash
    kubectl label --overwrite nodes master1 porter.kubesphere.io/rack=leaf1
+   ```
+
+   ```bash
    kubectl label --overwrite nodes worker-p002 porter.kubesphere.io/rack=leaf2
    ```
 
