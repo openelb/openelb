@@ -13,6 +13,13 @@ Porter is designed to be used in bare-metal Kubernetes environments. However, yo
 
 ## Install Porter on the KubeSphere Web Console
 
+{{< notice note >}}
+
+* In a Kubernetes cluster, you only need to install Porter once. After the installation is complete, a porter-manager deployment that contains a porter-manager pod is installed in the cluster. The porter-manager pod implements the functionality of Porter for the entire Kubernetes cluster.
+* To ensure high availability, you can scale the porter-manager deployment and assign multiple Porter replicas (porter-manager pods) to multiple cluster nodes. For details, see [Configure Multiple Porter Replicas](./configure-multiple-porter-replicas.md).
+
+{{</ notice >}}
+
 1. Log in to the KubeSphere console and go to your workspace.
 
    ![enter-workspace](./img/install-porter-on-kubesphere/enter-workspace.jpg)
@@ -25,7 +32,7 @@ Porter is designed to be used in bare-metal Kubernetes environments. However, yo
 
    ![repo-spec](./img/install-porter-on-kubesphere/repo-spec.jpg)
 
-4. Go to your project, choose **Application Workloads** > **Applications** on the left navigation bar, and click **Deploy New Application** on the right.
+4. Go to the project where Porter is to be installed, choose **Application Workloads** > **Applications** on the left navigation bar, and click **Deploy New Application** on the right.
 
    ![deploy-new-app](./img/install-porter-on-kubesphere/deploy-new-app.jpg)
 
