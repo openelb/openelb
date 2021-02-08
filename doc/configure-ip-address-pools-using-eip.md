@@ -60,7 +60,7 @@ The fields are described as follows:
 
 * `protocol`: Specifies which mode of Porter the Eip object is used for. The value can be either `layer2` or `bgp`. If this field is not specified, the default value `bgp` is used.
 
-* `interface`: NIC on which Porter listens ARP or NDP requests. This field is valid only when `protocol` is set to `layer2`.
+* `interface`: NIC on which Porter listens for ARP or NDP requests. This field is valid only when `protocol` is set to `layer2`.
 
   {{< notice tip >}}
 
