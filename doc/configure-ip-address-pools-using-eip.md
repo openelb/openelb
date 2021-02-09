@@ -71,11 +71,11 @@ The fields are described as follows:
 * `disable`: Specifies whether the Eip object is disabled. The value can be:
   
   * `false`: Porter can assign IP addresses in the Eip object to new LoadBalancer services.
-  * `true`: Porter stops assigning IP addresses in the Eip object to new LoadBalancer services. Existing services will not be affected.
+  * `true`: Porter stops assigning IP addresses in the Eip object to new LoadBalancer services. Existing services are not affected.
 
 `status`: Fields under `status` specify the status of the Eip object and are automatically configured. When creating an Eip object, you do not need to configure these fields.
 
-* `occupied`: Specifies whether IP addresses in the Eip object has been used up.
+* `occupied`: Specifies whether IP addresses in the Eip object have been used up.
 
 * `usage`: Specifies how many IP addresses in the Eip object have been assigned to services.
 * `used`: Specifies the used IP addresses and the services that use the IP addresses. The services are displayed in the `Namespace/Service name` format (for example, `default/test-svc`).
