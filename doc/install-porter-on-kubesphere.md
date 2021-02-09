@@ -2,6 +2,13 @@
 
 This document describes how to install and delete Porter on the [KubeSphere](https://kubesphere.io/) web console. For details about how to install and delete Porter in a Kubernetes cluster without KubeSphere, see [Install Porter on Kubernetes (kubectl and Helm)](./install-porter-on-kubernetes.md).
 
+{{< notice note >}}
+
+* In a Kubernetes cluster, you only need to install Porter once. After the installation is complete, a porter-manager deployment that contains a porter-manager pod is installed in the cluster. The porter-manager pod implements the functionality of Porter for the entire Kubernetes cluster.
+* After the installation is complete, you can scale the porter-manager deployment and assign multiple Porter replicas (porter-manager pods) to multiple cluster nodes to ensure high availability. For details, see [Configure Multiple Porter Replicas](./configure-multiple-porter-replicas.md).
+
+{{</ notice >}}
+
 ## Prerequisites
 
 You need to prepare a Kubernetes cluster with KubeSphere, and ensure that the Kubernetes version is 1.15 or later. Porter requires CustomResourceDefinition (CRD) v1, which is only supported by Kubernetes 1.15 or later. You can use the following methods to install KubeSphere:
@@ -12,13 +19,6 @@ You need to prepare a Kubernetes cluster with KubeSphere, and ensure that the Ku
 Porter is designed to be used in bare-metal Kubernetes environments. However, you can also use a cloud-based Kubernetes cluster for learning and testing.
 
 ## Install Porter on the KubeSphere Web Console
-
-{{< notice note >}}
-
-* In a Kubernetes cluster, you only need to install Porter once. After the installation is complete, a porter-manager deployment that contains a porter-manager pod is installed in the cluster. The porter-manager pod implements the functionality of Porter for the entire Kubernetes cluster.
-* To ensure high availability, you can scale the porter-manager deployment and assign multiple Porter replicas (porter-manager pods) to multiple cluster nodes. For details, see [Configure Multiple Porter Replicas](./configure-multiple-porter-replicas.md).
-
-{{</ notice >}}
 
 1. Log in to the KubeSphere console and go to your workspace.
 
