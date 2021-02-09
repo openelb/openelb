@@ -23,14 +23,14 @@ In cloud-based Kubernetes clusters, services are usually exposed by using load b
 
 Without a bare-metal environment yet? Doesn't matter!
 
-You can learn how to use Porter in a cloud-based Kubernetes cluster by following the [Porter Documentation](./doc/index.md).
+You can learn how to use Porter in a cloud-based Kubernetes cluster by following the [Porter Documentation](https://porterlb.io/docs/).
 
 ## Support, Discussion and Contributing
 
 Porter is a sub-project of [KubeSphere](https://github.com/kubesphere/kubesphere).
 
 * Join us at the [KubeSphere Slack Channel](https://kubesphere.slack.com/join/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE#/) to get support or simply tell us that you are using Porter.
-* You have code or documents for Porter? We ❤️ all sorts of contributions! You can [build the Porter project](/doc/how-to-build.md) and send us pull requests.
+* You have code or documents for Porter? We ❤️ all sorts of contributions! You can [build the Porter project](https://porterlb.io/docs/building/) and send us pull requests.
 
 ## Landscapes
 
