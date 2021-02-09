@@ -2,6 +2,13 @@
 
 This document describes how to use kubectl and [Helm](https://helm.sh/) to install and delete Porter in a Kubernetes cluster. For details about how to install and delete Porter on the [KubeSphere](https://kubesphere.io/docs/installing-on-linux/introduction/multioverview/#step-3-create-a-cluster) web console, see [Install Porter on KubeSphere (Web Console)](./install-porter-on-kubesphere.md).
 
+{{< notice note >}}
+
+* In a Kubernetes cluster, you only need to install Porter once. After the installation is complete, a porter-manager deployment that contains a porter-manager pod is installed in the cluster. The porter-manager pod implements the functionality of Porter for the entire Kubernetes cluster.
+* After the installation is complete, you can scale the porter-manager deployment and assign multiple Porter replicas (porter-manager pods) to multiple cluster nodes to ensure high availability. For details, see [Configure Multiple Porter Replicas](./configure-multiple-porter-replicas.md).
+
+{{</ notice >}}
+
 ## Prerequisites
 
 * You need to prepare a Kubernetes cluster, and ensure that the Kubernetes version is 1.15 or later. Porter requires CustomResourceDefinition (CRD) v1, which is only supported by Kubernetes 1.15 or later. You can use the following methods to deploy a Kubernetes cluster:
