@@ -200,13 +200,11 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 
 func (r *ServiceReconciler) callDelLoadBalancer(result ipam.IPAMResult, svc *corev1.Service) error {
 	if result.Addr != "" {
-		if result.Protocol == constant.PorterProtocolLayer2 {
-			if svc.Annotations != nil && svc.Annotations[constant.PorterLayer2Annotation] != "" {
-				delete(svc.Annotations, constant.PorterLayer2Annotation)
-				err := r.Update(context.Background(), svc)
-				if err != nil {
-					return err
-				}
+		if svc.Annotations != nil && svc.Annotations[constant.PorterLayer2Annotation] != "" {
+			delete(svc.Annotations, constant.PorterLayer2Annotation)
+			err := r.Update(context.Background(), svc)
+			if err != nil {
+				return err
 			}
 		}
 		return result.Sp.DelBalancer(result.Addr)

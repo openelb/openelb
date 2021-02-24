@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"reflect"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -143,7 +142,7 @@ func (a *arpSpeaker) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err erro
 }
 
 func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
-	if !leader.Leader {
+	if a.getMac(ip.String()) != nil {
 		return nil
 	}
 
@@ -151,15 +150,15 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve ip %s, err=%v", nodeIP, err)
 	}
+	a.setMac(ip.String(), hwAddr)
+	a.logger.Info("map ingress ip", "ingress", ip.String(), "nodeIP", nodeIP.String(), "nodeMac", hwAddr.String())
 
-	tmp := a.getMac(ip.String())
-	if tmp != nil && reflect.DeepEqual(hwAddr, *tmp) {
+	if !leader.Leader {
 		return nil
 	}
-	a.setMac(ip.String(), hwAddr)
 
 	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
-		a.logger.V(4).Info("send gratuitous arp packet",
+		a.logger.Info("send gratuitous arp packet",
 			"eip", ip, "nodeIP", nodeIP, "hwAddr", hwAddr)
 
 		fb, err := generateArp(a.intf.HardwareAddr, op, hwAddr, ip, ethernet.Broadcast, ip)
@@ -242,9 +241,11 @@ func (a *arpSpeaker) processRequest() dropReason {
 	pkt, _, err := a.conn.Read()
 	if err != nil {
 		if err == io.EOF {
+			a.logger.Info("arp speaker closed", "interface", a.intf.Name)
 			return dropReasonClosed
 		}
 
+		a.logger.Error(err, "arp speaker read error", "interface", a.intf.Name)
 		return dropReasonError
 	}
 
@@ -262,7 +263,7 @@ func (a *arpSpeaker) processRequest() dropReason {
 		return dropReasonUnknowTargetIP
 	}
 
-	a.logger.V(4).Info("got ARP request, sending response",
+	a.logger.Info("got ARP request, sending response",
 		"interface", a.intf.Name,
 		"ip", pkt.TargetIP, "senderIP", pkt.SenderIP,
 		"senderMAC", pkt.SenderHardwareAddr, "responseMAC", *hwAddr)
@@ -274,10 +275,7 @@ func (a *arpSpeaker) processRequest() dropReason {
 	}
 
 	if _, err := a.p.WriteTo(fb, &raw.Addr{HardwareAddr: pkt.SenderHardwareAddr}); err != nil {
-		a.logger.Error(err, "send response",
-			"interface", a.intf.Name,
-			"ip", pkt.TargetIP, "senderIP", pkt.SenderIP,
-			"senderMAC", pkt.SenderHardwareAddr, "responseMAC", *hwAddr)
+		a.logger.Error(err, "failed to send response")
 		return dropReasonError
 	}
 
