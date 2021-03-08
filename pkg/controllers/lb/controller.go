@@ -198,17 +198,18 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 	return result.Sp.SetBalancer(svcIP, announceNodes)
 }
 
-func (r *ServiceReconciler) callDelLoadBalancer(result ipam.IPAMResult, svc corev1.Service) error {
-	if len(svc.Status.LoadBalancer.Ingress) <= 0 {
-		return nil
+func (r *ServiceReconciler) callDelLoadBalancer(result ipam.IPAMResult, svc *corev1.Service) error {
+	if result.Addr != "" {
+		if svc.Annotations != nil && svc.Annotations[constant.PorterLayer2Annotation] != "" {
+			delete(svc.Annotations, constant.PorterLayer2Annotation)
+			err := r.Update(context.Background(), svc)
+			if err != nil {
+				return err
+			}
+		}
+		return result.Sp.DelBalancer(result.Addr)
 	}
-
-	ip := svc.Status.LoadBalancer.Ingress[0].IP
-
-	err := result.Sp.DelBalancer(ip)
-	ctrl.Log.Info("callDelLoadBalancer", "result", result,
-		"IngressIP", ip, "err", err)
-	return err
+	return nil
 }
 
 const (
@@ -245,7 +246,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if the IP address specified by the service should be changed.
 	if args.ShouldUnAssignIP(result) {
-		err = r.callDelLoadBalancer(result, *svc)
+		err = r.callDelLoadBalancer(result, svc)
 		if err != nil {
 			r.Event(svc, corev1.EventTypeWarning, ReasonDeleteLoadBalancer, fmt.Sprintf(DelLoadBalancerFailedMsg, err))
 			return ctrl.Result{}, err
