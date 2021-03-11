@@ -6,7 +6,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 
-	"github.com/kubesphere/porter/pkg/speaker"
+	"github.com/kubesphere/porterlb/pkg/speaker"
 	"github.com/vishvananda/netlink"
 )
 

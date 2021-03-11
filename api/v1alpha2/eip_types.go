@@ -23,8 +23,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/kubesphere/porter/pkg/constant"
-	"github.com/kubesphere/porter/pkg/manager/client"
+	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/kubesphere/porterlb/pkg/manager/client"
 	cnet "github.com/projectcalico/libcalico-go/lib/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

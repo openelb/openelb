@@ -29,8 +29,8 @@ test: fmt vet
 
 # Build manager binary
 manager: fmt vet
-	#CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bin/manager github.com/kubesphere/porter/cmd/manager
-	CGO_ENABLED=0 go build  -o bin/manager github.com/kubesphere/porter/cmd/manager
+	#CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bin/manager github.com/kubesphere/porterlb/cmd/manager
+	CGO_ENABLED=0 go build  -o bin/manager github.com/kubesphere/porterlb/cmd/manager
 
 
 deploy: generate
@@ -61,11 +61,11 @@ clean-up:
 	./hack/cleanup.sh
 
 release: deploy
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager-linux-amd64 github.com/kubesphere/porter/cmd/manager
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/agent-linux-amd64 github.com/kubesphere/porter/cmd/agent
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager-linux-amd64 github.com/kubesphere/porterlb/cmd/manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/agent-linux-amd64 github.com/kubesphere/porterlb/cmd/agent
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -o bin/gobgp-linux-amd64 github.com/osrg/gobgp/cmd/gobgp
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/manager-linux-arm64 github.com/kubesphere/porter/cmd/manager
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/agent-linux-arm64 github.com/kubesphere/porter/cmd/agent
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/manager-linux-arm64 github.com/kubesphere/porterlb/cmd/manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/agent-linux-arm64 github.com/kubesphere/porterlb/cmd/agent
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build  -o bin/gobgp-linux-arm64 github.com/osrg/gobgp/cmd/gobgp
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .  --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .  --push

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/kubesphere/porter/pkg/constant"
+	"github.com/kubesphere/porterlb/pkg/constant"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
 	"hash/fnv"

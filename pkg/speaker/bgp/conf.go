@@ -1,7 +1,7 @@
 package bgp
 
 import (
-	bgpapi "github.com/kubesphere/porter/api/v1alpha2"
+	bgpapi "github.com/kubesphere/porterlb/api/v1alpha2"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
 )

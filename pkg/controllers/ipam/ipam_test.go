@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kubesphere/porter/api/v1alpha2"
-	"github.com/kubesphere/porter/pkg/constant"
-	"github.com/kubesphere/porter/pkg/speaker"
+	"github.com/kubesphere/porterlb/api/v1alpha2"
+	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/kubesphere/porterlb/pkg/speaker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"

@@ -1,4 +1,4 @@
-module github.com/kubesphere/porter
+module github.com/kubesphere/porterlb
 
 go 1.12
 

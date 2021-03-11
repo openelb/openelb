@@ -1,7 +1,7 @@
 package bgp
 
 import (
-	"github.com/kubesphere/porter/pkg/speaker"
+	"github.com/kubesphere/porterlb/pkg/speaker"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
 	"golang.org/x/net/context"

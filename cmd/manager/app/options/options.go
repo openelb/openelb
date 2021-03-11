@@ -1,10 +1,10 @@
 package options
 
 import (
-	"github.com/kubesphere/porter/pkg/leader-elector"
-	"github.com/kubesphere/porter/pkg/log"
-	"github.com/kubesphere/porter/pkg/manager"
-	"github.com/kubesphere/porter/pkg/speaker/bgp"
+	"github.com/kubesphere/porterlb/pkg/leader-elector"
+	"github.com/kubesphere/porterlb/pkg/log"
+	"github.com/kubesphere/porterlb/pkg/manager"
+	"github.com/kubesphere/porterlb/pkg/speaker/bgp"
 	cliflag "k8s.io/component-base/cli/flag"
 )
 

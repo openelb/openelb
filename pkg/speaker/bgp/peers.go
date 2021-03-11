@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	bgpapi "github.com/kubesphere/porter/api/v1alpha2"
-	"github.com/kubesphere/porter/pkg/util"
+	bgpapi "github.com/kubesphere/porterlb/api/v1alpha2"
+	"github.com/kubesphere/porterlb/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
 	ctrl "sigs.k8s.io/controller-runtime"

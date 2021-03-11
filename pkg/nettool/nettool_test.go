@@ -1,7 +1,7 @@
 package nettool_test
 
 import (
-	. "github.com/kubesphere/porter/pkg/nettool"
+	. "github.com/kubesphere/porterlb/pkg/nettool"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
