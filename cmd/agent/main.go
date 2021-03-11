@@ -19,9 +19,9 @@ package main
 import (
 	"os"
 
-	"github.com/kubesphere/porter/pkg/log"
+	"github.com/kubesphere/porterlb/pkg/log"
 
-	networkv1alpha2 "github.com/kubesphere/porter/api/v1alpha2"
+	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

@@ -2,7 +2,7 @@ package bgp
 
 import (
 	"context"
-	"github.com/kubesphere/porter/api/v1alpha2"
+	"github.com/kubesphere/porterlb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"

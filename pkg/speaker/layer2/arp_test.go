@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/j-keck/arping"
-	"github.com/kubesphere/porter/pkg/leader-elector"
-	"github.com/kubesphere/porter/pkg/speaker"
+	"github.com/kubesphere/porterlb/pkg/leader-elector"
+	"github.com/kubesphere/porterlb/pkg/speaker"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/vishvananda/netlink"

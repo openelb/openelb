@@ -2,7 +2,7 @@ package nettool
 
 import (
 	"fmt"
-	"github.com/kubesphere/porter/pkg/nettool/iptables"
+	"github.com/kubesphere/porterlb/pkg/nettool/iptables"
 )
 
 const BGPPort = "179"

@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	"github.com/kubesphere/porter/pkg/manager/client"
+	"github.com/kubesphere/porterlb/pkg/manager/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	core "k8s.io/api/core/v1"

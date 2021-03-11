@@ -17,12 +17,12 @@ package bgp
 
 import (
 	"context"
-	"github.com/kubesphere/porter/api/v1alpha2"
-	"github.com/kubesphere/porter/pkg/constant"
-	"github.com/kubesphere/porter/pkg/manager"
-	"github.com/kubesphere/porter/pkg/manager/client"
-	"github.com/kubesphere/porter/pkg/speaker/bgp"
-	"github.com/kubesphere/porter/pkg/util"
+	"github.com/kubesphere/porterlb/api/v1alpha2"
+	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/kubesphere/porterlb/pkg/manager"
+	"github.com/kubesphere/porterlb/pkg/manager/client"
+	"github.com/kubesphere/porterlb/pkg/speaker/bgp"
+	"github.com/kubesphere/porterlb/pkg/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"

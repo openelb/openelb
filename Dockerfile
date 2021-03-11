@@ -4,10 +4,10 @@
 
 FROM golang:1.15 as porter-builder
 
-COPY / /go/src/github.com/kubesphere/porter
+COPY / /go/src/github.com/kubesphere/porterlb
 
-WORKDIR /go/src/github.com/kubesphere/porter
-RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/kubesphere/porter/cmd/...
+WORKDIR /go/src/github.com/kubesphere/porterlb
+RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/kubesphere/porterlb/cmd/...
 RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/osrg/gobgp/cmd/gobgp
 
 FROM alpine:3.9

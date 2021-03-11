@@ -5,7 +5,7 @@ This document describes how to build the Porter project.
 ## Prerequisites
 
 * You need to prepare a Linux environment.
-* You need to install [Go 1.12 or later](https://github.com/kubesphere/porter/blob/master/doc/how-to-build.md).
+* You need to install [Go 1.12 or later](https://github.com/kubesphere/porterlb/blob/master/doc/how-to-build.md).
 * You need to install [Docker](https://www.docker.com/get-started).
 * You need to install [Docker Buildx](https://www.docker.com/blog/getting-started-with-docker-for-arm-on-linux/).
 
@@ -13,7 +13,7 @@ This document describes how to build the Porter project.
 
 1. Log in to your environment, and run the following commands to clone the Porter project and go to the `porter` directory:
    ```bash
-   git clone https://github.com/kubesphere/porter.git
+   git clone https://github.com/kubesphere/porterlb.git
    ```
    
    ```bash

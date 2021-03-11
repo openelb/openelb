@@ -3,20 +3,20 @@ package app
 import (
 	"flag"
 	"fmt"
-	networkv1alpha2 "github.com/kubesphere/porter/api/v1alpha2"
-	"github.com/kubesphere/porter/pkg/constant"
-	"github.com/kubesphere/porter/pkg/leader-elector"
-	"github.com/kubesphere/porter/pkg/speaker"
+	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
+	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/kubesphere/porterlb/pkg/leader-elector"
+	"github.com/kubesphere/porterlb/pkg/speaker"
 	clientset "k8s.io/client-go/kubernetes"
 	"os"
 
-	"github.com/kubesphere/porter/cmd/manager/app/options"
-	"github.com/kubesphere/porter/pkg/controllers/bgp"
-	"github.com/kubesphere/porter/pkg/controllers/ipam"
-	"github.com/kubesphere/porter/pkg/controllers/lb"
-	"github.com/kubesphere/porter/pkg/log"
-	"github.com/kubesphere/porter/pkg/manager"
-	bgpd "github.com/kubesphere/porter/pkg/speaker/bgp"
+	"github.com/kubesphere/porterlb/cmd/manager/app/options"
+	"github.com/kubesphere/porterlb/pkg/controllers/bgp"
+	"github.com/kubesphere/porterlb/pkg/controllers/ipam"
+	"github.com/kubesphere/porterlb/pkg/controllers/lb"
+	"github.com/kubesphere/porterlb/pkg/log"
+	"github.com/kubesphere/porterlb/pkg/manager"
+	bgpd "github.com/kubesphere/porterlb/pkg/speaker/bgp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -105,8 +105,10 @@ func Run(c *options.PorterManagerOptions) error {
 		return err
 	}
 
+	stopCh := ctrl.SetupSignalHandler()
+
 	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	leader.LeaderElector(k8sClient, *c.Leader)
+	leader.LeaderElector(stopCh, k8sClient, *c.Leader)
 
 	err = speaker.RegisterSpeaker(constant.PorterProtocolBGP, bgpServer)
 	if err != nil {
@@ -114,7 +116,7 @@ func Run(c *options.PorterManagerOptions) error {
 		return err
 	}
 
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(stopCh); err != nil {
 		setupLog.Error(err, "unable to run the manager")
 		return err
 	}

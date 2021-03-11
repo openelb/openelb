@@ -1,7 +1,7 @@
 package bgp
 
 import (
-	bgpapi "github.com/kubesphere/porter/api/v1alpha2"
+	bgpapi "github.com/kubesphere/porterlb/api/v1alpha2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	ctrl "sigs.k8s.io/controller-runtime"

@@ -1,7 +1,7 @@
 package validate
 
 import (
-	"github.com/kubesphere/porter/pkg/constant"
+	"github.com/kubesphere/porterlb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )

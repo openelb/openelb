@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubesphere/porter/cmd/manager/app"
+	"github.com/kubesphere/porterlb/cmd/manager/app"
 	"os"
 )
 

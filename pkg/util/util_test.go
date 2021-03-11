@@ -1,7 +1,7 @@
 package util_test
 
 import (
-	"github.com/kubesphere/porter/pkg/util"
+	"github.com/kubesphere/porterlb/pkg/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
