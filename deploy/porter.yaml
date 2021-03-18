@@ -993,7 +993,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubespheredev/porter:v0.4.1
+        image: kubesphere/porter:v0.4.1
         imagePullPolicy: IfNotPresent
         name: porter-manager
         ports:

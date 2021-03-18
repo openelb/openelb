@@ -1,6 +1,38 @@
 # Changelog
 All notable changes to this project will be documented in this file.
-## [ 0.1.1 ] - 2019-09-09
+
+## [ 0.4.1 ] - 2020-03-18
+
+### **BugFix:**
+- Fix the name of the program in the image.[#196](https://github.com/kubesphere/porterlb/pull/196)
+
+### **Misc Changes:**
+- Change the `deploy/porter.yaml` image name to `kubesphere/porter:v0.4.1`
+
+## [ 0.4.0 ] - 2020-03-31
+
+### **Feature:**
+- Eip Address Management via CRD.[#132](https://github.com/kubesphere/porter/pull/132)
+- Changes to the BgpConf/BgpPeer API to be compatible with the gobgp API and to support viewing status. [#132](https://github.com/kubesphere/porter/pull/132)
+
+### **BugFix:**
+- Add param to config webhook port. [#136](https://github.com/kubesphere/porter/pull/136)
+- Filter not ready nodes from nexthops. [#142](https://github.com/kubesphere/porter/pull/142)
+
+## v0.3.1
+
+### **Feature:**
+- Supports automatic builds using GitHub actions [#122](https://github.com/kubesphere/porter/pull/122) [#123](https://github.com/kubesphere/porter/pull/123)
+
+## v0.3.0
+
+### **Feature:**
+- Support layer 2 load-balancing
+- Support loadBalancerIP in Service
+- Support add neighbor dynamically
+- Support config porter via CRD
+
+### [ 0.1.1 ] - 2019-09-09
 
 ### Added
 - [🚒 use annotation to store eip](https://github.com/kubesphere/porterlb/pull/57)
