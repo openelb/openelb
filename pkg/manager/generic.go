@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	nc "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type GenericOptions struct {
@@ -43,7 +44,7 @@ func NewManager(cfg *rest.Config, options *GenericOptions) (ctrl.Manager, error)
 	result, err := ctrl.NewManager(cfg, opts)
 
 	if err == nil {
-		client.Client = result.GetClient()
+		client.Client, err = nc.New(cfg, nc.Options{Scheme: scheme})
 	}
 
 	return result, err

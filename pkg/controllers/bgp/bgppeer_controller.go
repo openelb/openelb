@@ -105,8 +105,7 @@ func (r BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
-		err = r.Update(context.Background(), clone)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, r.Update(context.Background(), clone)
 	}
 
 	if util.NeedToAddFinalizer(clone, constant.FinalizerName) {
@@ -181,19 +180,24 @@ func (r BgpPeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha2.BgpPeer{}).
 		WithEventFilter(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
+				if util.DutyOfCNI(nil, e.Meta) {
+					return false
+				}
 				return true
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				old := e.ObjectOld.(*v1alpha2.BgpPeer)
-				new := e.ObjectNew.(*v1alpha2.BgpPeer)
-				if !reflect.DeepEqual(old.DeletionTimestamp, new.DeletionTimestamp) {
-					return true
+				oldPeer := e.ObjectOld.(*v1alpha2.BgpPeer)
+				newPeer := e.ObjectNew.(*v1alpha2.BgpPeer)
+				if !util.DutyOfCNI(e.MetaOld, e.MetaNew) {
+					if !reflect.DeepEqual(oldPeer.DeletionTimestamp, newPeer.DeletionTimestamp) {
+						return true
+					}
+					if !reflect.DeepEqual(oldPeer.Spec, newPeer.Spec) {
+						return true
+					}
 				}
-				if !reflect.DeepEqual(old.Spec, new.Spec) {
-					return true
-				}
-				return false
 
+				return false
 			},
 		}).Complete(r)
 }

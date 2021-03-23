@@ -112,17 +112,24 @@ func SetupIPAM(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).Named(name).
 		For(&networkv1alpha2.Eip{}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
+			if util.DutyOfCNI(nil, e.Meta) {
+				return false
+			}
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			old := e.MetaOld.(*networkv1alpha2.Eip)
-			new := e.MetaNew.(*networkv1alpha2.Eip)
+			if util.DutyOfCNI(e.MetaOld, e.MetaNew) {
+				return false
+			}
 
-			if !reflect.DeepEqual(old.DeletionTimestamp, new.DeletionTimestamp) {
+			oldEip := e.ObjectOld.(*networkv1alpha2.Eip)
+			newEip := e.ObjectNew.(*networkv1alpha2.Eip)
+
+			if !reflect.DeepEqual(oldEip.DeletionTimestamp, newEip.DeletionTimestamp) {
 				return true
 			}
 
-			if !reflect.DeepEqual(old.Spec, new.Spec) {
+			if !reflect.DeepEqual(oldEip.Spec, newEip.Spec) {
 				return true
 			}
 
