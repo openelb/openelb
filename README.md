@@ -25,6 +25,10 @@ Without a bare-metal environment yet? Doesn't matter!
 
 You can learn how to use PorterLB in a cloud-based Kubernetes cluster by following the [PorterLB Documentation](https://porterlb.io/docs/).
 
+## Roadmap
+
+[PorterLB Roadmap](docs/roadmap.md) lists the features and Bugfix for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal. 
+
 ## Support, Discussion and Contributing
 
 PorterLB is a sub-project of [KubeSphere](https://github.com/kubesphere/kubesphere).
