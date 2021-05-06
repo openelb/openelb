@@ -25,6 +25,10 @@ Without a bare-metal environment yet? Doesn't matter!
 
 You can learn how to use PorterLB in a cloud-based Kubernetes cluster by following the [PorterLB Documentation](https://porterlb.io/docs/).
 
+## Adopters
+
+PorterLB has been adopted by [many companies](./ADOPTERS.md) all over the world. If you are using PorterLB in your organization, welcome to join the end user community and add your logo to the [list](./ADOPTERS.md)!
+
 ## Roadmap
 
 [PorterLB Roadmap](docs/roadmap.md) lists the features and Bugfix for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal. 
