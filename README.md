@@ -9,15 +9,20 @@ PorterLB is an open-source load balancer implementation designed for bare-metal 
 
 ## Why PorterLB
 
-In cloud-based Kubernetes clusters, Services are usually exposed by using load balancers provided by cloud vendors. However, cloud-based load balancers are unavailable in bare-metal environments. PorterLB allows users to create LoadBalancer Services in bare-metal environments for external access, and provides the same user experience as cloud-based load balancers.
+In cloud-based Kubernetes clusters, Services are usually exposed by using load balancers provided by cloud vendors. However, cloud-based load balancers are unavailable in bare-metal environments. PorterLB allows users to create **LoadBalancer Services** in bare-metal environments for external access, and provides the same user experience as cloud-based load balancers.
 
 ## Core Features
 
-- BGP mode and Layer 2 mode
+- Network load-balancer implementation (Support BGP mode and Layer 2 mode)
 - ECMP routing and load balancing
 - IP address pool management
 - BGP configuration using CRDs
 - Installation using Helm and KubeSphere
+
+## Quickstart
+
+- [Install PorterLB on Kubernetes](https://porterlb.io/docs/getting-started/installation/install-porter-on-kubernetes/)
+- [Install PorterLB on K3s](https://porterlb.io/docs/getting-started/installation/install-porter-on-k3s/)
 
 ## Documentation
 
@@ -31,7 +36,7 @@ PorterLB has been adopted by [many companies](./ADOPTERS.md) all over the world.
 
 ## Roadmap
 
-[PorterLB Roadmap](docs/roadmap.md) lists the features and Bugfix for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal. 
+[PorterLB Roadmap](doc/roadmap.md) lists the features and Bugfix for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal. 
 
 ## Support, Discussion and Contributing
 
