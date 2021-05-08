@@ -37,7 +37,7 @@ PorterLB has been adopted by [many companies](./ADOPTERS.md) all over the world.
 
 ## Roadmap
 
-[PorterLB Roadmap](doc/roadmap.md) lists the features and Bugfix for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal. 
+[PorterLB Roadmap](doc/roadmap.md) lists the features and bug fixes for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal. 
 
 ## Support, Discussion and Contributing
 
