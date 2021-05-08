@@ -13,7 +13,7 @@ In cloud-based Kubernetes clusters, Services are usually exposed by using load b
 
 ## Core Features
 
-- Network load-balancer implementation (Support BGP mode and Layer 2 mode)
+- Load balancing in BGP mode and Layer 2 mode
 - ECMP routing and load balancing
 - IP address pool management
 - BGP configuration using CRDs
