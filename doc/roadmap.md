@@ -4,8 +4,8 @@ PorterLB Roadmap lists the features and Bugfix for each milestone.
 
 | Edition  | Schedule |
 |---|---|
-| Release v0.6.0| Oct, 2021 |
-| Release v0.5.0| July, 2021 |
+| Release v0.6.0| Nov, 2021 |
+| Release v0.5.0| Aug, 2021 |
 | Release v0.4.0| Mar, 2021 |
 | Release v0.3.1| Aug, 2020 |
 | Release v0.3.0| Aug, 2020 |
