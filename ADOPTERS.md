@@ -1,4 +1,4 @@
-PorterLB has been adopted by many companies. If you are using PorterLB in your organization, welcome to join the end user community and add your logo to the list!
+OpenELB has been adopted by many companies. If you are using OpenELB in your organization, welcome to join the end user community and add your logo to the list!
                                                  
 
 <img alt="Baiwang-580" width="150px" src="./doc/img/adopters/baiwang-580.png"><img alt="Benlai" width="150px" src="./doc/img/adopters/benlai.png">
