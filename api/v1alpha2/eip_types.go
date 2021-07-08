@@ -18,6 +18,7 @@ package v1alpha2
 import (
 	"context"
 	"fmt"
+	"github.com/kubesphere/porterlb/pkg/util"
 	"math/big"
 	"net"
 	"reflect"
@@ -47,6 +48,10 @@ func (e Eip) IPToOrdinal(ip net.IP) int {
 }
 
 func (e Eip) GetSpeakerName() string {
+	if util.DutyOfCNI(nil, &e.ObjectMeta) {
+		return constant.PorterProtocolDummy
+	}
+
 	if e.Spec.Protocol == constant.PorterProtocolLayer2 {
 		return e.Spec.Interface
 	}

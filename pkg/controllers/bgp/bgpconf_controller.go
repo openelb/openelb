@@ -74,8 +74,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
-		err = r.Update(context.Background(), clone)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, r.Update(context.Background(), clone)
 	}
 
 	if util.NeedToAddFinalizer(clone, constant.FinalizerName) {
@@ -166,18 +165,24 @@ func shouldReconcile(obj runtime.Object) bool {
 func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
+			if util.DutyOfCNI(nil, e.Meta) {
+				return false
+			}
 			return shouldReconcile(e.Object)
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if shouldReconcile(e.ObjectNew) {
-				old := e.ObjectOld.(*v1alpha2.BgpConf)
-				new := e.ObjectNew.(*v1alpha2.BgpConf)
-				if !reflect.DeepEqual(old.DeletionTimestamp, new.DeletionTimestamp) {
-					return true
-				}
+				oldConf := e.ObjectOld.(*v1alpha2.BgpConf)
+				newConf := e.ObjectNew.(*v1alpha2.BgpConf)
 
-				if !reflect.DeepEqual(old.Spec, new.Spec) {
-					return true
+				if !util.DutyOfCNI(e.MetaOld, e.MetaNew) {
+					if !reflect.DeepEqual(oldConf.DeletionTimestamp, newConf.DeletionTimestamp) {
+						return true
+					}
+
+					if !reflect.DeepEqual(oldConf.Spec, newConf.Spec) {
+						return true
+					}
 				}
 			}
 

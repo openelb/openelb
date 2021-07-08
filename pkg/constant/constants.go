@@ -18,9 +18,13 @@ const (
 	PorterProtocolAnnotationKey string = "protocol.porter.kubesphere.io/v1alpha1"
 
 	PorterNodeRack string = "porter.kubesphere.io/rack"
+	//TODO: Disable lable modification using webhook
+	PorterCNI string = "porter.kubesphere.io/cni"
 
 	PorterProtocolBGP    string = "bgp"
 	PorterProtocolLayer2 string = "layer2"
+	PorterProtocolDummy  string = "dummy"
+	PorterCNICalico      string = "calico"
 	EipRangeSeparator    string = "-"
 
 	PorterSpeakerLocker = "porter-speaker"

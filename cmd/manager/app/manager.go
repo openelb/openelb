@@ -107,12 +107,21 @@ func Run(c *options.PorterManagerOptions) error {
 
 	stopCh := ctrl.SetupSignalHandler()
 
+	//For layer2
 	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	leader.LeaderElector(stopCh, k8sClient, *c.Leader)
 
+	//For gobgp
 	err = speaker.RegisterSpeaker(constant.PorterProtocolBGP, bgpServer)
 	if err != nil {
 		setupLog.Error(err, "unable to register bgp speaker")
+		return err
+	}
+
+	//For CNI
+	err = speaker.RegisterSpeaker(constant.PorterProtocolDummy, speaker.NewFake())
+	if err != nil {
+		setupLog.Error(err, "unable to register dummy speaker")
 		return err
 	}
 

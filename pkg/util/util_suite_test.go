@@ -1,4 +1,4 @@
-package util_test
+package util
 
 import (
 	ctrl "sigs.k8s.io/controller-runtime"

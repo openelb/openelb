@@ -95,6 +95,20 @@ var (
 		Status: networkv1alpha2.EipStatus{},
 	}
 
+	eipForCNI = &networkv1alpha2.Eip{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testeip1",
+			Labels: map[string]string{
+				constant.PorterCNI: constant.PorterCNICalico,
+			},
+		},
+		Spec: networkv1alpha2.EipSpec{
+			Address: "10.0.1.1/24",
+		},
+		Status: networkv1alpha2.EipStatus{},
+	}
+
 	eipLayer2 = &networkv1alpha2.Eip{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -156,6 +170,7 @@ var (
 
 	bgpFakeSpeak    = speaker.NewFake()
 	layer2FakeSpeak = speaker.NewFake()
+	dummySpeak      = speaker.NewFake()
 )
 
 func TestAPIs(t *testing.T) {
@@ -168,11 +183,9 @@ func TestAPIs(t *testing.T) {
 	RunSpecsWithDefaultAndCustomReporters(t,
 		"LB Controller Suite",
 		[]Reporter{printer.NewlineReporter{}})
-
 }
 
 var _ = BeforeSuite(func(done Done) {
-
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
@@ -217,6 +230,11 @@ var _ = BeforeSuite(func(done Done) {
 	err = speaker.RegisterSpeaker(eipLayer2.GetSpeakerName(), layer2FakeSpeak)
 	Expect(err).ToNot(HaveOccurred())
 	err = client.Client.Create(context.Background(), eipLayer2)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = speaker.RegisterSpeaker(eipForCNI.GetSpeakerName(), dummySpeak)
+	Expect(err).ToNot(HaveOccurred())
+	err = client.Client.Create(context.Background(), eipForCNI)
 	Expect(err).ToNot(HaveOccurred())
 
 	// wait other controller, like eip
@@ -420,6 +438,24 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 				return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
 					[]string{
 						node2.Name,
+					})
+			}), 3*time.Second).Should(Equal(true))
+		})
+	})
+
+	When("Eip has label porter.kubesphere.io/cni", func() {
+		BeforeEach(func() {
+			updateSvc(svc, func(dst *corev1.Service) {
+				dst.Labels[constant.PorterCNI] = constant.PorterCNICalico
+			})
+		})
+
+		It("Speaker should be dummy", func() {
+			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
+				return !dummySpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
+					[]string{
+						node2.Name,
+						node1.Name,
 					})
 			}), 3*time.Second).Should(Equal(true))
 		})

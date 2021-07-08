@@ -171,6 +171,8 @@ var _ = BeforeSuite(func(done Done) {
 	err = client.Client.Create(context.Background(), node2)
 	Expect(err).ToNot(HaveOccurred())
 
+	SetDefaultEventuallyTimeout(3 * time.Second)
+
 	close(done)
 }, 60)
 
@@ -182,84 +184,22 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("Test GoBGP Controller", func() {
-	BeforeEach(func() {
-		cloneBgpConf := bgpConf.DeepCopy()
-		err := client.Client.Create(context.Background(), cloneBgpConf)
-		Expect(err).ToNot(HaveOccurred())
-		Eventually(func() error {
-			return client.Client.Get(context.Background(), types.NamespacedName{
-				Namespace: cloneBgpConf.Namespace,
-				Name:      cloneBgpConf.Name,
-			}, cloneBgpConf)
-		}, 3*time.Second).ShouldNot(HaveOccurred())
-	})
-
-	AfterEach(func() {
-		cloneBgpConf := bgpConf.DeepCopy()
-		err := client.Client.Delete(context.Background(), cloneBgpConf)
-		Expect(err).ToNot(HaveOccurred())
-		Eventually(func() bool {
-			err = client.Client.Get(context.Background(), types.NamespacedName{
-				Namespace: cloneBgpConf.Namespace,
-				Name:      cloneBgpConf.Name,
-			}, cloneBgpConf)
-			return k8serrors.IsNotFound(err)
-		}, 3*time.Second).Should(Equal(true))
-	})
-
-	It("BgpConf should add FinalizerName", func() {
-		Eventually(checkBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) bool {
-			return util.ContainsString(dst.Finalizers, constant.FinalizerName)
-		}), 3*time.Second).Should(Equal(true))
-	})
-
-	It("BgpConf should update status", func() {
-		Eventually(checkBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) bool {
-			if dst.Status.NodesConfStatus == nil {
-				return false
-			}
-
-			if dst.Status.NodesConfStatus[util.GetNodeName()].RouterId == bgpConf.Spec.RouterId {
-				return true
-			}
-
-			return false
-		}), 35*time.Second).Should(Equal(true))
-	})
-
-	It("update BgpConf routerId", func() {
-		updateBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) {
-			dst.Spec.RouterId = ""
-		})
-
-		Eventually(checkBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) bool {
-			if dst.Status.NodesConfStatus == nil {
-				return false
-			}
-
-			if dst.Status.NodesConfStatus[util.GetNodeName()].RouterId == node1.Status.Addresses[0].Address {
-				return true
-			}
-
-			return false
-		}), 35*time.Second).Should(Equal(true))
-	})
-
-	Context("has bgpPeer", func() {
+	When("BgpConf has label porter.kubesphere.io/cni", func() {
 		BeforeEach(func() {
-			clone := bgpPeer.DeepCopy()
-			err := client.Client.Create(context.Background(), clone)
+			clone := bgpConf.DeepCopy()
+
+			err := util.Create(context.Background(), client.Client, clone, func() error {
+				if clone.Labels == nil {
+					clone.Labels = make(map[string]string)
+				}
+				clone.Labels[constant.PorterCNI] = constant.PorterCNICalico
+				return nil
+			})
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return client.Client.Get(context.Background(), types.NamespacedName{
-					Namespace: clone.Namespace,
-					Name:      clone.Name,
-				}, clone)
-			}, 3*time.Second).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			clone := bgpPeer.DeepCopy()
+			clone := bgpConf.DeepCopy()
 			err := client.Client.Delete(context.Background(), clone)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool {
@@ -271,127 +211,259 @@ var _ = Describe("Test GoBGP Controller", func() {
 			}, 3*time.Second).Should(Equal(true))
 		})
 
-		It("BgpPeer should add FinalizerName", func() {
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+		It("BgpConf should not have Finalizer", func() {
+			Eventually(checkBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) bool {
 				return util.ContainsString(dst.Finalizers, constant.FinalizerName)
-			}), 3*time.Second).Should(Equal(true))
+			}), 3*time.Second).Should(Equal(false))
 		})
+	})
 
-		It("BgpPeer should have status", func() {
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
-				if dst.Status.NodesPeerStatus == nil {
-					return false
-				}
-
-				if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
-					return true
-				}
-
-				return false
-			}), 35*time.Second).Should(Equal(true))
-		})
-
-		It("BgpPeer should delete status when it cannot match node ", func() {
-			updateBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) {
-				dst.Spec.NodeSelector = &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"kubernetes.io/hostname": node2.Name,
-					},
-					MatchExpressions: nil,
-				}
+	When("BgpConf has no label porter.kubesphere.io/cni", func() {
+		BeforeEach(func() {
+			clone := bgpConf.DeepCopy()
+			err := util.Create(context.Background(), client.Client, clone, func() error {
+				return nil
 			})
-
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
-				if dst.Status.NodesPeerStatus == nil {
-					return true
-				}
-
-				return false
-			}), 35*time.Second).Should(Equal(true))
+			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("BgpPeer should have status when it match node ", func() {
-			updateBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) {
-				dst.Spec.NodeSelector = &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"kubernetes.io/hostname": node1.Name,
-					},
-					MatchExpressions: nil,
-				}
-			})
-
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
-				if dst.Status.NodesPeerStatus == nil {
-					return false
-				}
-
-				if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
-					return true
-				}
-
-				return false
-			}), 35*time.Second).Should(Equal(true))
-		})
-
-		It("BgpPeer should have status when modify bgpconf ", func() {
-			updateBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) {
-				dst.Spec.RouterId = ""
-			})
-
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
-				if dst.Status.NodesPeerStatus == nil {
-					return false
-				}
-
-				if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
-					return true
-				}
-
-				return false
-			}), 35*time.Second).Should(Equal(true))
-		})
-
-		It("BgpPeer should delete status when delete bgpconf ", func() {
-			cloneBgpConf := bgpConf.DeepCopy()
-			err := client.Client.Delete(context.Background(), cloneBgpConf)
+		AfterEach(func() {
+			clone := bgpConf.DeepCopy()
+			err := client.Client.Delete(context.Background(), clone)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool {
 				err = client.Client.Get(context.Background(), types.NamespacedName{
-					Namespace: cloneBgpConf.Namespace,
-					Name:      cloneBgpConf.Name,
-				}, cloneBgpConf)
+					Namespace: clone.Namespace,
+					Name:      clone.Name,
+				}, clone)
 				return k8serrors.IsNotFound(err)
 			}, 3*time.Second).Should(Equal(true))
+		})
 
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
-				if dst.Status.NodesPeerStatus == nil {
-					return true
-				}
+		It("BgpConf should have Finalizer", func() {
+			clone := bgpConf.DeepCopy()
+			Eventually(util.Check(context.Background(), client.Client, clone, func() bool {
+				return util.ContainsString(clone.Finalizers, constant.FinalizerName)
+			}), 3*time.Second).Should(Equal(false))
+		})
 
-				return false
-			}), 35*time.Second).Should(Equal(true))
+		Context("BgpConf status should be updated", func() {
+			It("routeId be set", func() {
+				clone := bgpConf.DeepCopy()
+				Eventually(util.Check(context.Background(), client.Client, clone, func() bool {
+					if clone.Status.NodesConfStatus == nil {
+						return false
+					}
 
-			cloneBgpConf = bgpConf.DeepCopy()
-			err = client.Client.Create(context.Background(), cloneBgpConf)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() error {
-				return client.Client.Get(context.Background(), types.NamespacedName{
-					Namespace: cloneBgpConf.Namespace,
-					Name:      cloneBgpConf.Name,
-				}, cloneBgpConf)
-			}, 3*time.Second).ShouldNot(HaveOccurred())
+					if clone.Status.NodesConfStatus[util.GetNodeName()].RouterId == bgpConf.Spec.RouterId {
+						return true
+					}
 
-			Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
-				if dst.Status.NodesPeerStatus == nil {
 					return false
-				}
+				}), 35*time.Second).Should(Equal(false))
+			})
 
-				if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
-					return true
-				}
+			It("routerId is empty", func() {
+				updateBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) {
+					dst.Spec.RouterId = ""
+				})
 
-				return false
-			}), 35*time.Second).Should(Equal(true))
+				Eventually(checkBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) bool {
+					if dst.Status.NodesConfStatus == nil {
+						return false
+					}
+
+					if dst.Status.NodesConfStatus[util.GetNodeName()].RouterId == node1.Status.Addresses[0].Address {
+						return true
+					}
+
+					return false
+				}), 35*time.Second).Should(Equal(true))
+			})
+		})
+
+		Context("has bgpPeer", func() {
+			When("bgpPeer has no cni annotation", func() {
+				BeforeEach(func() {
+					clone := bgpPeer.DeepCopy()
+					err := client.Client.Create(context.Background(), clone)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(func() error {
+						return client.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: clone.Namespace,
+							Name:      clone.Name,
+						}, clone)
+					}, 3*time.Second).ShouldNot(HaveOccurred())
+				})
+
+				AfterEach(func() {
+					clone := bgpPeer.DeepCopy()
+					err := client.Client.Delete(context.Background(), clone)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(func() bool {
+						err = client.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: clone.Namespace,
+							Name:      clone.Name,
+						}, clone)
+						return k8serrors.IsNotFound(err)
+					}, 3*time.Second).Should(Equal(true))
+				})
+
+				It("BgpPeer should have Finalizer", func() {
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						return util.ContainsString(dst.Finalizers, constant.FinalizerName)
+					}), 3*time.Second).Should(Equal(true))
+				})
+
+				It("BgpPeer should have status", func() {
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						if dst.Status.NodesPeerStatus == nil {
+							return false
+						}
+
+						if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
+							return true
+						}
+
+						return false
+					}), 35*time.Second).Should(Equal(true))
+				})
+
+				It("BgpPeer should delete status when it cannot match node ", func() {
+					updateBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) {
+						dst.Spec.NodeSelector = &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"kubernetes.io/hostname": node2.Name,
+							},
+							MatchExpressions: nil,
+						}
+					})
+
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						if dst.Status.NodesPeerStatus == nil {
+							return true
+						}
+
+						return false
+					}), 35*time.Second).Should(Equal(true))
+				})
+
+				It("BgpPeer should have status when it match node ", func() {
+					updateBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) {
+						dst.Spec.NodeSelector = &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"kubernetes.io/hostname": node1.Name,
+							},
+							MatchExpressions: nil,
+						}
+					})
+
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						if dst.Status.NodesPeerStatus == nil {
+							return false
+						}
+
+						if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
+							return true
+						}
+
+						return false
+					}), 35*time.Second).Should(Equal(true))
+				})
+
+				It("BgpPeer should have status when modify bgpconf ", func() {
+					updateBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) {
+						dst.Spec.RouterId = ""
+					})
+
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						if dst.Status.NodesPeerStatus == nil {
+							return false
+						}
+
+						if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
+							return true
+						}
+
+						return false
+					}), 35*time.Second).Should(Equal(true))
+				})
+
+				It("BgpPeer should delete status when delete bgpconf ", func() {
+					cloneBgpConf := bgpConf.DeepCopy()
+					err := client.Client.Delete(context.Background(), cloneBgpConf)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(func() bool {
+						err = client.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: cloneBgpConf.Namespace,
+							Name:      cloneBgpConf.Name,
+						}, cloneBgpConf)
+						return k8serrors.IsNotFound(err)
+					}, 3*time.Second).Should(Equal(true))
+
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						if dst.Status.NodesPeerStatus == nil {
+							return true
+						}
+
+						return false
+					}), 35*time.Second).Should(Equal(true))
+
+					cloneBgpConf = bgpConf.DeepCopy()
+					err = client.Client.Create(context.Background(), cloneBgpConf)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(func() error {
+						return client.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: cloneBgpConf.Namespace,
+							Name:      cloneBgpConf.Name,
+						}, cloneBgpConf)
+					}, 3*time.Second).ShouldNot(HaveOccurred())
+
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						if dst.Status.NodesPeerStatus == nil {
+							return false
+						}
+
+						if _, ok := dst.Status.NodesPeerStatus[util.GetNodeName()]; ok {
+							return true
+						}
+
+						return false
+					}), 35*time.Second).Should(Equal(true))
+				})
+			})
+
+			When("bgpPeer has cni annotation", func() {
+				BeforeEach(func() {
+					clone := bgpPeer.DeepCopy()
+					err := util.Create(context.Background(), client.Client, clone, func() error {
+						if clone.Labels == nil {
+							clone.Labels = make(map[string]string)
+						}
+						clone.Labels[constant.PorterCNI] = constant.PorterCNICalico
+						return nil
+					})
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				AfterEach(func() {
+					clone := bgpPeer.DeepCopy()
+					err := client.Client.Delete(context.Background(), clone)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(func() bool {
+						err = client.Client.Get(context.Background(), types.NamespacedName{
+							Namespace: clone.Namespace,
+							Name:      clone.Name,
+						}, clone)
+						return k8serrors.IsNotFound(err)
+					}, 3*time.Second).Should(Equal(true))
+				})
+				It("BgpPeer should not have Finalizer", func() {
+					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
+						return util.ContainsString(dst.Finalizers, constant.FinalizerName)
+					}), 3*time.Second).Should(Equal(false))
+				})
+			})
 		})
 	})
 })
