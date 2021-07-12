@@ -1,7 +1,8 @@
-![GitHub version](https://img.shields.io/badge/version-v0.0.1-brightgreen.svg?logo=appveyor&longCache=true&style=flat)
-![go report](https://goreportcard.com/badge/github.com/kubesphere/openelb)
+# OpenELB ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/kubesphere/openelb) ![go report](https://goreportcard.com/badge/github.com/kubesphere/openelb)
 
-# OpenELB
+![OpenELB Logo](./doc/logo/color-stacked.svg)
+
+---
 
 OpenELB is an open-source load balancer implementation designed for exposing the LoadBlancer type of Kubernetes services in bare metal, edge, and virtualization environments.
 
