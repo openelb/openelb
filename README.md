@@ -1,6 +1,8 @@
-# OpenELB ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/kubesphere/openelb) ![go report](https://goreportcard.com/badge/github.com/kubesphere/openelb)
+# OpenELB 
+--------------
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/kubesphere/openelb) ![go report](https://goreportcard.com/badge/github.com/kubesphere/openelb)
 
-![OpenELB Logo](./doc/logo/color-stacked.svg)
+![OpenELB Logo](./doc/logo/color-horizontal.svg)
 
 ---
 
