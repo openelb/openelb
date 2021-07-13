@@ -1,4 +1,4 @@
-PorterLB Roadmap lists the features and Bugfix for each milestone.
+OpenELB Roadmap lists the features and Bugfix for each milestone.
 
 # Release Goals
 
@@ -14,19 +14,18 @@ PorterLB Roadmap lists the features and Bugfix for each milestone.
 
 # v0.6.0
 
-- [] Achieve the High Availability in VIP mode based on Keepalived
-- [] Achieve the LoadBalancer for kube-apiserver
-- [] Support for BGP policies
-- [] Support VIP Group and more VIPs
-- [] Support for IPv6
+- [ ] Achieve the High Availability in VIP mode based on Keepalived
+- [ ] Achieve the LoadBalancer for kube-apiserver
+- [ ] Support for BGP policies
+- [ ] Support VIP Group and more VIPs
+- [ ] Support for IPv6
 
 # v0.5.0
 
-- [] Provide the PorterLB Web UI for managing EIP and IP pool
-- [] Support for more routing protocols; Be compatible with the popular CNI
-- [] Provide the Prometheus metrics for monitoring
-- [] Integration with KubeSphere Web Console [#1449](https://github.com/kubesphere/console/pull/1449)
-
+- [ ] Provide the PorterLB Web UI for managing EIP and IP pool
+- [ ] Support for more routing protocols; Be compatible with the popular CNI
+- [ ] Provide the Prometheus metrics for monitoring
+- [ ] Integration with KubeSphere Web Console [#1449](https://github.com/kubesphere/console/pull/1449)
 # v0.4.0
 ## Feature
 - [x] Eip Address Management via CRD.[#132](https://github.com/kubesphere/porter/pull/132)
