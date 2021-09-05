@@ -118,7 +118,7 @@ func newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
 			Labels: map[string]string{"name": proxyRescName(svc.Name, svc.Namespace)},
 		},
 		Spec: corev1.PodSpec{
-			Containers:     []corev1.Container{},
+			Containers:     []corev1.Container{*newProxyCtn(svc)},
 			InitContainers: []corev1.Container{*newForwardCtn(svc.Name)},
 			Affinity: &corev1.Affinity{
 				NodeAffinity: &corev1.NodeAffinity{
@@ -151,32 +151,47 @@ func newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
 			}},
 		},
 	}
-	for index, svcPort := range svc.Spec.Ports {
-		res.Spec.Containers = append(res.Spec.Containers, *newProxyCtn(
-			proxyRescName(svc.Name, svc.Namespace)+strconv.Itoa(index),
-			svc.Spec.ClusterIP,
-			svcPort.Port,
-			svcPort.Protocol,
-		))
-	}
 	return res
 }
 
-func newProxyCtn(name, clusterIP string, port int32, proto corev1.Protocol) *corev1.Container {
+// The only env variable is `PROXY_ARGS`
+// `PROXY_ARGS` is 4-tuple parameters split by space: <SVC_IP POD_PORT SVC_PORT SVC_PROTO>
+func newProxyCtnEnvArgs(ports *[]corev1.ServicePort, clusterIP string) *[]corev1.EnvVar {
+	var builder strings.Builder
+	for _, port := range *ports {
+		builder.WriteString(clusterIP)
+		builder.WriteString(constant.EnvArgSplitter)
+		builder.WriteString(strconv.Itoa(int(port.Port)))
+		builder.WriteString(constant.EnvArgSplitter)
+		builder.WriteString(strconv.Itoa(int(port.Port)))
+		builder.WriteString(constant.EnvArgSplitter)
+		builder.WriteString(strings.ToLower(string(port.Protocol)))
+		builder.WriteString(constant.EnvArgSplitter)
+	}
+	return &[]corev1.EnvVar{{
+		Name:  "PROXY_ARGS",
+		Value: builder.String(),
+	}}
+}
+
+func newProxyCtnPorts(ports *[]corev1.ServicePort) *[]corev1.ContainerPort {
+	res := make([]corev1.ContainerPort, len(*ports))
+	for i, port := range *ports {
+		res[i].ContainerPort = port.Port
+		res[i].HostPort = port.Port
+		res[i].Name = port.Name
+		res[i].Protocol = port.Protocol
+	}
+	return &res
+}
+
+func newProxyCtn(svc *corev1.Service) *corev1.Container {
 	return &corev1.Container{
-		Name:  name,
+		Name:  proxyRescName(svc.Name, svc.Namespace),
 		Image: constant.PorterProxyImage,
-		Ports: []corev1.ContainerPort{{
-			HostPort:      port,
-			ContainerPort: port,
-			Protocol:      proto,
-		}},
-		Env: []corev1.EnvVar{
-			{Name: "SVC_IP", Value: clusterIP},
-			{Name: "SVC_PORT", Value: strconv.Itoa(int(port))},
-			{Name: "POD_PORT", Value: strconv.Itoa(int(port))},
-			{Name: "PROTO", Value: string(proto)},
-		},
+		Ports: *newProxyCtnPorts(&svc.Spec.Ports),
+		Env:   *newProxyCtnEnvArgs(&svc.Spec.Ports, svc.Spec.ClusterIP),
+		// NET_ADMIN capability is required for iptables running in a container
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Add: []corev1.Capability{"NET_ADMIN"},

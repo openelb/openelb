@@ -1,5 +1,6 @@
 
 # Image URL to use all building/pushing image targets
+# TODO: change to release image names
 IMG_MANAGER ?= kony168/porter:v0.4.2
 IMG_AGENT ?= kony168/porter-agent:v0.4.2
 IMG_PROXY ?= kony168/openelb-proxy:v0.4.2

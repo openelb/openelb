@@ -23,6 +23,7 @@ const (
 	PorterProxyImage           string = "kony168/openelb-proxy:v0.4.2"
 	NameSeparator              string = "-"
 	IPSeparator                string = ","
+	EnvArgSplitter             string = " "
 	PorterDeDsPrefix           string = "svc-proxy-"
 	PorterLBSFInalizer         string = "lbs.porter.kubesphere.io/finalizer"
 
