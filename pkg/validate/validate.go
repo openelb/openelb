@@ -18,6 +18,18 @@ func HasPorterLBAnnotation(annotation map[string]string) bool {
 	return false
 }
 
+func HasPorterLBSAnnotation(annotation map[string]string) bool {
+	if annotation == nil {
+		return false
+	}
+	if value, ok := annotation[constant.PorterLBSAnnotationKey]; ok {
+		if value == constant.PorterOnePort || value == constant.PorterAllNode {
+			return true
+		}
+	}
+	return false
+}
+
 func IsTypeLoadBalancer(obj runtime.Object) bool {
 	if svc, ok := obj.(*corev1.Service); ok {
 		return svc.Spec.Type == corev1.ServiceTypeLoadBalancer

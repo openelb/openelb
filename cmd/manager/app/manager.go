@@ -3,12 +3,13 @@ package app
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
 	"github.com/kubesphere/porterlb/pkg/constant"
 	"github.com/kubesphere/porterlb/pkg/leader-elector"
 	"github.com/kubesphere/porterlb/pkg/speaker"
 	clientset "k8s.io/client-go/kubernetes"
-	"os"
 
 	"github.com/kubesphere/porterlb/cmd/manager/app/options"
 	"github.com/kubesphere/porterlb/pkg/controllers/bgp"
@@ -30,7 +31,7 @@ func NewPorterManagerCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:  "porter-manager",
-		Long: `The porter manager is a daemon that `,
+		Long: `The porter manager is a daemon that `, // HELP!??? that what? why is manager a daemon? I remember it's a Deployment, and agent is a DaemonSet？
 		Run: func(cmd *cobra.Command, args []string) {
 			if errs := s.Validate(); len(errs) != 0 {
 				fmt.Fprintf(os.Stderr, "%v\n", utilerrors.NewAggregate(errs))

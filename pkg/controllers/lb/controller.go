@@ -26,6 +26,7 @@ import (
 	"github.com/kubesphere/porterlb/pkg/controllers/ipam"
 	"github.com/kubesphere/porterlb/pkg/util"
 	"github.com/kubesphere/porterlb/pkg/validate"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,8 +44,16 @@ import (
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=services/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list
+// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
 
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
@@ -137,9 +146,11 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if nodeReady(e.ObjectOld) != nodeReady(e.ObjectNew) {
 				return true
-			} else {
-				return false
 			}
+			if nodeAddrChange(e.ObjectOld, e.ObjectNew) {
+				return true
+			}
+			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
@@ -148,7 +159,37 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
-	return ctl.Watch(&source.Kind{Type: &corev1.Node{}}, &EnqueueRequestForNode{Client: r.Client}, np)
+	err = ctl.Watch(&source.Kind{Type: &corev1.Node{}}, &EnqueueRequestForNode{Client: r.Client}, np)
+	if err != nil {
+		return err
+	}
+
+	// If there's any Service be deployed by PorterLB LBS, controller will create Deployment or DaemonSet for Proxy Pod
+	// If the status of such Deployment or DaemonSet changed, all PorterLB LBS should be reconciled
+	dedsp := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Maybe Deployment or DaemonSet was modified, so both should be looked at
+			return r.shouldReconcileDeDs(e.MetaNew) || r.shouldReconcileDeDs(e.MetaOld)
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			return r.shouldReconcileDeDs(e.Meta)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return r.shouldReconcileDeDs(e.Meta)
+		},
+	}
+	err = ctl.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
+	if err != nil {
+		return err
+	}
+	err = ctl.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
+	if err != nil {
+		return err
+	}
+	return mgr.GetFieldIndexer().IndexField(context.TODO(), &corev1.Pod{}, "status.phase", func(rawObj runtime.Object) []string {
+		pod := rawObj.(*corev1.Pod)
+		return []string{string(pod.Status.Phase)}
+	})
 }
 
 func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *corev1.Service) error {
@@ -236,6 +277,11 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
+	}
+
+	// Reconcile by PorterLB LBS if this service is specified to be exported by it
+	if validate.HasPorterLBSAnnotation(svc.Annotations) {
+		return r.reconcileLBS(svc)
 	}
 
 	args := r.constructIPAMArgs(svc)

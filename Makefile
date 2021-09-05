@@ -1,7 +1,9 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter:v0.4.1
-IMG_AGENT ?= kubespheredev/porter-agent:v0.4.1
+IMG_MANAGER ?= kony168/porter:v0.4.2
+IMG_AGENT ?= kony168/porter-agent:v0.4.2
+IMG_PROXY ?= kony168/openelb-proxy:v0.4.2
+IMG_FORWARD ?= kony168/openelb-forward:v0.4.2
 BRANCH ?= release
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
@@ -37,9 +39,13 @@ deploy: generate
 ifeq ($(uname), Darwin)
 	sed -i '' -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/${BRANCH}/agent_image_patch.yaml
 	sed -i '' -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/${BRANCH}/manager_image_patch.yaml
+	sed -i '' -e 's@PorterForwardImage         string = \".*\"@PorterForwardImage         string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
+	sed -i '' -e 's@PorterProxyImage           string = \".*\"@PorterProxyImage           string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
 else
 	sed -i -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/${BRANCH}/agent_image_patch.yaml
 	sed -i -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/${BRANCH}/manager_image_patch.yaml
+	sed -i -e 's@PorterForwardImage         string = \".*\"@PorterForwardImage         string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
+	sed -i -e 's@PorterProxyImage           string = \".*\"@PorterProxyImage           string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
 endif
 	kustomize build config/${BRANCH} -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
@@ -69,7 +75,12 @@ release: deploy
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build  -o bin/gobgp-linux-arm64 github.com/osrg/gobgp/cmd/gobgp
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .  --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .  --push
-
+	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_PROXY} -f ./images/proxy/Dockerfile . --push
+	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_FORWARD} -f ./images/forward/Dockerfile . --push
+	# DOCKER_CLI_EXPERIMENTAL=enabled docker build -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .
+	# DOCKER_CLI_EXPERIMENTAL=enabled docker build -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .
+	# docker push ${IMG_AGENT}
+	# docker push ${IMG_MANAGER}
 install-travis:
 	echo "install kubebuilder/kustomize etc."
 	chmod +x ./hack/*.sh
