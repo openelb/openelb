@@ -49,8 +49,8 @@ import (
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list
-// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
