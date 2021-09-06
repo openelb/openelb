@@ -3,6 +3,7 @@ package lb
 import (
 	"context"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -325,11 +326,13 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 		// If there's some proxy pods in nodes with external-ip, use these nodes' external-ips as svc external-ip
 		// Otherwize svc external-ip was specified by node internal-ips which there's a proxy pod in
 		if len(podInExternalIPNode) != 0 {
+			sort.Strings(podInExternalIPNode) // Use sorting to guarantee update idempotency
 			svc.ObjectMeta.Annotations[constant.PorterLBSExposedExternalIP] = strings.Join(podInExternalIPNode, constant.IPSeparator)
 		} else {
 			delete(svc.ObjectMeta.Annotations, constant.PorterLBSExposedExternalIP)
 		}
 		if len(podInInternalIPNode) != 0 {
+			sort.Strings(podInInternalIPNode) // Use sorting to guarantee update idempotency
 			svc.ObjectMeta.Annotations[constant.PorterLBSExposedInternalIP] = strings.Join(podInInternalIPNode, constant.IPSeparator)
 		} else {
 			delete(svc.ObjectMeta.Annotations, constant.PorterLBSExposedInternalIP)
