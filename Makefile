@@ -1,10 +1,9 @@
 
 # Image URL to use all building/pushing image targets
-# TODO: change to release image names
-IMG_MANAGER ?= kony168/porter:v0.4.2
-IMG_AGENT ?= kony168/porter-agent:v0.4.2
-IMG_PROXY ?= kony168/openelb-proxy:v0.4.2
-IMG_FORWARD ?= kony168/openelb-forward:v0.4.2
+IMG_MANAGER ?= kubespheredev/porter:v0.4.2
+IMG_AGENT ?= kubespheredev/porter-agent:v0.4.2
+IMG_PROXY ?= kubespheredev/openelb-proxy:v0.4.2
+IMG_FORWARD ?= kubespheredev/openelb-forward:v0.4.2
 BRANCH ?= release
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
@@ -78,10 +77,6 @@ release: deploy
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .  --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_PROXY} -f ./images/proxy/Dockerfile . --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_FORWARD} -f ./images/forward/Dockerfile . --push
-	# DOCKER_CLI_EXPERIMENTAL=enabled docker build -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .
-	# DOCKER_CLI_EXPERIMENTAL=enabled docker build -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .
-	# docker push ${IMG_AGENT}
-	# docker push ${IMG_MANAGER}
 install-travis:
 	echo "install kubebuilder/kustomize etc."
 	chmod +x ./hack/*.sh

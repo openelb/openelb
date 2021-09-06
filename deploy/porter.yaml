@@ -1056,7 +1056,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kony168/porter:v0.4.2
+        image: kubespheredev/porter:v0.4.2
         imagePullPolicy: IfNotPresent
         name: porter-manager
         ports:
