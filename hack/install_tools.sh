@@ -17,4 +17,9 @@ if [[ ! -f /usr/local/bin/kustomize ]]; then
 fi
 
 export PATH=$PATH:/usr/local/kubebuilder/bin:/usr/local/bin/
+
+echo "setup envtest"
+
+go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
 echo "Tools install done"

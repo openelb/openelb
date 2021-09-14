@@ -25,7 +25,7 @@ vet:
 
 # Run tests
 test: fmt vet
-	go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
+	KUBEBUILDER_ASSETS=$(shell $(GOBIN)/setup-envtest use -p path 1.19.x) go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
 
 # Build manager binary
 manager: fmt vet
