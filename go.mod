@@ -1,6 +1,6 @@
 module github.com/kubesphere/porterlb
 
-go 1.12
+go 1.16
 
 require (
 	cloud.google.com/go v0.44.3 // indirect
