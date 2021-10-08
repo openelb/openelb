@@ -140,12 +140,12 @@ func (e *EnqueueRequestForNode) Generic(evt event.GenericEvent, q workqueue.Rate
 var deAndDsEnqueueLog = ctrl.Log.WithName("eventhandler").WithName("EnqueueRequestForDeAndDs")
 
 // Enqueue requests for Deployments and DaemonSets type
-// Only PorterLB LBS needs this
+// Only PorterLB NodeProxy needs this
 type EnqueueRequestForDeAndDs struct {
 	client.Client
 }
 
-// Get all PorterLB LBS Services to reconcile them later
+// Get all PorterLB NodeProxy Services to reconcile them later
 // These Services will be exposed by Proxy Pod
 func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 	var svcs corev1.ServiceList
@@ -157,7 +157,7 @@ func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 
 	var result []corev1.Service
 	for _, svc := range svcs.Items {
-		if IsPorterLBService(&svc) {
+		if IsPorterNPService(&svc) {
 			result = append(result, svc)
 		}
 	}

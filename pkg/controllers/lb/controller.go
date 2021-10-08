@@ -164,8 +164,8 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	// If there's any Service be deployed by PorterLB LBS, controller will create Deployment or DaemonSet for Proxy Pod
-	// If the status of such Deployment or DaemonSet changed, all PorterLB LBS should be reconciled
+	// If there's any Service be deployed by PorterLB NodeProxy, controller will create Deployment or DaemonSet for Proxy Pod
+	// If the status of such Deployment or DaemonSet changed, all PorterLB NodeProxy should be reconciled
 	dedsp := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Maybe Deployment or DaemonSet was modified, so both should be looked at
@@ -279,9 +279,9 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	// Reconcile by PorterLB LBS if this service is specified to be exported by it
-	if validate.HasPorterLBSAnnotation(svc.Annotations) {
-		return r.reconcileLBS(svc)
+	// Reconcile by PorterLB NodeProxy if this service is specified to be exported by it
+	if validate.HasPorterNPAnnotation(svc.Annotations) {
+		return r.reconcileNP(svc)
 	}
 
 	args := r.constructIPAMArgs(svc)

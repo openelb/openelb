@@ -33,7 +33,7 @@ func envNamespace() string {
 	return ns
 }
 
-// eg. PorterLB LBS name/namespace: `nginx`/`default`, DaemonSet/Deployment/Pod name: `svc-proxy-nginx-default`
+// eg. PorterLB NodeProxy name/namespace: `nginx`/`default`, DaemonSet/Deployment/Pod name: `svc-proxy-nginx-default`
 func proxyRescName(svcName, svcNs string) string {
 	return constant.NodeProxyWorkloadPrefix + svcName + constant.NameSeparator + svcNs
 }
@@ -56,7 +56,7 @@ func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
 		return !errors.IsNotFound(err)
 	}
 
-	return IsPorterLBService(svc)
+	return IsPorterNPService(svc)
 }
 
 func newProxyResc(svc *corev1.Service) *runtime.Object {
@@ -212,10 +212,10 @@ func newForwardCtn(name string) *corev1.Container {
 	}
 }
 
-// Main procedure for ProterLB LBS
-func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result, error) {
+// Main procedure for ProterLB NodeProxy
+func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
-	log.Info("lbs reconciling")
+	log.Info("node-proxy reconciling")
 	var err error
 
 	if !util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
@@ -264,7 +264,7 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 	case constant.NodeProxyTypeDaemonSet:
 		shouldRmResc = &appsv1.Deployment{}
 	default:
-		log.Info("unsupport PorterLB LBS annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
+		log.Info("unsupport PorterLB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 		return ctrl.Result{}, nil
 	}
 
@@ -357,10 +357,10 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 	return ctrl.Result{}, err
 }
 
-// Called when PorterLB LBS Service was deleted
-func (r *ServiceReconciler) reconcileLBSDelete(svc *corev1.Service) (ctrl.Result, error) {
+// Called when PorterLB NodeProxy Service was deleted
+func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
-	log.Info("lbs reconciling deletion finalizing")
+	log.Info("node proxy reconciling deletion finalizing")
 	var err error
 
 	if util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
@@ -372,7 +372,7 @@ func (r *ServiceReconciler) reconcileLBSDelete(svc *corev1.Service) (ctrl.Result
 		case constant.NodeProxyTypeDaemonSet:
 			proxyResc = &appsv1.DaemonSet{}
 		default:
-			log.Info("unsupport PorterLB LBS annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
+			log.Info("unsupport PorterLB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 			return ctrl.Result{}, nil
 		}
 		err = r.Get(context.TODO(), dpDsNamespacedName, proxyResc)
@@ -397,18 +397,18 @@ func (r *ServiceReconciler) reconcileLBSDelete(svc *corev1.Service) (ctrl.Result
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceReconciler) reconcileLBS(svc *corev1.Service) (ctrl.Result, error) {
+func (r *ServiceReconciler) reconcileNP(svc *corev1.Service) (ctrl.Result, error) {
 	if svc.ObjectMeta.DeletionTimestamp.IsZero() {
-		return r.reconcileLBSNormal(svc)
+		return r.reconcileNPNormal(svc)
 	}
-	return r.reconcileLBSDelete(svc)
+	return r.reconcileNPDelete(svc)
 }
 
 // Judge whether this load balancer should be exposed by Porter LB Service
 // Such Service will be exposed by Proxy Pod
-func IsPorterLBService(obj runtime.Object) bool {
+func IsPorterNPService(obj runtime.Object) bool {
 	if svc, ok := obj.(*corev1.Service); ok {
-		return validate.HasPorterLBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc) && validate.HasPorterLBSAnnotation(svc.Annotations)
+		return validate.HasPorterLBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc) && validate.HasPorterNPAnnotation(svc.Annotations)
 	}
 	return false
 }

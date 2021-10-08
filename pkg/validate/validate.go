@@ -18,7 +18,7 @@ func HasPorterLBAnnotation(annotation map[string]string) bool {
 	return false
 }
 
-func HasPorterLBSAnnotation(annotation map[string]string) bool {
+func HasPorterNPAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
 	}
