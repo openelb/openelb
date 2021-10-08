@@ -22,8 +22,8 @@ func HasPorterLBSAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
 	}
-	if value, ok := annotation[constant.PorterLBSAnnotationKey]; ok {
-		if value == constant.PorterOnePort || value == constant.PorterAllNode {
+	if value, ok := annotation[constant.NodeProxyTypeAnnotationKey]; ok {
+		if value == constant.NodeProxyTypeDeployment || value == constant.NodeProxyTypeDaemonSet {
 			return true
 		}
 	}

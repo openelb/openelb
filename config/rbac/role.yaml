@@ -81,12 +81,15 @@ rules:
   verbs:
   - get
   - list
+  - watch
 - apiGroups:
   - ""
   resources:
   - pods/status
   verbs:
   - get
+  - list
+  - watch
 - apiGroups:
   - ""
   resources:

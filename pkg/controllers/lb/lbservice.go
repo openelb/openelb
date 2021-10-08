@@ -22,7 +22,7 @@ import (
 )
 
 func isProxyResc(obj metav1.Object) bool {
-	return obj.GetNamespace() == envNamespace() && strings.HasPrefix(obj.GetName(), constant.PorterDeDsPrefix)
+	return obj.GetNamespace() == envNamespace() && strings.HasPrefix(obj.GetName(), constant.NodeProxyWorkloadPrefix)
 }
 
 func envNamespace() string {
@@ -35,11 +35,11 @@ func envNamespace() string {
 
 // eg. PorterLB LBS name/namespace: `nginx`/`default`, DaemonSet/Deployment/Pod name: `svc-proxy-nginx-default`
 func proxyRescName(svcName, svcNs string) string {
-	return constant.PorterDeDsPrefix + svcName + constant.NameSeparator + svcNs
+	return constant.NodeProxyWorkloadPrefix + svcName + constant.NameSeparator + svcNs
 }
 
 func svcName(rescName, svcNs string) string {
-	return rescName[len(constant.PorterDeDsPrefix) : len(rescName)-len(svcNs)-len(constant.NameSeparator)]
+	return rescName[len(constant.NodeProxyWorkloadPrefix) : len(rescName)-len(svcNs)-len(constant.NameSeparator)]
 }
 
 func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
@@ -47,7 +47,7 @@ func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
 		return false
 	}
 	svc := &corev1.Service{}
-	ns, ok := e.GetAnnotations()[constant.PorterLBSAnnotationKey]
+	ns, ok := e.GetAnnotations()[constant.NodeProxyTypeAnnotationKey]
 	if !ok {
 		return false
 	}
@@ -61,10 +61,10 @@ func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
 
 func newProxyResc(svc *corev1.Service) *runtime.Object {
 	var proxyResc runtime.Object
-	switch svc.Annotations[constant.PorterLBSAnnotationKey] {
-	case constant.PorterOnePort:
+	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
+	case constant.NodeProxyTypeDeployment:
 		proxyResc = newProxyDe(svc)
-	case constant.PorterAllNode:
+	case constant.NodeProxyTypeDaemonSet:
 		proxyResc = newProxyDs(svc)
 	}
 	return &proxyResc
@@ -92,8 +92,8 @@ func newProxyDs(svc *corev1.Service) *appsv1.DaemonSet {
 
 func newProxyRescAnno(svc *corev1.Service) *map[string]string {
 	return &map[string]string{
-		constant.PorterAnnotationKey:    constant.PorterAnnotationValue,
-		constant.PorterLBSAnnotationKey: svc.Namespace,
+		constant.PorterAnnotationKey:        constant.PorterAnnotationValue,
+		constant.NodeProxyTypeAnnotationKey: svc.Namespace,
 	}
 }
 
@@ -126,7 +126,7 @@ func newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
 					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
 						NodeSelectorTerms: []corev1.NodeSelectorTerm{{
 							MatchExpressions: []corev1.NodeSelectorRequirement{{
-								Key:      constant.PorterNodeExcludeLBSLabel,
+								Key:      constant.LabelNodeProxyExcludeNode,
 								Operator: corev1.NodeSelectorOpDoesNotExist,
 							}},
 						}},
@@ -136,7 +136,7 @@ func newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
 							Weight: 10,
 							Preference: corev1.NodeSelectorTerm{
 								MatchExpressions: []corev1.NodeSelectorRequirement{{
-									Key:      constant.PorterNodeExtnlIPPrefLabel,
+									Key:      constant.LabelNodeProxyExternalIPPreffered,
 									Operator: corev1.NodeSelectorOpExists,
 								}},
 							},
@@ -189,7 +189,7 @@ func newProxyCtnPorts(ports *[]corev1.ServicePort) *[]corev1.ContainerPort {
 func newProxyCtn(svc *corev1.Service) *corev1.Container {
 	return &corev1.Container{
 		Name:  proxyRescName(svc.Name, svc.Namespace),
-		Image: constant.PorterProxyImage,
+		Image: constant.NodeProxyProxyImage,
 		Ports: *newProxyCtnPorts(&svc.Spec.Ports),
 		Env:   *newProxyCtnEnvArgs(&svc.Spec.Ports, svc.Spec.ClusterIP),
 		// NET_ADMIN capability is required for iptables running in a container
@@ -205,7 +205,7 @@ func newForwardCtn(name string) *corev1.Container {
 	privileged := true
 	return &corev1.Container{
 		Name:  name,
-		Image: constant.PorterForwardImage,
+		Image: constant.NodeProxyForwardImage,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
@@ -218,8 +218,8 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 	log.Info("lbs reconciling")
 	var err error
 
-	if !util.ContainsString(svc.GetFinalizers(), constant.PorterLBSFInalizer) {
-		controllerutil.AddFinalizer(svc, constant.PorterLBSFInalizer)
+	if !util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
+		controllerutil.AddFinalizer(svc, constant.NodeProxyFinalizerName)
 		if err := r.Update(context.Background(), svc); err != nil {
 			log.Error(err, "can't register finalizer")
 			return ctrl.Result{}, err
@@ -240,8 +240,8 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 		for _, nodeAddr := range node.Status.Addresses {
 			if nodeAddr.Type == corev1.NodeExternalIP {
 				nodeWithExternalIP[nodeAddr.Address] = &node
-				if _, ok := node.Labels[constant.PorterNodeExtnlIPPrefLabel]; !ok {
-					node.Labels[constant.PorterNodeExtnlIPPrefLabel] = ""
+				if _, ok := node.Labels[constant.LabelNodeProxyExternalIPPreffered]; !ok {
+					node.Labels[constant.LabelNodeProxyExternalIPPreffered] = ""
 					if err = r.Update(context.Background(), &node); err != nil {
 						log.Error(err, "can't label node")
 						return ctrl.Result{}, err
@@ -258,13 +258,13 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 	// Passes when resource not exist or successfully deleted
 	dpDsNamespacedName := types.NamespacedName{Namespace: envNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
 	var proxyResc, shouldRmResc runtime.Object
-	switch svc.Annotations[constant.PorterLBSAnnotationKey] {
-	case constant.PorterOnePort:
+	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
+	case constant.NodeProxyTypeDeployment:
 		shouldRmResc = &appsv1.DaemonSet{}
-	case constant.PorterAllNode:
+	case constant.NodeProxyTypeDaemonSet:
 		shouldRmResc = &appsv1.Deployment{}
 	default:
-		log.Info("unsupport PorterLB LBS annotation value:" + svc.Annotations[constant.PorterLBSAnnotationKey])
+		log.Info("unsupport PorterLB LBS annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 		return ctrl.Result{}, nil
 	}
 
@@ -281,10 +281,10 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 	}
 
 	// Check if specified Proxy resource exists
-	switch svc.Annotations[constant.PorterLBSAnnotationKey] {
-	case constant.PorterOnePort:
+	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
+	case constant.NodeProxyTypeDeployment:
 		proxyResc = &appsv1.Deployment{}
-	case constant.PorterAllNode:
+	case constant.NodeProxyTypeDaemonSet:
 		proxyResc = &appsv1.DaemonSet{}
 	}
 	if err = r.Get(context.TODO(), dpDsNamespacedName, proxyResc); err == nil {
@@ -327,15 +327,15 @@ func (r *ServiceReconciler) reconcileLBSNormal(svc *corev1.Service) (ctrl.Result
 		// Otherwize svc external-ip was specified by node internal-ips which there's a proxy pod in
 		if len(podInExternalIPNode) != 0 {
 			sort.Strings(podInExternalIPNode) // Use sorting to guarantee update idempotency
-			svc.ObjectMeta.Annotations[constant.PorterLBSExposedExternalIP] = strings.Join(podInExternalIPNode, constant.IPSeparator)
+			svc.ObjectMeta.Annotations[constant.NodeProxyExternalIPAnnotationKey] = strings.Join(podInExternalIPNode, constant.IPSeparator)
 		} else {
-			delete(svc.ObjectMeta.Annotations, constant.PorterLBSExposedExternalIP)
+			delete(svc.ObjectMeta.Annotations, constant.NodeProxyExternalIPAnnotationKey)
 		}
 		if len(podInInternalIPNode) != 0 {
 			sort.Strings(podInInternalIPNode) // Use sorting to guarantee update idempotency
-			svc.ObjectMeta.Annotations[constant.PorterLBSExposedInternalIP] = strings.Join(podInInternalIPNode, constant.IPSeparator)
+			svc.ObjectMeta.Annotations[constant.NodeProxyInternalIPAnnotationKey] = strings.Join(podInInternalIPNode, constant.IPSeparator)
 		} else {
-			delete(svc.ObjectMeta.Annotations, constant.PorterLBSExposedInternalIP)
+			delete(svc.ObjectMeta.Annotations, constant.NodeProxyInternalIPAnnotationKey)
 		}
 
 		if err = r.Update(context.Background(), svc); err != nil {
@@ -363,16 +363,16 @@ func (r *ServiceReconciler) reconcileLBSDelete(svc *corev1.Service) (ctrl.Result
 	log.Info("lbs reconciling deletion finalizing")
 	var err error
 
-	if util.ContainsString(svc.GetFinalizers(), constant.PorterLBSFInalizer) {
+	if util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
 		dpDsNamespacedName := types.NamespacedName{Namespace: envNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
 		var proxyResc runtime.Object
-		switch svc.Annotations[constant.PorterLBSAnnotationKey] {
-		case constant.PorterOnePort:
+		switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
+		case constant.NodeProxyTypeDeployment:
 			proxyResc = &appsv1.Deployment{}
-		case constant.PorterAllNode:
+		case constant.NodeProxyTypeDaemonSet:
 			proxyResc = &appsv1.DaemonSet{}
 		default:
-			log.Info("unsupport PorterLB LBS annotation value:" + svc.Annotations[constant.PorterLBSAnnotationKey])
+			log.Info("unsupport PorterLB LBS annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 			return ctrl.Result{}, nil
 		}
 		err = r.Get(context.TODO(), dpDsNamespacedName, proxyResc)
@@ -387,7 +387,7 @@ func (r *ServiceReconciler) reconcileLBSDelete(svc *corev1.Service) (ctrl.Result
 			log.Error(err, "can't remove deployment/daemonset")
 			return ctrl.Result{}, err
 		}
-		controllerutil.RemoveFinalizer(svc, constant.PorterLBSFInalizer)
+		controllerutil.RemoveFinalizer(svc, constant.NodeProxyFinalizerName)
 		if err = r.Update(context.Background(), svc); err != nil {
 			log.Error(err, "can't remove finalizer")
 			return ctrl.Result{}, err
