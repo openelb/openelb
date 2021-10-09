@@ -9,8 +9,25 @@ const (
 	PorterAnnotationKey   string = "lb.kubesphere.io/v1alpha1"
 	PorterAnnotationValue string = "porter"
 
-	//Indicates the node to which layer2 traffic is sent
+	// Indicates the node to which layer2 traffic is sent
 	PorterLayer2Annotation string = "layer2.porter.kubesphere.io/v1alpha1"
+
+	NodeProxyTypeAnnotationKey        string = "node-proxy.porter.kubesphere.io/type"
+	NodeProxyTypeDeployment           string = "deployment"
+	NodeProxyTypeDaemonSet            string = "daemonset"
+	LabelNodeProxyExternalIPPreffered string = "node-proxy.porter.kubesphere.io/external-ip-preffered"
+	LabelNodeProxyExcludeNode         string = "node-proxy.porter.kubesphere.io/exclude-node"
+	NodeProxyExternalIPAnnotationKey  string = "node-proxy.porter.kubesphere.io/external-ip"
+	NodeProxyInternalIPAnnotationKey  string = "node-proxy.porter.kubesphere.io/internal-ip"
+	NodeProxyForwardImage             string = "kubespheredev/openelb-forward:v0.4.2"
+	NodeProxyProxyImage               string = "kubespheredev/openelb-proxy:v0.4.2"
+	NameSeparator                     string = "-"
+	IPSeparator                       string = ","
+	EnvArgSplitter                    string = " "
+	NodeProxyWorkloadPrefix           string = "node-proxy-"
+	NodeProxyFinalizerName            string = "node-proxy.porter.kubesphere.io/finalizer"
+
+	KubernetesMasterLabel string = "node-role.kubernetes.io/master"
 
 	PorterEIPAnnotationKey         string = "eip.porter.kubesphere.io/v1alpha1"
 	PorterEIPAnnotationKeyV1Alpha2 string = "eip.porter.kubesphere.io/v1alpha2"
@@ -18,7 +35,7 @@ const (
 	PorterProtocolAnnotationKey string = "protocol.porter.kubesphere.io/v1alpha1"
 
 	PorterNodeRack string = "porter.kubesphere.io/rack"
-	//TODO: Disable lable modification using webhook
+	// TODO: Disable lable modification using webhook
 	PorterCNI string = "porter.kubesphere.io/cni"
 
 	PorterProtocolBGP    string = "bgp"

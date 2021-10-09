@@ -18,6 +18,18 @@ func HasPorterLBAnnotation(annotation map[string]string) bool {
 	return false
 }
 
+func HasPorterNPAnnotation(annotation map[string]string) bool {
+	if annotation == nil {
+		return false
+	}
+	if value, ok := annotation[constant.NodeProxyTypeAnnotationKey]; ok {
+		if value == constant.NodeProxyTypeDeployment || value == constant.NodeProxyTypeDaemonSet {
+			return true
+		}
+	}
+	return false
+}
+
 func IsTypeLoadBalancer(obj runtime.Object) bool {
 	if svc, ok := obj.(*corev1.Service); ok {
 		return svc.Spec.Type == corev1.ServiceTypeLoadBalancer
