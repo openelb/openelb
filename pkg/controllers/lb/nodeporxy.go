@@ -59,53 +59,53 @@ func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
 	return IsPorterNPService(svc)
 }
 
-func newProxyResc(svc *corev1.Service) *runtime.Object {
+func (r *ServiceReconciler) newProxyResc(svc *corev1.Service) *runtime.Object {
 	var proxyResc runtime.Object
 	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
 	case constant.NodeProxyTypeDeployment:
-		proxyResc = newProxyDe(svc)
+		proxyResc = r.newProxyDe(svc)
 	case constant.NodeProxyTypeDaemonSet:
-		proxyResc = newProxyDs(svc)
+		proxyResc = r.newProxyDs(svc)
 	}
 	return &proxyResc
 }
 
-func newProxyDe(svc *corev1.Service) *appsv1.Deployment {
+func (r *ServiceReconciler) newProxyDe(svc *corev1.Service) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: *newProxyRescOM(svc),
+		ObjectMeta: *r.newProxyRescOM(svc),
 		Spec: appsv1.DeploymentSpec{
-			Selector: newProxyRescSel(svc),
-			Template: *newProxyPoTepl(svc),
+			Selector: r.newProxyRescSel(svc),
+			Template: *r.newProxyPoTepl(svc),
 		},
 	}
 }
 
-func newProxyDs(svc *corev1.Service) *appsv1.DaemonSet {
+func (r *ServiceReconciler) newProxyDs(svc *corev1.Service) *appsv1.DaemonSet {
 	return &appsv1.DaemonSet{
-		ObjectMeta: *newProxyRescOM(svc),
+		ObjectMeta: *r.newProxyRescOM(svc),
 		Spec: appsv1.DaemonSetSpec{
-			Selector: newProxyRescSel(svc),
-			Template: *newProxyPoTepl(svc),
+			Selector: r.newProxyRescSel(svc),
+			Template: *r.newProxyPoTepl(svc),
 		},
 	}
 }
 
-func newProxyRescAnno(svc *corev1.Service) *map[string]string {
+func (r *ServiceReconciler) newProxyRescAnno(svc *corev1.Service) *map[string]string {
 	return &map[string]string{
 		constant.PorterAnnotationKey:        constant.PorterAnnotationValue,
 		constant.NodeProxyTypeAnnotationKey: svc.Namespace,
 	}
 }
 
-func newProxyRescOM(svc *corev1.Service) *metav1.ObjectMeta {
+func (r *ServiceReconciler) newProxyRescOM(svc *corev1.Service) *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Name:        proxyRescName(svc.Name, svc.Namespace),
 		Namespace:   envNamespace(),
-		Annotations: *newProxyRescAnno(svc),
+		Annotations: *r.newProxyRescAnno(svc),
 	}
 }
 
-func newProxyRescSel(svc *corev1.Service) *metav1.LabelSelector {
+func (r *ServiceReconciler) newProxyRescSel(svc *corev1.Service) *metav1.LabelSelector {
 	return &metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			"name": proxyRescName(svc.Name, svc.Namespace),
@@ -113,14 +113,14 @@ func newProxyRescSel(svc *corev1.Service) *metav1.LabelSelector {
 	}
 }
 
-func newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
+func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
 	res := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{"name": proxyRescName(svc.Name, svc.Namespace)},
 		},
 		Spec: corev1.PodSpec{
-			Containers:     []corev1.Container{*newProxyCtn(svc)},
-			InitContainers: []corev1.Container{*newForwardCtn(svc.Name)},
+			Containers:     []corev1.Container{*r.newProxyCtn(svc)},
+			InitContainers: []corev1.Container{*r.newForwardCtn(svc.Name)},
 			Affinity: &corev1.Affinity{
 				NodeAffinity: &corev1.NodeAffinity{
 					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -155,9 +155,35 @@ func newProxyPoTepl(svc *corev1.Service) *corev1.PodTemplateSpec {
 	return res
 }
 
+// User can config NodeProxy by ConfigMap specifying the image
+// If the ConfigMap exists and the configuration is set, use this config
+// Otherwize, use the default image got from constans.
+func (r *ServiceReconciler) getNPConfig() (*corev1.ConfigMap, error) {
+	NPCfgName := types.NamespacedName{Namespace: envNamespace(), Name: constant.NodeProxyConfigMapName}
+	cm := &corev1.ConfigMap{}
+	err := r.Get(context.Background(), NPCfgName, cm)
+	return cm, err
+}
+
+func (r *ServiceReconciler) getForwardImage() string {
+	cm, err := r.getNPConfig()
+	if err != nil {
+		return constant.NodeProxyDefaultForwardImage
+	}
+	return cm.Data[constant.NodeProxyConfigMapForwardImage]
+}
+
+func (r *ServiceReconciler) getProxyImage() string {
+	cm, err := r.getNPConfig()
+	if err != nil {
+		return constant.NodeProxyDefaultProxyImage
+	}
+	return cm.Data[constant.NodeProxyConfigMapProxyImage]
+}
+
 // The only env variable is `PROXY_ARGS`
 // `PROXY_ARGS` is 4-tuple parameters split by space: <SVC_IP POD_PORT SVC_PORT SVC_PROTO>
-func newProxyCtnEnvArgs(ports *[]corev1.ServicePort, clusterIP string) *[]corev1.EnvVar {
+func (r *ServiceReconciler) newProxyCtnEnvArgs(ports *[]corev1.ServicePort, clusterIP string) *[]corev1.EnvVar {
 	var builder strings.Builder
 	for _, port := range *ports {
 		builder.WriteString(clusterIP)
@@ -175,7 +201,7 @@ func newProxyCtnEnvArgs(ports *[]corev1.ServicePort, clusterIP string) *[]corev1
 	}}
 }
 
-func newProxyCtnPorts(ports *[]corev1.ServicePort) *[]corev1.ContainerPort {
+func (r *ServiceReconciler) newProxyCtnPorts(ports *[]corev1.ServicePort) *[]corev1.ContainerPort {
 	res := make([]corev1.ContainerPort, len(*ports))
 	for i, port := range *ports {
 		res[i].ContainerPort = port.Port
@@ -186,12 +212,12 @@ func newProxyCtnPorts(ports *[]corev1.ServicePort) *[]corev1.ContainerPort {
 	return &res
 }
 
-func newProxyCtn(svc *corev1.Service) *corev1.Container {
+func (r *ServiceReconciler) newProxyCtn(svc *corev1.Service) *corev1.Container {
 	return &corev1.Container{
 		Name:  proxyRescName(svc.Name, svc.Namespace),
-		Image: constant.NodeProxyProxyImage,
-		Ports: *newProxyCtnPorts(&svc.Spec.Ports),
-		Env:   *newProxyCtnEnvArgs(&svc.Spec.Ports, svc.Spec.ClusterIP),
+		Image: r.getProxyImage(),
+		Ports: *r.newProxyCtnPorts(&svc.Spec.Ports),
+		Env:   *r.newProxyCtnEnvArgs(&svc.Spec.Ports, svc.Spec.ClusterIP),
 		// NET_ADMIN capability is required for iptables running in a container
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
@@ -201,11 +227,11 @@ func newProxyCtn(svc *corev1.Service) *corev1.Container {
 	}
 }
 
-func newForwardCtn(name string) *corev1.Container {
+func (r *ServiceReconciler) newForwardCtn(name string) *corev1.Container {
 	privileged := true
 	return &corev1.Container{
 		Name:  name,
-		Image: constant.NodeProxyForwardImage,
+		Image: r.getForwardImage(),
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
@@ -290,7 +316,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	if err = r.Get(context.TODO(), dpDsNamespacedName, proxyResc); err == nil {
 		// If exists
 		// Update Service pod template by svc
-		proxyResc = *newProxyResc(svc)
+		proxyResc = *r.newProxyResc(svc)
 		if err = r.Update(context.Background(), proxyResc); err != nil {
 			log.Error(err, "can't patch proxy resc")
 			return ctrl.Result{}, err
@@ -348,7 +374,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 			return ctrl.Result{}, err
 		}
 		// If not exists, create Proxy resource
-		if err = r.Create(context.TODO(), *newProxyResc(svc)); err != nil {
+		if err = r.Create(context.TODO(), *r.newProxyResc(svc)); err != nil {
 			log.Error(err, "can't create proxy resource")
 			return ctrl.Result{}, err
 		}

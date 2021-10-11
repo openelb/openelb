@@ -39,13 +39,13 @@ deploy: generate
 ifeq ($(uname), Darwin)
 	sed -i '' -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/${BRANCH}/agent_image_patch.yaml
 	sed -i '' -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/${BRANCH}/manager_image_patch.yaml
-	sed -i '' -e 's@NodeProxyForwardImage             string = \".*\"@NodeProxyForwardImage             string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
-	sed -i '' -e 's@NodeProxyProxyImage               string = \".*\"@NodeProxyProxyImage               string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
+	sed -i '' -e 's@NodeProxyDefaultForwardImage      string = \".*\"@NodeProxyDefaultForwardImage      string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
+	sed -i '' -e 's@NodeProxyDefaultProxyImage        string = \".*\"@NodeProxyDefaultProxyImage        string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
 else
 	sed -i -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/${BRANCH}/agent_image_patch.yaml
 	sed -i -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/${BRANCH}/manager_image_patch.yaml
-	sed -i -e 's@NodeProxyForwardImage             string = \".*\"@NodeProxyForwardImage             string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
-	sed -i -e 's@NodeProxyProxyImage               string = \".*\"@NodeProxyProxyImage               string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
+	sed -i -e 's@NodeProxyDefaultForwardImage      string = \".*\"@NodeProxyDefaultForwardImage      string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
+	sed -i -e 's@NodeProxyDefaultProxyImage        string = \".*\"@NodeProxyDefaultProxyImage        string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
 endif
 	kustomize build config/${BRANCH} -o deploy/porter.yaml
 	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
