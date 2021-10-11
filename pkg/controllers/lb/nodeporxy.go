@@ -155,9 +155,9 @@ func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTempl
 	return res
 }
 
-// User can config NodeProxy by ConfigMap specifying the image
-// If the ConfigMap exists and the configuration is set, use this config
-// Otherwize, use the default image got from constans.
+// User can config NodeProxy by ConfigMap to specify the proxy and forward images
+// If the ConfigMap exists and the configuration is set, use it,
+// 	otherwise, use the default image got from constants.
 func (r *ServiceReconciler) getNPConfig() (*corev1.ConfigMap, error) {
 	NPCfgName := types.NamespacedName{Namespace: envNamespace(), Name: constant.NodeProxyConfigMapName}
 	cm := &corev1.ConfigMap{}
