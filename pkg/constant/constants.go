@@ -19,13 +19,16 @@ const (
 	LabelNodeProxyExcludeNode         string = "node-proxy.porter.kubesphere.io/exclude-node"
 	NodeProxyExternalIPAnnotationKey  string = "node-proxy.porter.kubesphere.io/external-ip"
 	NodeProxyInternalIPAnnotationKey  string = "node-proxy.porter.kubesphere.io/internal-ip"
-	NodeProxyForwardImage             string = "kubespheredev/openelb-forward:v0.4.2"
-	NodeProxyProxyImage               string = "kubespheredev/openelb-proxy:v0.4.2"
+	NodeProxyDefaultForwardImage      string = "kubespheredev/openelb-forward:v0.4.2"
+	NodeProxyDefaultProxyImage        string = "kubespheredev/openelb-proxy:v0.4.2"
 	NameSeparator                     string = "-"
 	IPSeparator                       string = ","
 	EnvArgSplitter                    string = " "
 	NodeProxyWorkloadPrefix           string = "node-proxy-"
 	NodeProxyFinalizerName            string = "node-proxy.porter.kubesphere.io/finalizer"
+	NodeProxyConfigMapName            string = "node-proxy-config"
+	NodeProxyConfigMapForwardImage    string = "forward-image"
+	NodeProxyConfigMapProxyImage      string = "proxy-image"
 
 	KubernetesMasterLabel string = "node-role.kubernetes.io/master"
 
