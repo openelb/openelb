@@ -26,8 +26,6 @@ In cloud-based Kubernetes clusters, Services are usually exposed by using load b
 
 ## Documentation
 
-Without a bare-metal environment yet? Doesn't matter!
-
 You can learn how to use OpenELB in a cloud-based Kubernetes cluster by following the [OpenELB Documentation](https://porterlb.io/docs/).
 
 ## Adopters
