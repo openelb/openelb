@@ -47,7 +47,10 @@ func newNDPSpeaker(ifi *net.Interface) (*ndpSpeaker, error) {
 	return ns, err
 }
 
-
+func (n *ndpSpeaker) gratuitous(ip net.IP) error {
+	err := n.advertise(net.IPv6linklocalallnodes, ip, true)
+	return err
+}
 
 func (n *ndpSpeaker) advertise(dst, target net.IP, gratuitous bool) error {
 	//https://datatracker.ietf.org/doc/html/rfc4861#section-4.4
