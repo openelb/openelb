@@ -57,6 +57,13 @@ func NewSpeaker(ifaceName string, v4 bool) (speaker.Speaker, error) {
 		}
 
 		return speaker, nil
+	}else{
+		speaker, err := newNDPSpeaker(iface)
+		if err != nil {
+			return nil, err
+		}
+
+		return speaker, nil
 	}
 
 	return nil, fmt.Errorf("cannot create layer2 speaker, only support ipv4 now")

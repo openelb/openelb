@@ -14,6 +14,7 @@ require (
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mdlayher/arp v0.0.0-20191213142603-f72070a231fc
 	github.com/mdlayher/ethernet v0.0.0-20190606142754-0394541c37b7
+	github.com/mdlayher/ndp v0.0.0-20210831201139-f982b8766fb5 // indirect
 	github.com/mdlayher/raw v0.0.0-20191009151244-50f2db8cc065
 	github.com/nxadm/tail v1.4.6 // indirect
 	github.com/onsi/ginkgo v1.14.2
@@ -28,7 +29,7 @@ require (
 	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	go.uber.org/zap v1.10.0
-	golang.org/x/net v0.0.0-20200528225125-3c3fba18258b
+	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	google.golang.org/grpc v1.26.0

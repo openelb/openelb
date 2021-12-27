@@ -294,4 +294,6 @@ const (
 	dropReasonARPReply
 	dropReasonUnknowTargetIP
 	dropReasonLeader
+	dropReasonMessageTypeError
+	dropReasonNoSourceHardwareAddr
 )
