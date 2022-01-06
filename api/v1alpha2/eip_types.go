@@ -68,11 +68,12 @@ func (e Eip) GetProtocol() string {
 }
 
 func (e Eip) GetSize() (net.IP, int64, error) {
+	ctrl.Log.Info("ValidateCreate ")
 	ip := net.ParseIP(e.Spec.Address)
 	if ip != nil {
 		return ip, 1, nil
 	}
-
+	ctrl.Log.Info(fmt.Sprintf("ip %s ",ip.String()))
 	_, cidr, err := net.ParseCIDR(e.Spec.Address)
 	if err == nil {
 		ones, size := cidr.Mask.Size()

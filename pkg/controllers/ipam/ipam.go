@@ -336,7 +336,7 @@ func (a IPAMArgs) assignIPFromEip(eip *networkv1alpha2.Eip) string {
 	if eip.DeletionTimestamp != nil {
 		return ""
 	}
-
+	ctrl.Log.Info(fmt.Sprintf("eip %+v ", eip))
 	for addr, svcs := range eip.Status.Used {
 		tmp := strings.Split(svcs, ";")
 		for _, svc := range tmp {

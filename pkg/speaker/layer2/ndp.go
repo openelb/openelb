@@ -31,6 +31,7 @@ type ndpSpeaker struct {
 }
 
 func newNDPSpeaker(ifi *net.Interface) (*ndpSpeaker, error) {
+	ctrl.Log.Info("进度ndp")
 	conn, _, err := ndp.Listen(ifi, ndp.LinkLocal)
 	if err != nil {
 		return nil, fmt.Errorf("creating NDP Speaker for %q: %s", ifi.Name, err)
@@ -119,16 +120,22 @@ func (n *ndpSpeaker) processRequest() dropReason {
 	return dropReasonNone
 }
 
-func (n ndpSpeaker) SetBalancer(ip string, nexthops []corev1.Node) error {
+func (n *ndpSpeaker) SetBalancer(ip string, nexthops []corev1.Node) error {
 	// 当所在的节点down掉时,主动发出NA消息，告知邻居本节点的变化
-	return nil
+	ctrl.Log.Info(fmt.Sprintf("SetBalancer %s %+v ", ip, nexthops))
+	// TODO
+	// 配置双栈后,nexthops 目前无法获取到节点的ipv6地址
+	n.lock.Lock()
+	n.lock.Unlock()
+	return fmt.Errorf("DelBalancer")
+
 }
 
-func (n ndpSpeaker) DelBalancer(ip string) error {
-	panic("implement me")
+func (n *ndpSpeaker) DelBalancer(ip string) error {
+	return fmt.Errorf("DelBalancer")
 }
 
-func (n ndpSpeaker) Start(stopCh <-chan struct{}) error {
+func (n *ndpSpeaker) Start(stopCh <-chan struct{}) error {
 	// 监听NDP NS 消息,并发送NDP NA消息,NDP NA 消息的link layer 使用linklocal
 	go n.run(stopCh)
 	go func() {

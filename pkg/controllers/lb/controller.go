@@ -198,7 +198,7 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 	if err != nil {
 		return err
 	}
-
+	ctrl.Log.Info(fmt.Sprintf("nodes  %+v\n", nodes))
 	svcIP := result.Addr
 
 	var announceNodes []corev1.Node
@@ -309,6 +309,8 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if !args.Unalloc {
 		if !result.Assigned() {
 			result, err = ipam.IPAMAllocator.AssignIP(args)
+			ctrl.Log.Info(fmt.Sprintf("result %+v\n", result))
+			ctrl.Log.Info(fmt.Sprintf("svc  %+v\n", svc))
 			if err != nil {
 				r.updateServiceEipInfo(result, svc)
 				return ctrl.Result{}, err

@@ -49,6 +49,10 @@ func NewSpeaker(ifaceName string, v4 bool) (speaker.Speaker, error) {
 	}
 
 	ctrl.Log.Info(fmt.Sprintf("use interface %s to speak arp", iface.Name))
+	addrs, _ := iface.Addrs()
+	for _, i := range addrs {
+		ctrl.Log.Info(fmt.Sprintf("use interface %s to speak arp", i.String()))
+	}
 
 	if v4 {
 		speaker, err := newARPSpeaker(iface)
@@ -57,7 +61,7 @@ func NewSpeaker(ifaceName string, v4 bool) (speaker.Speaker, error) {
 		}
 
 		return speaker, nil
-	}else{
+	} else {
 		speaker, err := newNDPSpeaker(iface)
 		if err != nil {
 			return nil, err
@@ -66,5 +70,4 @@ func NewSpeaker(ifaceName string, v4 bool) (speaker.Speaker, error) {
 		return speaker, nil
 	}
 
-	return nil, fmt.Errorf("cannot create layer2 speaker, only support ipv4 now")
 }
