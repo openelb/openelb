@@ -597,6 +597,8 @@ spec:
               address:
                 pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}((\/([0-9]|[1-2][0-9]|3[0-2]))|(\-([0-9]{1,3}\.){3}[0-9]{1,3}))?$
                 type: string
+              default:
+                type: boolean
               disable:
                 type: boolean
               protocol:
@@ -651,6 +653,8 @@ spec:
             properties:
               address:
                 type: string
+              default:
+                type: boolean
               disable:
                 type: boolean
               interface:

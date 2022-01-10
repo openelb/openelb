@@ -27,6 +27,7 @@ type EipSpec struct {
 	// +kubebuilder:validation:Enum=bgp;layer2
 	Protocol      string `json:"protocol,omitempty"`
 	Disable       bool   `json:"disable,omitempty"`
+	Default       bool   `json:"default,omitempty"`
 	UsingKnownIPs bool   `json:"usingKnownIPs,omitempty"`
 }
 

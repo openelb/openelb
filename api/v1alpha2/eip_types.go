@@ -127,10 +127,13 @@ func (e Eip) ValidateCreate() error {
 	if err != nil {
 		return err
 	}
-
+	defaultEipCount := 0
 	for _, eip := range eips.Items {
 		if e.IsOverlap(eip) {
 			return fmt.Errorf("eip address overlap with %s", eip.Name)
+		}
+		if eip.Spec.Default {
+			defaultEipCount++
 		}
 	}
 
@@ -139,7 +142,9 @@ func (e Eip) ValidateCreate() error {
 			return fmt.Errorf("field spec.interface should not be empty")
 		}
 	}
-
+	if e.Spec.Default && defaultEipCount >= 1 {
+		return fmt.Errorf("already exists a default EIP")
+	}
 	return nil
 }
 
@@ -171,6 +176,7 @@ type EipSpec struct {
 	Protocol      string `json:"protocol,omitempty"`
 	Interface     string `json:"interface,omitempty"`
 	Disable       bool   `json:"disable,omitempty"`
+	Default       bool   `json:"default,omitempty"`
 	UsingKnownIPs bool   `json:"usingKnownIPs,omitempty"`
 }
 
