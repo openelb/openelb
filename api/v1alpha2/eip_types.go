@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/kubesphere/porterlb/pkg/util"
+	"github.com/kubesphere/porterlb/pkg/validate"
 	"math/big"
 	"net"
 	"reflect"
@@ -127,10 +128,13 @@ func (e Eip) ValidateCreate() error {
 	if err != nil {
 		return err
 	}
-
+	defaultEipCount := 0
 	for _, eip := range eips.Items {
 		if e.IsOverlap(eip) {
 			return fmt.Errorf("eip address overlap with %s", eip.Name)
+		}
+		if validate.HasPorterDefaultEipAnnotation(eip.Annotations) {
+			defaultEipCount++
 		}
 	}
 
@@ -139,7 +143,9 @@ func (e Eip) ValidateCreate() error {
 			return fmt.Errorf("field spec.interface should not be empty")
 		}
 	}
-
+	if validate.HasPorterDefaultEipAnnotation(e.Annotations) && defaultEipCount >= 1 {
+		return fmt.Errorf("already exists a default EIP")
+	}
 	return nil
 }
 

@@ -34,8 +34,8 @@ const (
 
 	PorterEIPAnnotationKey         string = "eip.porter.kubesphere.io/v1alpha1"
 	PorterEIPAnnotationKeyV1Alpha2 string = "eip.porter.kubesphere.io/v1alpha2"
-
-	PorterProtocolAnnotationKey string = "protocol.porter.kubesphere.io/v1alpha1"
+	PorterEIPAnnotationDefaultPool string = "eip.porter.kubesphere.io/is-default-eip"
+	PorterProtocolAnnotationKey    string = "protocol.porter.kubesphere.io/v1alpha1"
 
 	PorterNodeRack string = "porter.kubesphere.io/rack"
 	// TODO: Disable lable modification using webhook
