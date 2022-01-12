@@ -12,6 +12,7 @@ rules:
       - admissionregistration.k8s.io
     resources:
       - validatingwebhookconfigurations
+      - mutatingwebhookconfigurations
     verbs:
       - get
       - update
@@ -64,7 +65,7 @@ spec:
     spec:
       containers:
         - name: create
-          image: docker.io/jettech/kube-webhook-certgen:v1.5.0
+          image: k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.1.1
           imagePullPolicy: IfNotPresent
           args:
             - create
@@ -93,13 +94,13 @@ spec:
     spec:
       containers:
         - name: patch
-          image: docker.io/jettech/kube-webhook-certgen:v1.5.0
+          image: k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.1.1
           imagePullPolicy: IfNotPresent
           args:
             - patch
             - --webhook-name=porter-admission
             - --namespace=$(POD_NAMESPACE)
-            - --patch-mutating=false
+            - --patch-mutating=true
             - --secret-name=porter-admission
             - --patch-failure-policy=Fail
           env:
