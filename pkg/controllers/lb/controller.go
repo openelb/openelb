@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"strings"
 )
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -489,7 +491,7 @@ func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	if err := r.decoder.Decode(req, svc); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer || !envWatchAllServices() {
 		marshaledSvc, err := json.Marshal(svc)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
@@ -499,7 +501,7 @@ func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	if svc.Annotations == nil {
 		svc.Annotations = make(map[string]string)
 		svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
-	} else if value, ok := svc.Annotations[constant.PorterAnnotationKey]; !ok || value != constant.PorterProtocolLayer2 {
+	} else if value, ok := svc.Annotations[constant.PorterAnnotationKey]; !ok || value != constant.PorterAnnotationValue {
 		svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
 	}
 	eips := networkv1alpha2.EipList{}
@@ -521,4 +523,8 @@ func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledSvc)
+}
+
+func envWatchAllServices() bool {
+	return strings.ToLower(os.Getenv(constant.EnvWatchAllServices)) == "true"
 }
