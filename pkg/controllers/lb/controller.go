@@ -34,7 +34,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"math/rand"
 	"net/http"
-	"os"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	"strings"
 )
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -491,31 +489,33 @@ func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 	if err := r.decoder.Decode(req, svc); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer || !envWatchAllServices() {
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
 		marshaledSvc, err := json.Marshal(svc)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
 		return admission.PatchResponseFromRaw(req.Object.Raw, marshaledSvc)
 	}
-	if svc.Annotations == nil {
-		svc.Annotations = make(map[string]string)
-		svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
-	} else if value, ok := svc.Annotations[constant.PorterAnnotationKey]; !ok || value != constant.PorterAnnotationValue {
-		svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
-	}
+	// check default eip
 	eips := networkv1alpha2.EipList{}
-	if _, ok := svc.Annotations[constant.PorterEIPAnnotationKeyV1Alpha2]; !ok {
-		err := r.List(context.Background(), &eips)
-		if err != nil {
-			return admission.Errored(http.StatusInternalServerError, err)
-		}
-		for _, eip := range eips.Items {
-			if validate.HasPorterDefaultEipAnnotation(eip.Annotations) {
+	err := r.List(context.Background(), &eips)
+	if err != nil {
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+	for _, eip := range eips.Items {
+		if validate.HasPorterDefaultEipAnnotation(eip.Annotations) {
+			// exist default eip,injection annotation
+			if svc.Annotations == nil {
+				svc.Annotations = make(map[string]string)
+				svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
+			} else if value, ok := svc.Annotations[constant.PorterAnnotationKey]; !ok || value != constant.PorterAnnotationValue {
+				svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
+			}
+			if _, ok := svc.Annotations[constant.PorterEIPAnnotationKeyV1Alpha2]; !ok {
 				svc.Annotations[constant.PorterEIPAnnotationKeyV1Alpha2] = eip.Name
 				svc.Annotations[constant.PorterProtocolAnnotationKey] = eip.GetProtocol()
-				break
 			}
+			break
 		}
 	}
 	marshaledSvc, err := json.Marshal(svc)
@@ -523,8 +523,4 @@ func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledSvc)
-}
-
-func envWatchAllServices() bool {
-	return strings.ToLower(os.Getenv(constant.EnvWatchAllServices)) == "true"
 }

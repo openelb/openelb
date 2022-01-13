@@ -52,5 +52,4 @@ const (
 
 	EnvPorterNamespace = "PORTER_NAMESPACE"
 	EnvNodeName        = "NODE_NAME"
-	EnvWatchAllServices = "WATCH_ALL_SERVICES"
 )

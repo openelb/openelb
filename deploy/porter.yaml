@@ -962,7 +962,7 @@ roleRef:
   name: leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: porter-admission
   namespace: porter-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1002,7 +1002,7 @@ roleRef:
   name: porter-manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: porter-admission
   namespace: porter-system
 ---
 apiVersion: v1
@@ -1053,6 +1053,7 @@ spec:
                 values:
                 - porter-manager
             topologyKey: kubernetes.io/hostname
+      serviceAccountName: porter-admission
       containers:
       - args:
         - --api-hosts=:50051
