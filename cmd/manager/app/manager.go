@@ -4,25 +4,25 @@ import (
 	"flag"
 	"fmt"
 	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/leader-elector"
-	"github.com/kubesphere/porterlb/pkg/speaker"
-	clientset "k8s.io/client-go/kubernetes"
-	"os"
-
 	"github.com/kubesphere/porterlb/cmd/manager/app/options"
+	"github.com/kubesphere/porterlb/pkg/constant"
 	"github.com/kubesphere/porterlb/pkg/controllers/bgp"
 	"github.com/kubesphere/porterlb/pkg/controllers/ipam"
 	"github.com/kubesphere/porterlb/pkg/controllers/lb"
+	"github.com/kubesphere/porterlb/pkg/leader-elector"
 	"github.com/kubesphere/porterlb/pkg/log"
 	"github.com/kubesphere/porterlb/pkg/manager"
+	"github.com/kubesphere/porterlb/pkg/speaker"
 	bgpd "github.com/kubesphere/porterlb/pkg/speaker/bgp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/util/term"
+	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 func NewPorterManagerCommand() *cobra.Command {
@@ -124,7 +124,11 @@ func Run(c *options.PorterManagerOptions) error {
 		setupLog.Error(err, "unable to register dummy speaker")
 		return err
 	}
+	hookServer := mgr.GetWebhookServer()
 
+	setupLog.Info("registering webhooks to the webhook server")
+
+	hookServer.Register("/validate-network-kubesphere-io-v1alpha2-svc", &webhook.Admission{Handler: &lb.SvcAnnotator{Client: mgr.GetClient()}})
 	if err := mgr.Start(stopCh); err != nil {
 		setupLog.Error(err, "unable to run the manager")
 		return err

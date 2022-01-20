@@ -1,0 +1,29 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: porter-admission
+webhooks:
+  - admissionReviewVersions:
+      - v1beta1
+      - v1
+    clientConfig:
+      service:
+        namespace: porter-system
+        name: porter-admission
+        path: /validate-network-kubesphere-io-v1alpha2-svc
+    failurePolicy: Fail
+    name: mutating.eip.network.kubesphere.io
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - services
+
+    sideEffects: NoneOnDryRun
