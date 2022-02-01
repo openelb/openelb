@@ -1,9 +1,9 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter:v0.4.2
-IMG_AGENT ?= kubespheredev/porter-agent:v0.4.2
-IMG_PROXY ?= kubespheredev/openelb-proxy:v0.4.2
-IMG_FORWARD ?= kubespheredev/openelb-forward:v0.4.2
+IMG_MANAGER ?= kubespheredev/porter:v0.4.3
+IMG_AGENT ?= kubespheredev/porter-agent:v0.4.3
+IMG_PROXY ?= kubespheredev/openelb-proxy:v0.4.3
+IMG_FORWARD ?= kubespheredev/openelb-forward:v0.4.3
 BRANCH ?= release
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
