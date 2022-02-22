@@ -2,7 +2,7 @@ package nettool
 
 import (
 	"fmt"
-	"github.com/kubesphere/porterlb/pkg/nettool/iptables"
+	"github.com/openelb/openelb/pkg/nettool/iptables"
 )
 
 const BGPPort = "179"
@@ -33,4 +33,4 @@ func DeletePortForwardOfBGP(iptableExec iptables.IptablesIface, routerIP, localI
 	return iptableExec.Delete("nat", BgpNatChain, rule...)
 }
 
-const BgpNatChain = "PREROUTING-PORTER"
+const BgpNatChain = "PREROUTING-OPENELB"

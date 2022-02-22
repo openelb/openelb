@@ -3,17 +3,17 @@ package app
 import (
 	"flag"
 	"fmt"
-	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/cmd/manager/app/options"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/controllers/bgp"
-	"github.com/kubesphere/porterlb/pkg/controllers/ipam"
-	"github.com/kubesphere/porterlb/pkg/controllers/lb"
-	"github.com/kubesphere/porterlb/pkg/leader-elector"
-	"github.com/kubesphere/porterlb/pkg/log"
-	"github.com/kubesphere/porterlb/pkg/manager"
-	"github.com/kubesphere/porterlb/pkg/speaker"
-	bgpd "github.com/kubesphere/porterlb/pkg/speaker/bgp"
+	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/cmd/manager/app/options"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/controllers/bgp"
+	"github.com/openelb/openelb/pkg/controllers/ipam"
+	"github.com/openelb/openelb/pkg/controllers/lb"
+	"github.com/openelb/openelb/pkg/leader-elector"
+	"github.com/openelb/openelb/pkg/log"
+	"github.com/openelb/openelb/pkg/manager"
+	"github.com/openelb/openelb/pkg/speaker"
+	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -25,12 +25,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-func NewPorterManagerCommand() *cobra.Command {
-	s := options.NewPorterManagerOptions()
+func NewOpenELBManagerCommand() *cobra.Command {
+	s := options.NewOpenELBManagerOptions()
 
 	cmd := &cobra.Command{
-		Use:  "porter-manager",
-		Long: `The porter manager is a daemon that `,
+		Use:  "openelb-manager",
+		Long: `The openelb manager is a daemon that `,
 		Run: func(cmd *cobra.Command, args []string) {
 			if errs := s.Validate(); len(errs) != 0 {
 				fmt.Fprintf(os.Stderr, "%v\n", utilerrors.NewAggregate(errs))
@@ -69,7 +69,7 @@ func NewPorterManagerCommand() *cobra.Command {
 	return cmd
 }
 
-func Run(c *options.PorterManagerOptions) error {
+func Run(c *options.OpenELBManagerOptions) error {
 	log.InitLog(c.LogOptions)
 
 	setupLog := ctrl.Log.WithName("setup")
@@ -112,14 +112,14 @@ func Run(c *options.PorterManagerOptions) error {
 	leader.LeaderElector(stopCh, k8sClient, *c.Leader)
 
 	//For gobgp
-	err = speaker.RegisterSpeaker(constant.PorterProtocolBGP, bgpServer)
+	err = speaker.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer)
 	if err != nil {
 		setupLog.Error(err, "unable to register bgp speaker")
 		return err
 	}
 
 	//For CNI
-	err = speaker.RegisterSpeaker(constant.PorterProtocolDummy, speaker.NewFake())
+	err = speaker.RegisterSpeaker(constant.OpenELBProtocolDummy, speaker.NewFake())
 	if err != nil {
 		setupLog.Error(err, "unable to register dummy speaker")
 		return err

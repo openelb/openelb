@@ -1,25 +1,25 @@
 package validate
 
 import (
-	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 )
 
-func HasPorterLBAnnotation(annotation map[string]string) bool {
+func HasOpenELBAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
 	}
-	if value, ok := annotation[constant.PorterAnnotationKey]; ok {
-		if value == constant.PorterAnnotationValue {
+	if value, ok := annotation[constant.OpenELBAnnotationKey]; ok {
+		if value == constant.OpenELBAnnotationValue {
 			return true
 		}
 	}
 	return false
 }
 
-func HasPorterNPAnnotation(annotation map[string]string) bool {
+func HasOpenELBNPAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
 	}
@@ -38,11 +38,11 @@ func IsTypeLoadBalancer(obj runtime.Object) bool {
 	return false
 }
 
-func HasPorterDefaultEipAnnotation(annotation map[string]string) bool {
+func HasOpenELBDefaultEipAnnotation(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
 	}
-	if value, ok := annotation[constant.PorterEIPAnnotationDefaultPool]; ok {
+	if value, ok := annotation[constant.OpenELBEIPAnnotationDefaultPool]; ok {
 		return strings.ToLower(value) == "true"
 	}
 	return false

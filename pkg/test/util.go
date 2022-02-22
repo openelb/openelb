@@ -2,9 +2,9 @@ package test
 
 import (
 	"context"
-	"github.com/kubesphere/porterlb/pkg/manager/client"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/openelb/openelb/pkg/manager/client"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math/rand"

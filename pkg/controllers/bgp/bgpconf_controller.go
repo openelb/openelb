@@ -21,10 +21,10 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/speaker/bgp"
-	"github.com/kubesphere/porterlb/pkg/util"
+	"github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,8 +91,8 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if node.Labels != nil && node.Labels[constant.PorterNodeRack] != "" && clone.Spec.AsPerRack != nil {
-		rack = node.Labels[constant.PorterNodeRack]
+	if node.Labels != nil && node.Labels[constant.OpenELBNodeRack] != "" && clone.Spec.AsPerRack != nil {
+		rack = node.Labels[constant.OpenELBNodeRack]
 		as := clone.Spec.AsPerRack[rack]
 		if as > 0 {
 			clone.Spec.As = as
@@ -112,7 +112,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		clone.Annotations = make(map[string]string)
 	}
 	clone.Spec = instance.Spec
-	clone.Annotations[constant.PorterAnnotationKey] = time.Now().String()
+	clone.Annotations[constant.OpenELBAnnotationKey] = time.Now().String()
 	err = r.Client.Update(context.Background(), clone)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -206,11 +206,11 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			oldHaveLabel := false
 			if old.Labels != nil {
-				_, oldHaveLabel = old.Labels[constant.PorterNodeRack]
+				_, oldHaveLabel = old.Labels[constant.OpenELBNodeRack]
 			}
 			newHaveLabel := false
 			if new.Labels != nil {
-				_, newHaveLabel = old.Labels[constant.PorterNodeRack]
+				_, newHaveLabel = old.Labels[constant.OpenELBNodeRack]
 			}
 			if oldHaveLabel != newHaveLabel {
 				return true

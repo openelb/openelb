@@ -17,12 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubesphere/porterlb/cmd/manager/app"
+	"github.com/openelb/openelb/cmd/manager/app"
 	"os"
 )
 
 func main() {
-	command := app.NewPorterManagerCommand()
+	command := app.NewOpenELBManagerCommand()
 
 	if err := command.Execute(); err != nil {
 		os.Exit(1)

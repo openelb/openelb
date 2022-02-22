@@ -3,8 +3,8 @@ apiVersion: v1
 metadata:
   name: mylbapp-svc-layer2
   annotations:
-    lb.kubesphere.io/v1alpha1: porter
-    protocol.porter.kubesphere.io/v1alpha1: layer2
+    lb.kubesphere.io/v1alpha1: openelb
+    protocol.openelb.kubesphere.io/v1alpha1: layer2
 spec:
   selector:
     app: mylbapp
@@ -19,8 +19,8 @@ apiVersion: v1
 metadata:
   name: mylbapp-svc
   annotations:
-    lb.kubesphere.io/v1alpha1: porter
-    protocol.porter.kubesphere.io/v1alpha1: bgp
+    lb.kubesphere.io/v1alpha1: openelb
+    protocol.openelb.kubesphere.io/v1alpha1: bgp
 spec:
   selector:
     app: mylbapp

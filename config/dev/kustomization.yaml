@@ -1,4 +1,4 @@
-namespace: porter-system
+namespace: openelb-system
 
 resources:
   - ../default

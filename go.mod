@@ -1,4 +1,4 @@
-module github.com/kubesphere/porterlb
+module github.com/openelb/openelb
 
 go 1.16
 

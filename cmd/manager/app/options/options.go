@@ -1,22 +1,22 @@
 package options
 
 import (
-	"github.com/kubesphere/porterlb/pkg/leader-elector"
-	"github.com/kubesphere/porterlb/pkg/log"
-	"github.com/kubesphere/porterlb/pkg/manager"
-	"github.com/kubesphere/porterlb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/leader-elector"
+	"github.com/openelb/openelb/pkg/log"
+	"github.com/openelb/openelb/pkg/manager"
+	"github.com/openelb/openelb/pkg/speaker/bgp"
 	cliflag "k8s.io/component-base/cli/flag"
 )
 
-type PorterManagerOptions struct {
+type OpenELBManagerOptions struct {
 	Bgp *bgp.BgpOptions
 	*manager.GenericOptions
 	LogOptions *log.Options
 	Leader     *leader.Options
 }
 
-func NewPorterManagerOptions() *PorterManagerOptions {
-	return &PorterManagerOptions{
+func NewOpenELBManagerOptions() *OpenELBManagerOptions {
+	return &OpenELBManagerOptions{
 		Bgp:            bgp.NewBgpOptions(),
 		GenericOptions: manager.NewGenericOptions(),
 		LogOptions:     log.NewOptions(),
@@ -24,12 +24,12 @@ func NewPorterManagerOptions() *PorterManagerOptions {
 	}
 }
 
-func (s *PorterManagerOptions) Validate() []error {
+func (s *OpenELBManagerOptions) Validate() []error {
 	var errs []error
 	return errs
 }
 
-func (s *PorterManagerOptions) Flags() cliflag.NamedFlagSets {
+func (s *OpenELBManagerOptions) Flags() cliflag.NamedFlagSets {
 	fss := cliflag.NamedFlagSets{}
 
 	s.Bgp.AddFlags(fss.FlagSet("bgp"))

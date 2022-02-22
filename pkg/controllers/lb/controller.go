@@ -19,12 +19,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kubesphere/porterlb/api/v1alpha2"
-	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/controllers/ipam"
-	"github.com/kubesphere/porterlb/pkg/util"
-	"github.com/kubesphere/porterlb/pkg/validate"
+	"github.com/openelb/openelb/api/v1alpha2"
+	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/controllers/ipam"
+	"github.com/openelb/openelb/pkg/util"
+	"github.com/openelb/openelb/pkg/validate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -81,19 +81,19 @@ func (r *ServiceReconciler) shouldReconcileEP(e metav1.Object) bool {
 		return true
 	}
 
-	return IsPorterService(svc)
+	return IsOpenELBService(svc)
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return IsPorterService(e.ObjectNew)
+			return IsOpenELBService(e.ObjectNew)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			return IsPorterService(e.Object)
+			return IsOpenELBService(e.Object)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return IsPorterService(e.Object)
+			return IsOpenELBService(e.Object)
 		},
 	}
 
@@ -168,8 +168,8 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	// If there's any Service be deployed by PorterLB NodeProxy, controller will create Deployment or DaemonSet for Proxy Pod
-	// If the status of such Deployment or DaemonSet changed, all PorterLB NodeProxy should be reconciled
+	// If there's any Service be deployed by OpenELB NodeProxy, controller will create Deployment or DaemonSet for Proxy Pod
+	// If the status of such Deployment or DaemonSet changed, all OpenELB NodeProxy should be reconciled
 	dedsp := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Maybe Deployment or DaemonSet was modified, so both should be looked at
@@ -205,14 +205,14 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 	svcIP := result.Addr
 
 	var announceNodes []corev1.Node
-	if result.Protocol == constant.PorterProtocolLayer2 {
+	if result.Protocol == constant.OpenELBProtocolLayer2 {
 		if len(nodes) == 0 {
 			return result.Sp.DelBalancer(svcIP)
 		}
 
 		index := rand.Int() % len(nodes)
 		found := false
-		preNode, ok := svc.Annotations[constant.PorterLayer2Annotation]
+		preNode, ok := svc.Annotations[constant.OpenELBLayer2Annotation]
 		if ok {
 			for i, node := range nodes {
 				if node.Name == preNode {
@@ -227,7 +227,7 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 			if svc.Annotations == nil {
 				svc.Annotations = make(map[string]string)
 			}
-			svc.Annotations[constant.PorterLayer2Annotation] = nodes[index].Name
+			svc.Annotations[constant.OpenELBLayer2Annotation] = nodes[index].Name
 
 			err = r.Update(context.Background(), svc)
 			if err != nil {
@@ -245,8 +245,8 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 
 func (r *ServiceReconciler) callDelLoadBalancer(result ipam.IPAMResult, svc *corev1.Service) error {
 	if result.Addr != "" {
-		if svc.Annotations != nil && svc.Annotations[constant.PorterLayer2Annotation] != "" {
-			delete(svc.Annotations, constant.PorterLayer2Annotation)
+		if svc.Annotations != nil && svc.Annotations[constant.OpenELBLayer2Annotation] != "" {
+			delete(svc.Annotations, constant.OpenELBLayer2Annotation)
 			err := r.Update(context.Background(), svc)
 			if err != nil {
 				return err
@@ -272,7 +272,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	)
 
 	log := ctrl.Log.WithValues("service", req.NamespacedName)
-	log.Info("setup porter service")
+	log.Info("setup openelb service")
 
 	svc := &corev1.Service{}
 	err := r.Get(context.TODO(), req.NamespacedName, svc)
@@ -283,8 +283,8 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	// Reconcile by PorterLB NodeProxy if this service is specified to be exported by it
-	if validate.HasPorterNPAnnotation(svc.Annotations) {
+	// Reconcile by OpenELB NodeProxy if this service is specified to be exported by it
+	if validate.HasOpenELBNPAnnotation(svc.Annotations) {
 		return r.reconcileNP(svc)
 	}
 
@@ -338,10 +338,10 @@ func (r *ServiceReconciler) updateServiceEipInfo(result ipam.IPAMResult, svc *co
 		if !util.ContainsString(clone.Finalizers, constant.FinalizerName) {
 			controllerutil.AddFinalizer(clone, constant.FinalizerName)
 		}
-		clone.Labels[constant.PorterEIPAnnotationKeyV1Alpha2] = result.Eip
+		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = result.Eip
 	} else {
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
-		delete(clone.Labels, constant.PorterEIPAnnotationKeyV1Alpha2)
+		delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
 	}
 	if !reflect.DeepEqual(svc.Labels, clone.Labels) {
 		err := r.Update(context.Background(), clone)
@@ -377,24 +377,24 @@ func (r *ServiceReconciler) constructIPAMArgs(svc *corev1.Service) ipam.IPAMArgs
 	}.String()
 
 	if svc.Annotations != nil {
-		if _, ok := svc.Annotations[constant.PorterAnnotationKey]; ok &&
+		if _, ok := svc.Annotations[constant.OpenELBAnnotationKey]; ok &&
 			svc.Spec.Type == corev1.ServiceTypeLoadBalancer &&
 			svc.DeletionTimestamp == nil {
 			args.Unalloc = false
 		}
 
-		if ip, ok := svc.Annotations[constant.PorterEIPAnnotationKey]; ok {
+		if ip, ok := svc.Annotations[constant.OpenELBEIPAnnotationKey]; ok {
 			args.Addr = ip
 		}
 
-		if eip, ok := svc.Annotations[constant.PorterEIPAnnotationKeyV1Alpha2]; ok {
+		if eip, ok := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]; ok {
 			args.Eip = eip
 		}
 
-		if protocol, ok := svc.Annotations[constant.PorterProtocolAnnotationKey]; ok {
+		if protocol, ok := svc.Annotations[constant.OpenELBProtocolAnnotationKey]; ok {
 			args.Protocol = protocol
 		} else {
-			args.Protocol = constant.PorterProtocolBGP
+			args.Protocol = constant.OpenELBProtocolBGP
 		}
 	}
 
@@ -452,21 +452,21 @@ func (r *ServiceReconciler) getServiceNodes(svc *corev1.Service) ([]corev1.Node,
 func SetupServiceReconciler(mgr ctrl.Manager) error {
 	lb := &ServiceReconciler{
 		Client:        mgr.GetClient(),
-		EventRecorder: mgr.GetEventRecorderFor("PorterLB Manager"),
+		EventRecorder: mgr.GetEventRecorderFor("OpenELB Manager"),
 	}
 	err := lb.SetupWithManager(mgr)
 	return err
 }
 
-func IsPorterService(obj runtime.Object) bool {
+func IsOpenELBService(obj runtime.Object) bool {
 	if svc, ok := obj.(*corev1.Service); ok {
 		if svc.Labels != nil {
-			if _, ok := svc.Labels[constant.PorterEIPAnnotationKeyV1Alpha2]; ok {
+			if _, ok := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]; ok {
 				return true
 			}
 		}
 
-		return validate.HasPorterLBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc)
+		return validate.HasOpenELBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc)
 	}
 	return false
 }
@@ -503,17 +503,17 @@ func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admiss
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 	for _, eip := range eips.Items {
-		if validate.HasPorterDefaultEipAnnotation(eip.Annotations) {
+		if validate.HasOpenELBDefaultEipAnnotation(eip.Annotations) {
 			// exist default eip,injection annotation
 			if svc.Annotations == nil {
 				svc.Annotations = make(map[string]string)
-				svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
-			} else if value, ok := svc.Annotations[constant.PorterAnnotationKey]; !ok || value != constant.PorterAnnotationValue {
-				svc.Annotations[constant.PorterAnnotationKey] = constant.PorterAnnotationValue
+				svc.Annotations[constant.OpenELBAnnotationKey] = constant.OpenELBAnnotationValue
+			} else if value, ok := svc.Annotations[constant.OpenELBAnnotationKey]; !ok || value != constant.OpenELBAnnotationValue {
+				svc.Annotations[constant.OpenELBAnnotationKey] = constant.OpenELBAnnotationValue
 			}
-			if _, ok := svc.Annotations[constant.PorterEIPAnnotationKeyV1Alpha2]; !ok {
-				svc.Annotations[constant.PorterEIPAnnotationKeyV1Alpha2] = eip.Name
-				svc.Annotations[constant.PorterProtocolAnnotationKey] = eip.GetProtocol()
+			if _, ok := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]; !ok {
+				svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2] = eip.Name
+				svc.Annotations[constant.OpenELBProtocolAnnotationKey] = eip.GetProtocol()
 			}
 			break
 		}

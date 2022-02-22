@@ -1,9 +1,9 @@
 package nettool_test
 
 import (
-	. "github.com/kubesphere/porterlb/pkg/nettool"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/openelb/openelb/pkg/nettool"
 )
 
 var _ = Describe("Nettool", func() {

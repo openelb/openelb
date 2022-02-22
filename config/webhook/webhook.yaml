@@ -1,7 +1,7 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: porter-admission
+  name: openelb-admission
 webhooks:
   - name: validate.eip.network.kubesphere.io
     matchPolicy: Equivalent
@@ -22,6 +22,6 @@ webhooks:
       - v1
     clientConfig:
       service:
-        namespace: porter-system
-        name: porter-admission
+        namespace: openelb-system
+        name: openelb-admission
         path: /validate-network-kubesphere-io-v1alpha2-eip

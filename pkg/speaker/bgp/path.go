@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/openelb/openelb/pkg/constant"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
 	"hash/fnv"
@@ -160,7 +160,7 @@ func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 	for _, node := range nodes {
 		rack := ""
 		if node.Labels != nil {
-			rack = node.Labels[constant.PorterNodeRack]
+			rack = node.Labels[constant.OpenELBNodeRack]
 		}
 		if rack == b.rack || b.rack == "" {
 			nexthop, err := b.getNodeNextHop(node)

@@ -18,15 +18,15 @@ package v1alpha2
 import (
 	"context"
 	"fmt"
-	"github.com/kubesphere/porterlb/pkg/util"
-	"github.com/kubesphere/porterlb/pkg/validate"
+	"github.com/openelb/openelb/pkg/util"
+	"github.com/openelb/openelb/pkg/validate"
 	"math/big"
 	"net"
 	"reflect"
 	"strings"
 
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/manager/client"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/manager/client"
 	cnet "github.com/projectcalico/libcalico-go/lib/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,22 +50,22 @@ func (e Eip) IPToOrdinal(ip net.IP) int {
 
 func (e Eip) GetSpeakerName() string {
 	if util.DutyOfCNI(nil, &e.ObjectMeta) {
-		return constant.PorterProtocolDummy
+		return constant.OpenELBProtocolDummy
 	}
 
-	if e.Spec.Protocol == constant.PorterProtocolLayer2 {
+	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
 		return e.Spec.Interface
 	}
 
-	return constant.PorterProtocolBGP
+	return constant.OpenELBProtocolBGP
 }
 
 func (e Eip) GetProtocol() string {
-	if e.Spec.Protocol == constant.PorterProtocolLayer2 {
-		return constant.PorterProtocolLayer2
+	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
+		return constant.OpenELBProtocolLayer2
 	}
 
-	return constant.PorterProtocolBGP
+	return constant.OpenELBProtocolBGP
 }
 
 func (e Eip) GetSize() (net.IP, int64, error) {
@@ -133,17 +133,17 @@ func (e Eip) ValidateCreate() error {
 		if e.IsOverlap(eip) {
 			return fmt.Errorf("eip address overlap with %s", eip.Name)
 		}
-		if validate.HasPorterDefaultEipAnnotation(eip.Annotations) {
+		if validate.HasOpenELBDefaultEipAnnotation(eip.Annotations) {
 			existDefaultEip = true
 		}
 	}
 
-	if e.Spec.Protocol == constant.PorterProtocolLayer2 {
+	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
 		if e.Spec.Interface == "" {
 			return fmt.Errorf("field spec.interface should not be empty")
 		}
 	}
-	if validate.HasPorterDefaultEipAnnotation(e.Annotations) && existDefaultEip {
+	if validate.HasOpenELBDefaultEipAnnotation(e.Annotations) && existDefaultEip {
 		return fmt.Errorf("already exists a default EIP")
 	}
 	return nil

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/speaker"
+	"github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/speaker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -51,7 +51,7 @@ var (
 		},
 		Spec: v1alpha2.EipSpec{
 			Address:   "192.168.2.0/24",
-			Protocol:  constant.PorterProtocolLayer2,
+			Protocol:  constant.OpenELBProtocolLayer2,
 			Interface: "eth0",
 		},
 		Status: v1alpha2.EipStatus{},
@@ -112,12 +112,12 @@ var _ = Describe("IPAMArgs", func() {
 			Key:      "testsvc",
 			Addr:     "192.168.0.1",
 			Eip:      "testeip",
-			Protocol: constant.PorterProtocolLayer2,
+			Protocol: constant.OpenELBProtocolLayer2,
 		}
 		r := IPAMResult{
 			Addr:     "192.168.0.1",
 			Eip:      "testeip",
-			Protocol: constant.PorterProtocolBGP,
+			Protocol: constant.OpenELBProtocolBGP,
 			Sp:       nil,
 		}
 		Expect(a.ShouldUnAssignIP(r)).Should(BeTrue())
@@ -128,12 +128,12 @@ var _ = Describe("IPAMArgs", func() {
 			Key:      "testsvc",
 			Addr:     "192.168.0.1",
 			Eip:      "testeip",
-			Protocol: constant.PorterProtocolBGP,
+			Protocol: constant.OpenELBProtocolBGP,
 		}
 		r := IPAMResult{
 			Addr:     "192.168.0.1",
 			Eip:      "testeip",
-			Protocol: constant.PorterProtocolBGP,
+			Protocol: constant.OpenELBProtocolBGP,
 			Sp:       nil,
 		}
 		Expect(a.ShouldUnAssignIP(r)).ShouldNot(BeTrue())
@@ -170,7 +170,7 @@ var _ = Describe("IPAM", func() {
 					Key:      "testsvc",
 					Addr:     "192.168.1.1",
 					Eip:      "",
-					Protocol: constant.PorterProtocolBGP,
+					Protocol: constant.OpenELBProtocolBGP,
 				}.assignIPFromEip(&e)
 				Expect(addr).Should(Equal(""))
 
@@ -184,7 +184,7 @@ var _ = Describe("IPAM", func() {
 					Key:      "testsvc",
 					Addr:     "192.168.1.1",
 					Eip:      "",
-					Protocol: constant.PorterProtocolBGP,
+					Protocol: constant.OpenELBProtocolBGP,
 				}.assignIPFromEip(&e)
 				Expect(addr).Should(Equal(""))
 
@@ -208,7 +208,7 @@ var _ = Describe("IPAM", func() {
 					Key:      "testsvc",
 					Addr:     "",
 					Eip:      e2.Name,
-					Protocol: constant.PorterProtocolBGP,
+					Protocol: constant.OpenELBProtocolBGP,
 				}.assignIPFromEip(&e2)
 				Expect(addr).Should(Equal(""))
 			})
@@ -220,7 +220,7 @@ var _ = Describe("IPAM", func() {
 					Key:      "testsvc255",
 					Addr:     "192.168.1.255",
 					Eip:      "",
-					Protocol: constant.PorterProtocolBGP,
+					Protocol: constant.OpenELBProtocolBGP,
 				}.assignIPFromEip(&e)
 				Expect(addr).Should(Equal("192.168.1.255"))
 				Expect(len(e.Status.Used)).Should(Equal(1))
@@ -233,7 +233,7 @@ var _ = Describe("IPAM", func() {
 					Key:      "testsvc255",
 					Addr:     "",
 					Eip:      "",
-					Protocol: constant.PorterProtocolBGP,
+					Protocol: constant.OpenELBProtocolBGP,
 				}.assignIPFromEip(&e)
 				Expect(addr).Should(Equal("192.168.1.255"))
 				Expect(len(e.Status.Used)).Should(Equal(1))
@@ -248,7 +248,7 @@ var _ = Describe("IPAM", func() {
 						Key:      fmt.Sprintf("testsvc%d", i),
 						Addr:     "",
 						Eip:      e.Name,
-						Protocol: constant.PorterProtocolBGP,
+						Protocol: constant.OpenELBProtocolBGP,
 					}.assignIPFromEip(&e)
 					Expect(addr).Should(Equal(fmt.Sprintf("192.168.1.%d", i)))
 					Expect(len(e.Status.Used)).Should(Equal(i + 2))
@@ -261,7 +261,7 @@ var _ = Describe("IPAM", func() {
 					Key:      "testsvc256",
 					Addr:     "",
 					Eip:      "",
-					Protocol: constant.PorterProtocolBGP,
+					Protocol: constant.OpenELBProtocolBGP,
 				}.assignIPFromEip(&e)
 				Expect(addr).Should(Equal(""))
 			})

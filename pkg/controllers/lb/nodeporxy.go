@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/util"
-	"github.com/kubesphere/porterlb/pkg/validate"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/util"
+	"github.com/openelb/openelb/pkg/validate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,14 +26,14 @@ func isProxyResc(obj metav1.Object) bool {
 }
 
 func envNamespace() string {
-	ns := os.Getenv(constant.EnvPorterNamespace)
+	ns := os.Getenv(constant.EnvOpenELBNamespace)
 	if ns == "" {
-		return constant.PorterNamespace
+		return constant.OpenELBNamespace
 	}
 	return ns
 }
 
-// eg. PorterLB NodeProxy name/namespace: `nginx`/`default`, DaemonSet/Deployment/Pod name: `svc-proxy-nginx-default`
+// eg. OpenELB NodeProxy name/namespace: `nginx`/`default`, DaemonSet/Deployment/Pod name: `svc-proxy-nginx-default`
 func proxyRescName(svcName, svcNs string) string {
 	return constant.NodeProxyWorkloadPrefix + svcName + constant.NameSeparator + svcNs
 }
@@ -56,7 +56,7 @@ func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
 		return !errors.IsNotFound(err)
 	}
 
-	return IsPorterNPService(svc)
+	return IsOpenELBNPService(svc)
 }
 
 func (r *ServiceReconciler) newProxyResc(svc *corev1.Service) *runtime.Object {
@@ -92,7 +92,7 @@ func (r *ServiceReconciler) newProxyDs(svc *corev1.Service) *appsv1.DaemonSet {
 
 func (r *ServiceReconciler) newProxyRescAnno(svc *corev1.Service) *map[string]string {
 	return &map[string]string{
-		constant.PorterAnnotationKey:        constant.PorterAnnotationValue,
+		constant.OpenELBAnnotationKey:       constant.OpenELBAnnotationValue,
 		constant.NodeProxyTypeAnnotationKey: svc.Namespace,
 	}
 }
@@ -253,7 +253,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	}
 
 	// Check if all nodes are labeled for having external-ip
-	// Labeled nodes are prefered for PorterlLB to deploy to
+	// Labeled nodes are prefered for OpenELB to deploy to
 	nodeList := &corev1.NodeList{}
 	if err = r.List(context.TODO(), nodeList); err != nil {
 		log.Error(err, "can't get node information")
@@ -290,7 +290,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	case constant.NodeProxyTypeDaemonSet:
 		shouldRmResc = &appsv1.Deployment{}
 	default:
-		log.Info("unsupport PorterLB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
+		log.Info("unsupport OpenELB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 		return ctrl.Result{}, nil
 	}
 
@@ -383,7 +383,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	return ctrl.Result{}, err
 }
 
-// Called when PorterLB NodeProxy Service was deleted
+// Called when OpenELB NodeProxy Service was deleted
 func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
 	log.Info("node proxy reconciling deletion finalizing")
@@ -398,7 +398,7 @@ func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result,
 		case constant.NodeProxyTypeDaemonSet:
 			proxyResc = &appsv1.DaemonSet{}
 		default:
-			log.Info("unsupport PorterLB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
+			log.Info("unsupport OpenELB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 			return ctrl.Result{}, nil
 		}
 		err = r.Get(context.TODO(), dpDsNamespacedName, proxyResc)
@@ -430,11 +430,11 @@ func (r *ServiceReconciler) reconcileNP(svc *corev1.Service) (ctrl.Result, error
 	return r.reconcileNPDelete(svc)
 }
 
-// Judge whether this load balancer should be exposed by Porter LB Service
+// Judge whether this load balancer should be exposed by OpenELB Service
 // Such Service will be exposed by Proxy Pod
-func IsPorterNPService(obj runtime.Object) bool {
+func IsOpenELBNPService(obj runtime.Object) bool {
 	if svc, ok := obj.(*corev1.Service); ok {
-		return validate.HasPorterLBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc) && validate.HasPorterNPAnnotation(svc.Annotations)
+		return validate.HasOpenELBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc) && validate.HasOpenELBNPAnnotation(svc.Annotations)
 	}
 	return false
 }
