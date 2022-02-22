@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: porter-manager
+  name: openelb-manager
 spec:
   template:
     spec:
       containers:
         # Change the value of image field below to your controller image URL
-        - image: kubespheredev/porter:bc7c58a5
-          name: porter-manager
+        - image: kubespheredev/openelb:bc7c58a5
+          name: openelb-manager
           imagePullPolicy: Always
           command:
             - /bin/sh

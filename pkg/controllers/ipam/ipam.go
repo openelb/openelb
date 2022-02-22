@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/speaker"
-	"github.com/kubesphere/porterlb/pkg/speaker/layer2"
-	"github.com/kubesphere/porterlb/pkg/util"
+	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/speaker"
+	"github.com/openelb/openelb/pkg/speaker/layer2"
+	"github.com/openelb/openelb/pkg/util"
 	cnet "github.com/projectcalico/libcalico-go/lib/net"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -262,14 +262,14 @@ func (i *IPAM) syncEip(e *networkv1alpha2.Eip) error {
 }
 
 func (i *IPAM) removeEip(e *networkv1alpha2.Eip) error {
-	if e.Spec.Protocol == constant.PorterProtocolLayer2 {
+	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
 		speaker.UnRegisterSpeaker(e.Spec.Interface)
 	}
 
 	svcs := v1.ServiceList{}
 	opts := &client.ListOptions{}
 	client.MatchingLabels{
-		constant.PorterEIPAnnotationKeyV1Alpha2: e.Name,
+		constant.OpenELBEIPAnnotationKeyV1Alpha2: e.Name,
 	}.ApplyToList(opts)
 	err := i.List(context.Background(), &svcs, opts)
 	if err != nil {
@@ -279,7 +279,7 @@ func (i *IPAM) removeEip(e *networkv1alpha2.Eip) error {
 	for _, svc := range svcs.Items {
 		clone := svc.DeepCopy()
 		if clone.Labels != nil {
-			delete(clone.Labels, constant.PorterEIPAnnotationKeyV1Alpha2)
+			delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
 		}
 		if !reflect.DeepEqual(clone, &svc) {
 			err = i.Update(context.Background(), clone)

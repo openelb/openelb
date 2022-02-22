@@ -1,5 +1,5 @@
 domain: kubesphere.io
-repo: github.com/kubesphere/porterlb
+repo: github.com/openelb/openelb
 resources:
 - group: network
   kind: Eip

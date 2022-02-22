@@ -1,8 +1,8 @@
 package manager
 
 import (
-	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/manager/client"
+	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/manager/client"
 	"github.com/spf13/pflag"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"

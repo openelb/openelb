@@ -1,9 +1,9 @@
 package bgp
 
 import (
-	bgpapi "github.com/kubesphere/porterlb/api/v1alpha2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	bgpapi "github.com/openelb/openelb/api/v1alpha2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"testing"

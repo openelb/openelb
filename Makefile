@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG_MANAGER ?= kubespheredev/porter:v0.4.3
-IMG_AGENT ?= kubespheredev/porter-agent:v0.4.3
+IMG_MANAGER ?= kubespheredev/openelb:v0.4.3
+IMG_AGENT ?= kubespheredev/openelb-agent:v0.4.3
 IMG_PROXY ?= kubespheredev/openelb-proxy:v0.4.3
 IMG_FORWARD ?= kubespheredev/openelb-forward:v0.4.3
 BRANCH ?= release
@@ -31,8 +31,8 @@ test: fmt vet
 
 # Build manager binary
 manager: fmt vet
-	#CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bin/manager github.com/kubesphere/porterlb/cmd/manager
-	CGO_ENABLED=0 go build  -o bin/manager github.com/kubesphere/porterlb/cmd/manager
+	#CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bin/manager github.com/openelb/openelb/cmd/manager
+	CGO_ENABLED=0 go build  -o bin/manager github.com/openelb/openelb/cmd/manager
 
 
 deploy: generate
@@ -47,13 +47,13 @@ else
 	sed -i -e 's@NodeProxyDefaultForwardImage      string = \".*\"@NodeProxyDefaultForwardImage      string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constants.go
 	sed -i -e 's@NodeProxyDefaultProxyImage        string = \".*\"@NodeProxyDefaultProxyImage        string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constants.go
 endif
-	kustomize build config/${BRANCH} -o deploy/porter.yaml
-	@echo "Done, the yaml is in deploy folder named 'porter.yaml'"
+	kustomize build config/${BRANCH} -o deploy/openelb.yaml
+	@echo "Done, the yaml is in deploy folder named 'openelb.yaml'"
 
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=porter-manager-role webhook paths="./api/..." paths="./pkg/controllers/..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=openelb-manager-role webhook paths="./api/..." paths="./pkg/controllers/..." output:crd:artifacts:config=config/crd/bases
 
 controller-gen:
 ifeq (, $(shell which controller-gen))
@@ -67,16 +67,17 @@ clean-up:
 	./hack/cleanup.sh
 
 release: deploy
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager-linux-amd64 github.com/kubesphere/porterlb/cmd/manager
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/agent-linux-amd64 github.com/kubesphere/porterlb/cmd/agent
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager-linux-amd64 github.com/openelb/openelb/cmd/manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/agent-linux-amd64 github.com/openelb/openelb/cmd/agent
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -o bin/gobgp-linux-amd64 github.com/osrg/gobgp/cmd/gobgp
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/manager-linux-arm64 github.com/kubesphere/porterlb/cmd/manager
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/agent-linux-arm64 github.com/kubesphere/porterlb/cmd/agent
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/manager-linux-arm64 github.com/openelb/openelb/cmd/manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/agent-linux-arm64 github.com/openelb/openelb/cmd/agent
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build  -o bin/gobgp-linux-arm64 github.com/osrg/gobgp/cmd/gobgp
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .  --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .  --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_PROXY} -f ./images/proxy/Dockerfile . --push
 	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_FORWARD} -f ./images/forward/Dockerfile . --push
+
 install-travis:
 	echo "install kubebuilder/kustomize etc."
 	chmod +x ./hack/*.sh

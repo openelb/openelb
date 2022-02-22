@@ -29,7 +29,7 @@ func (e *EnqueueRequestForNode) getServices() []corev1.Service {
 
 	var result []corev1.Service
 	for _, svc := range svcs.Items {
-		if IsPorterService(&svc) {
+		if IsOpenELBService(&svc) {
 			result = append(result, svc)
 		}
 	}
@@ -70,7 +70,7 @@ func nodeReady(obj runtime.Object) bool {
 	return ready
 }
 
-// When Node addr changed, system should update all PorterLB services
+// When Node addr changed, system should update all OpenELB services
 func nodeAddrChange(oldObj runtime.Object, newObj runtime.Object) bool {
 	addrChange := false
 
@@ -140,12 +140,12 @@ func (e *EnqueueRequestForNode) Generic(evt event.GenericEvent, q workqueue.Rate
 var deAndDsEnqueueLog = ctrl.Log.WithName("eventhandler").WithName("EnqueueRequestForDeAndDs")
 
 // Enqueue requests for Deployments and DaemonSets type
-// Only PorterLB NodeProxy needs this
+// Only OpenELB NodeProxy needs this
 type EnqueueRequestForDeAndDs struct {
 	client.Client
 }
 
-// Get all PorterLB NodeProxy Services to reconcile them later
+// Get all OpenELB NodeProxy Services to reconcile them later
 // These Services will be exposed by Proxy Pod
 func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 	var svcs corev1.ServiceList
@@ -157,7 +157,7 @@ func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 
 	var result []corev1.Service
 	for _, svc := range svcs.Items {
-		if IsPorterNPService(&svc) {
+		if IsOpenELBNPService(&svc) {
 			result = append(result, svc)
 		}
 	}

@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/j-keck/arping"
-	"github.com/kubesphere/porterlb/pkg/leader-elector"
-	"github.com/kubesphere/porterlb/pkg/speaker"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/openelb/openelb/pkg/leader-elector"
+	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap/zapcore"
 	ctrl "sigs.k8s.io/controller-runtime"

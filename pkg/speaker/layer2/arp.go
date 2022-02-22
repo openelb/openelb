@@ -8,12 +8,12 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/j-keck/arping"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/leader-elector"
-	"github.com/kubesphere/porterlb/pkg/speaker"
 	"github.com/mdlayher/arp"
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/leader-elector"
+	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/vishvananda/netlink"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -178,7 +178,7 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 
 func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
 	if nodes[0].Annotations != nil {
-		nexthop := nodes[0].Annotations[constant.PorterLayer2Annotation]
+		nexthop := nodes[0].Annotations[constant.OpenELBLayer2Annotation]
 		if net.ParseIP(nexthop) != nil {
 			return a.setBalancer(ip, []string{nexthop})
 		}

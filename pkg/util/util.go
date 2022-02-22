@@ -2,7 +2,7 @@ package util
 
 import (
 	"context"
-	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,13 +56,13 @@ func GetNodeName() string {
 }
 
 func DutyOfCNI(metaOld metav1.Object, metaNew metav1.Object) bool {
-	_, okNew := metaNew.GetLabels()[constant.PorterCNI]
+	_, okNew := metaNew.GetLabels()[constant.OpenELBCNI]
 
 	if metaOld == nil {
 		return okNew
 	}
 
-	_, okOld := metaOld.GetLabels()[constant.PorterCNI]
+	_, okOld := metaOld.GetLabels()[constant.OpenELBCNI]
 
 	if okOld == okNew && okOld {
 		return true

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: porter-admission
+  name: openelb-admission
 spec:
   type: ClusterIP
   ports:
@@ -9,5 +9,5 @@ spec:
       port: 443
       targetPort: webhook
   selector:
-    control-plane: porter-manager
-    app: porter-manager
+    control-plane: openelb-manager
+    app: openelb-manager

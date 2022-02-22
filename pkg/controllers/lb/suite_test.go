@@ -21,15 +21,15 @@ import (
 	"testing"
 	"time"
 
-	networkv1alpha2 "github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/controllers/ipam"
-	"github.com/kubesphere/porterlb/pkg/manager"
-	"github.com/kubesphere/porterlb/pkg/manager/client"
-	"github.com/kubesphere/porterlb/pkg/speaker"
-	"github.com/kubesphere/porterlb/pkg/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/controllers/ipam"
+	"github.com/openelb/openelb/pkg/manager"
+	"github.com/openelb/openelb/pkg/manager/client"
+	"github.com/openelb/openelb/pkg/speaker"
+	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,7 +100,7 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "testeip1",
 			Labels: map[string]string{
-				constant.PorterCNI: constant.PorterCNICalico,
+				constant.OpenELBCNI: constant.OpenELBCNICalico,
 			},
 		},
 		Spec: networkv1alpha2.EipSpec{
@@ -116,7 +116,7 @@ var (
 		},
 		Spec: networkv1alpha2.EipSpec{
 			Address:   "10.0.2.1/24",
-			Protocol:  constant.PorterProtocolLayer2,
+			Protocol:  constant.OpenELBProtocolLayer2,
 			Interface: "eth0",
 		},
 		Status: networkv1alpha2.EipStatus{},
@@ -128,7 +128,7 @@ var (
 			Name:      "testsvc",
 			Namespace: "default",
 			Annotations: map[string]string{
-				constant.PorterAnnotationKey: constant.PorterAnnotationValue,
+				constant.OpenELBAnnotationKey: constant.OpenELBAnnotationValue,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -282,7 +282,7 @@ func checkSvc(svc *corev1.Service, fn func(dst *corev1.Service) bool) func() boo
 	}
 }
 
-var _ = Describe("Porter LoadBalancer Service", func() {
+var _ = Describe("OpenELB LoadBalancer Service", func() {
 	BeforeEach(func() {
 		Eventually(checkEipUsage(eip, 0), 3*time.Second).Should(BeTrue())
 		Eventually(checkEipUsage(eipLayer2, 0), 3*time.Second).Should(BeTrue())
@@ -443,10 +443,10 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 		})
 	})
 
-	When("Eip has label porter.kubesphere.io/cni", func() {
+	When("Eip has label "+constant.OpenELBCNI, func() {
 		BeforeEach(func() {
 			updateSvc(svc, func(dst *corev1.Service) {
-				dst.Labels[constant.PorterCNI] = constant.PorterCNICalico
+				dst.Labels[constant.OpenELBCNI] = constant.OpenELBCNICalico
 			})
 		})
 
@@ -464,7 +464,7 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 	Context("Change to Layer2 LoadBalancer Service", func() {
 		BeforeEach(func() {
 			updateSvc(svc, func(dst *corev1.Service) {
-				dst.Annotations[constant.PorterProtocolAnnotationKey] = constant.PorterProtocolLayer2
+				dst.Annotations[constant.OpenELBProtocolAnnotationKey] = constant.OpenELBProtocolLayer2
 			})
 		})
 
@@ -490,7 +490,7 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 				Eventually(checkEipUsage(eipLayer2, 1), 3*time.Second).Should(BeTrue())
 
 				Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-					if dst.Annotations[constant.PorterLayer2Annotation] == node1.Name {
+					if dst.Annotations[constant.OpenELBLayer2Annotation] == node1.Name {
 						return true
 					}
 
@@ -526,7 +526,7 @@ var _ = Describe("Porter LoadBalancer Service", func() {
 				})
 
 				Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-					if dst.Annotations[constant.PorterLayer2Annotation] == node2.Name {
+					if dst.Annotations[constant.OpenELBLayer2Annotation] == node2.Name {
 						return true
 					}
 

@@ -2,7 +2,7 @@ package leader
 
 import (
 	"context"
-	"github.com/kubesphere/porterlb/pkg/constant"
+	"github.com/openelb/openelb/pkg/constant"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -17,9 +17,9 @@ var (
 )
 
 func envNamespace() string {
-	ns := os.Getenv(constant.EnvPorterNamespace)
+	ns := os.Getenv(constant.EnvOpenELBNamespace)
 	if ns == "" {
-		return constant.PorterNamespace
+		return constant.OpenELBNamespace
 	}
 	return ns
 }
@@ -35,7 +35,7 @@ func envNodename() string {
 func LeaderElector(stopCh <-chan struct{}, client *clientset.Clientset, opts Options) {
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
-			Name:      constant.PorterSpeakerLocker,
+			Name:      constant.OpenELBSpeakerLocker,
 			Namespace: envNamespace(),
 		},
 		Client: client.CoordinationV1(),

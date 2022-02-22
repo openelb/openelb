@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: porter-agent
+  name: openelb-agent
   labels:
-    control-plane: porter-agent
+    control-plane: openelb-agent
     controller-tools.k8s.io: "1.0"
 spec:
   selector:
     matchLabels:
-      app: porter-agent
+      app: openelb-agent
   template:
     metadata:
       labels:
-        app: porter-agent
+        app: openelb-agent
     spec:
       containers:
-        - name: porter-agent
-          image: magicsong/porter-agent:latest
+        - name: openelb-agent
+          image: magicsong/openelb-agent:latest
           imagePullPolicy: IfNotPresent
           resources:
             limits:

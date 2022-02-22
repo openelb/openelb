@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: porter-manager
+  name: openelb-manager
   labels:
-    control-plane: porter-manager
-    app: porter-manager
+    control-plane: openelb-manager
+    app: openelb-manager
 spec:
   selector:
     matchLabels:
-      control-plane: porter-manager
-      app: porter-manager
+      control-plane: openelb-manager
+      app: openelb-manager
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -17,8 +17,8 @@ spec:
   template:
     metadata:
       labels:
-        control-plane: porter-manager
-        app: porter-manager
+        control-plane: openelb-manager
+        app: openelb-manager
     spec:
       affinity:
         podAntiAffinity:
@@ -28,7 +28,7 @@ spec:
                   - key: app
                     operator: In
                     values:
-                      - porter-manager
+                      - openelb-manager
               topologyKey: "kubernetes.io/hostname"
       tolerations:
         - key: "CriticalAddonsOnly"
@@ -38,15 +38,16 @@ spec:
           effect: NoSchedule
       nodeSelector:
         kubernetes.io/os: linux
+      serviceAccountName: openelb-admission
       containers:
         - command:
-            - porter-manager
+            - openelb-manager
           args:
             - --api-hosts=:50051
             - --webhook-port=443
           image: controller:latest
           imagePullPolicy: IfNotPresent
-          name: porter-manager
+          name: openelb-manager
           readinessProbe:
             exec:
               command:
@@ -62,7 +63,7 @@ spec:
             capabilities:
               add: [ "NET_ADMIN", "SYS_TIME" ]
           env:
-            - name: PORTER_NAMESPACE
+            - name: OPENELB_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
@@ -83,7 +84,7 @@ spec:
       volumes:
         - name: webhook-cert
           secret:
-            secretName: porter-admission
+            secretName: openelb-admission
             items:
               - key: key
                 path: tls.key

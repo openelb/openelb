@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: porter-agent
+  name: openelb-agent
 spec:
   template:
     spec:
       containers:
         # Change the value of image field below to your controller image URL
-        - image: kubespheredev/porter-agent:bc7c58a5
-          name: porter-agent
+        - image: kubespheredev/openelb-agent:bc7c58a5
+          name: openelb-agent
           imagePullPolicy: Always

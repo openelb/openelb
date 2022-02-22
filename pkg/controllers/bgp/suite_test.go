@@ -17,14 +17,14 @@ package bgp
 
 import (
 	"context"
-	"github.com/kubesphere/porterlb/api/v1alpha2"
-	"github.com/kubesphere/porterlb/pkg/constant"
-	"github.com/kubesphere/porterlb/pkg/manager"
-	"github.com/kubesphere/porterlb/pkg/manager/client"
-	"github.com/kubesphere/porterlb/pkg/speaker/bgp"
-	"github.com/kubesphere/porterlb/pkg/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/manager"
+	"github.com/openelb/openelb/pkg/manager/client"
+	"github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -184,7 +184,7 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("Test GoBGP Controller", func() {
-	When("BgpConf has label porter.kubesphere.io/cni", func() {
+	When("BgpConf has label "+constant.OpenELBCNI, func() {
 		BeforeEach(func() {
 			clone := bgpConf.DeepCopy()
 
@@ -192,7 +192,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 				if clone.Labels == nil {
 					clone.Labels = make(map[string]string)
 				}
-				clone.Labels[constant.PorterCNI] = constant.PorterCNICalico
+				clone.Labels[constant.OpenELBCNI] = constant.OpenELBCNICalico
 				return nil
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -218,7 +218,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 		})
 	})
 
-	When("BgpConf has no label porter.kubesphere.io/cni", func() {
+	When("BgpConf has no label "+constant.OpenELBCNI, func() {
 		BeforeEach(func() {
 			clone := bgpConf.DeepCopy()
 			err := util.Create(context.Background(), client.Client, clone, func() error {
@@ -440,7 +440,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						if clone.Labels == nil {
 							clone.Labels = make(map[string]string)
 						}
-						clone.Labels[constant.PorterCNI] = constant.PorterCNICalico
+						clone.Labels[constant.OpenELBCNI] = constant.OpenELBCNICalico
 						return nil
 					})
 					Expect(err).ToNot(HaveOccurred())
