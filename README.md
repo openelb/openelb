@@ -4,7 +4,8 @@
 
 ![OpenELB Logo](./doc/logo/color-horizontal.svg)
 
-OpenELB is an open-source load balancer implementation designed for exposing the LoadBalancer type of Kubernetes services in bare metal, edge, and virtualization environments.
+[中文](README_zh.md)
+OpenELB is an open-source load balancer implementation designed for exposing the LoadBalancer type of Kubernetes services in bare metal, edge, and virtualization environments.Hosted by [CNCF](https://www.cncf.io/) as a [Sandbox Project](https://www.cncf.io/sandbox-projects/)
 
 ## Why OpenELB
 
@@ -20,13 +21,13 @@ In cloud-based Kubernetes clusters, Services are usually exposed by using load b
 
 ## Quickstart
 
-- [Install OpenELB on Kubernetes](https://porterlb.io/docs/getting-started/installation/install-porter-on-kubernetes/)
-- [Install OpenELB on K3s](https://porterlb.io/docs/getting-started/installation/install-porter-on-k3s/)
-- [Install OpenELB on KubeSphere](https://porterlb.io/docs/getting-started/installation/install-porter-on-kubesphere/)
+- [Install OpenELB on Kubernetes](https://openelb.github.io/docs/getting-started/installation/install-porter-on-kubernetes/)
+- [Install OpenELB on K3s](https://openelb.github.io/docs/getting-started/installation/install-porter-on-k3s/)
+- [Install OpenELB on KubeSphere](https://openelb.github.io/docs/getting-started/installation/install-porter-on-kubesphere/)
 
 ## Documentation
 
-You can learn how to use OpenELB in a cloud-based Kubernetes cluster by following the [OpenELB Documentation](https://porterlb.io/docs/).
+You can learn how to use OpenELB in a cloud-based Kubernetes cluster by following the [OpenELB Documentation](https://openelb.github.io/docs/).
 
 ## Adopters
 
@@ -38,21 +39,8 @@ OpenELB has been adopted by [many companies](./ADOPTERS.md) all over the world. 
 
 ## Support, Discussion and Contributing
 
-OpenELB is a sub-project of [KubeSphere](https://github.com/kubesphere/kubesphere).
-
-* Join us at the [KubeSphere Slack Channel](https://kubesphere.slack.com/join/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE#/) to get support or simply tell us that you are using OpenELB.
-* You have code or documents for OpenELB? Contributions are always welcome! See [Building and Contributing](https://porterlb.io/docs/building-and-contributing/) to obtain guidance.
-
-## Landscapes
-
-<p align="center">
-<br/><br/>
-<img src="https://landscape.cncf.io/images/left-logo.svg" width="150"/>&nbsp;&nbsp;<img src="https://landscape.cncf.io/images/right-logo.svg" width="200"/>&nbsp;&nbsp;
-<br/><br/>
-OpenELB is a promising newcomer in Service proxy, which enriches the <a href="https://landscape.cncf.io/landscape=observability-and-analysis&license=apache-license-2-0">CNCF CLOUD NATIVE Landscape.
-</a>
-</p>
-
+* Join us at the [KubeSphere Slack Channel](https://kubesphere.slack.com/join/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE#/) to get support or simply tell us that you are using OpenELB.(openelb slack channel from kubernetes will be soon)
+* You have code or documents for OpenELB? Contributions are always welcome! See [Building and Contributing](https://openelb.github.io/docs/building-and-contributing/) to obtain guidance.
 
 ## License
 
