@@ -1,11 +1,27 @@
-# OpenELB 
+<p align="center">
+<a href="https://openelb.github.io/"><img src="doc/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
+</p>
 
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/kubesphere/openelb) ![go report](https://goreportcard.com/badge/github.com/kubesphere/openelb)
+<p align="center">
+<b>Load Balancer Implementation for <i>Kubernetes in Bare-Metal, Edge, and Virtualization</i></b>
+</p>
 
-![OpenELB Logo](./doc/logo/color-horizontal.svg)
+<p align=center>
+<a href="https://goreportcard.com/report/github.com/openelb/openelb"><img src="https://goreportcard.com/badge/github.com/openelb/openelb" alt="A+"></a>
+<a href="https://hub.docker.com/r/kubesphere/openelb"><img src="https://img.shields.io/docker/pulls/kubesphere/openelb"></a>
+<a href="https://github.com/openelb/openelb/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/badges/shields/good%20first%20issue" alt="good first"></a>
+<a href="https://twitter.com/intent/follow?screen_name=KubeSphere"><img src="https://img.shields.io/twitter/follow/KubeSphere?style=social" alt="follow on Twitter"></a>
+<a href="https://join.slack.com/t/kubesphere/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE"><img src="https://img.shields.io/badge/Slack-600%2B-blueviolet?logo=slack&amp;logoColor=white"></a>
+<a href="https://www.youtube.com/channel/UCyTdUQUYjf7XLjxECx63Hpw"><img src="https://img.shields.io/youtube/channel/subscribers/UCyTdUQUYjf7XLjxECx63Hpw?style=social"></a>
+</p>
 
-[中文](README_zh.md)
-OpenELB is an open-source load balancer implementation designed for exposing the LoadBalancer type of Kubernetes services in bare metal, edge, and virtualization environments.Hosted by [CNCF](https://www.cncf.io/) as a [Sandbox Project](https://www.cncf.io/sandbox-projects/)
+## OpenELB: Cloud Native Load Balancer Implementation
+
+> English | [中文](README_zh.md)
+
+OpenELB is an open-source load balancer implementation designed for exposing the LoadBalancer type of Kubernetes services in bare metal, edge, and virtualization environments. 
+
+OpenELB was originally created by [KubeSphere](https://kubesphere.io) and is currently a vendor neutral and CNCF [Sandbox Project](https://www.cncf.io/sandbox-projects/).
 
 ## Why OpenELB
 
@@ -21,10 +37,9 @@ In cloud-based Kubernetes clusters, Services are usually exposed by using load b
 
 ## Quickstart
 
-- [Install OpenELB on Kubernetes](https://openelb.github.io/docs/getting-started/installation/install-porter-on-kubernetes/)
-- [Install OpenELB on K3s](https://openelb.github.io/docs/getting-started/installation/install-porter-on-k3s/)
-- [Install OpenELB on KubeSphere](https://openelb.github.io/docs/getting-started/installation/install-porter-on-kubesphere/)
-
+- [Install OpenELB on Kubernetes](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-kubernetes/)
+- [Install OpenELB on K3s](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-k3s/)
+- [Install OpenELB on KubeSphere](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-kubesphere/)
 ## Documentation
 
 You can learn how to use OpenELB in a cloud-based Kubernetes cluster by following the [OpenELB Documentation](https://openelb.github.io/docs/).
