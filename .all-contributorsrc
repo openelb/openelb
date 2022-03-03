@@ -1,0 +1,25 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "renyunkang",
+      "name": "Yunkang Ren",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33660223?v=4",
+      "profile": "https://github.com/renyunkang",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "openelb",
+  "projectOwner": "openelb",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
