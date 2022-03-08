@@ -109,6 +109,7 @@ spec:
                 enum:
                 - bgp
                 - layer2
+                - vip
                 type: string
               usingKnownIPs:
                 type: boolean

@@ -57,7 +57,7 @@ import (
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
@@ -239,7 +239,10 @@ func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *cor
 	} else {
 		announceNodes = append(announceNodes, nodes...)
 	}
-
+	if result.Protocol == constant.OpenELBProtocolVip {
+		vip := fmt.Sprintf("%s:%s", svcIP, svc.Namespace+"/"+svc.Name)
+		return result.Sp.SetBalancer(vip, nil)
+	}
 	return result.Sp.SetBalancer(svcIP, announceNodes)
 }
 
@@ -251,6 +254,10 @@ func (r *ServiceReconciler) callDelLoadBalancer(result ipam.IPAMResult, svc *cor
 			if err != nil {
 				return err
 			}
+		}
+		if result.Protocol == constant.OpenELBProtocolVip {
+			vip := fmt.Sprintf("%s:%s", result.Addr, svc.Namespace+"/"+svc.Name)
+			return result.Sp.DelBalancer(vip)
 		}
 		return result.Sp.DelBalancer(result.Addr)
 	}
