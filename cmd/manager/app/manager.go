@@ -15,6 +15,7 @@ import (
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/speaker/vip"
+	"github.com/openelb/openelb/pkg/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -118,8 +119,8 @@ func Run(c *options.OpenELBManagerOptions) error {
 		setupLog.Error(err, "unable to register bgp speaker")
 		return err
 	}
-	keepalive := vip.NewKeepAlice(k8sClient, &vip.KeepAliveConfig{
-		Args:  []string{fmt.Sprintf("--services-configmap=%s/%s", constant.OpenELBNamespace, constant.OpenELBConfigMap)},
+	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
+		Args:  []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBConfigMap)},
 		Image: constant.OpenELBKeepAliveImageName,
 	})
 
