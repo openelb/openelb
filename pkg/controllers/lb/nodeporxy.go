@@ -2,7 +2,6 @@ package lb
 
 import (
 	"context"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,15 +21,7 @@ import (
 )
 
 func isProxyResc(obj metav1.Object) bool {
-	return obj.GetNamespace() == envNamespace() && strings.HasPrefix(obj.GetName(), constant.NodeProxyWorkloadPrefix)
-}
-
-func envNamespace() string {
-	ns := os.Getenv(constant.EnvOpenELBNamespace)
-	if ns == "" {
-		return constant.OpenELBNamespace
-	}
-	return ns
+	return obj.GetNamespace() == util.EnvNamespace() && strings.HasPrefix(obj.GetName(), constant.NodeProxyWorkloadPrefix)
 }
 
 // eg. OpenELB NodeProxy name/namespace: `nginx`/`default`, DaemonSet/Deployment/Pod name: `svc-proxy-nginx-default`
@@ -100,7 +91,7 @@ func (r *ServiceReconciler) newProxyRescAnno(svc *corev1.Service) *map[string]st
 func (r *ServiceReconciler) newProxyRescOM(svc *corev1.Service) *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Name:        proxyRescName(svc.Name, svc.Namespace),
-		Namespace:   envNamespace(),
+		Namespace:   util.EnvNamespace(),
 		Annotations: *r.newProxyRescAnno(svc),
 	}
 }
@@ -159,7 +150,7 @@ func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTempl
 // If the ConfigMap exists and the configuration is set, use it,
 // 	otherwise, use the default image got from constants.
 func (r *ServiceReconciler) getNPConfig() (*corev1.ConfigMap, error) {
-	NPCfgName := types.NamespacedName{Namespace: envNamespace(), Name: constant.NodeProxyConfigMapName}
+	NPCfgName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: constant.NodeProxyConfigMapName}
 	cm := &corev1.ConfigMap{}
 	err := r.Get(context.Background(), NPCfgName, cm)
 	return cm, err
@@ -282,7 +273,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 
 	// Delete another kind of Proxy resource if exists
 	// Passes when resource not exist or successfully deleted
-	dpDsNamespacedName := types.NamespacedName{Namespace: envNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
+	dpDsNamespacedName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
 	var proxyResc, shouldRmResc runtime.Object
 	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
 	case constant.NodeProxyTypeDeployment:
@@ -324,7 +315,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 		// External-ip updating procedure
 		podList := &corev1.PodList{}
 		opts := []client.ListOption{
-			client.InNamespace(envNamespace()),
+			client.InNamespace(util.EnvNamespace()),
 			client.MatchingLabels{"name": proxyRescName(svc.Name, svc.Namespace)},
 			client.MatchingFields{"status.phase": "Running"},
 		}
@@ -390,7 +381,7 @@ func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result,
 	var err error
 
 	if util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
-		dpDsNamespacedName := types.NamespacedName{Namespace: envNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
+		dpDsNamespacedName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
 		var proxyResc runtime.Object
 		switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
 		case constant.NodeProxyTypeDeployment:

@@ -56,7 +56,9 @@ func (e Eip) GetSpeakerName() string {
 	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
 		return e.Spec.Interface
 	}
-
+	if e.Spec.Protocol == constant.OpenELBProtocolVip {
+		return constant.OpenELBProtocolVip
+	}
 	return constant.OpenELBProtocolBGP
 }
 
@@ -64,7 +66,9 @@ func (e Eip) GetProtocol() string {
 	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
 		return constant.OpenELBProtocolLayer2
 	}
-
+	if e.Spec.Protocol == constant.OpenELBProtocolVip {
+		return constant.OpenELBProtocolVip
+	}
 	return constant.OpenELBProtocolBGP
 }
 
@@ -173,7 +177,7 @@ func (e Eip) SetupWebhookWithManager(mgr ctrl.Manager) error {
 type EipSpec struct {
 	// +kubebuilder:validation:Required
 	Address string `json:"address,required"`
-	// +kubebuilder:validation:Enum=bgp;layer2
+	// +kubebuilder:validation:Enum=bgp;layer2;vip
 	Protocol      string `json:"protocol,omitempty"`
 	Interface     string `json:"interface,omitempty"`
 	Disable       bool   `json:"disable,omitempty"`

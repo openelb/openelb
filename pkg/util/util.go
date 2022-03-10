@@ -100,3 +100,10 @@ func Create(ctx context.Context, c client.Client, obj runtime.Object, f CreateFn
 
 	return nil
 }
+func EnvNamespace() string {
+	ns := os.Getenv(constant.EnvOpenELBNamespace)
+	if ns == "" {
+		return constant.OpenELBNamespace
+	}
+	return ns
+}
