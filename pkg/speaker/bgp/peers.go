@@ -13,13 +13,13 @@ import (
 
 func defaultFamily(ip net.IP) *bgpapi.Family {
 	family := &bgpapi.Family{
-		Afi:  "AFI_IP",
-		Safi: "SAFI_UNICAST",
+		Afi:  api.Family_AFI_IP.String(),
+		Safi: api.Family_SAFI_UNICAST.String(),
 	}
 	if ip.To4() == nil {
 		family = &bgpapi.Family{
-			Afi:  "AFI_IP6",
-			Safi: "SAFI_UNICAST",
+			Afi:  api.Family_AFI_IP6.String(),
+			Safi: api.Family_SAFI_UNICAST.String(),
 		}
 	}
 
