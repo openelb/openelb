@@ -1,6 +1,6 @@
 <p align="center">
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 <a href="https://openelb.github.io/"><img src="doc/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
 </p>
@@ -74,6 +74,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://github.com/renyunkang"><img src="https://avatars.githubusercontent.com/u/33660223?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yunkang Ren</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=renyunkang" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=renyunkang" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/chaunceyjiang"><img src="https://avatars.githubusercontent.com/u/17962021?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Chauncey</b></sub></a><br /><a href="#infra-chaunceyjiang" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/openelb/openelb/commits?author=chaunceyjiang" title="Tests">⚠️</a> <a href="https://github.com/openelb/openelb/commits?author=chaunceyjiang" title="Code">💻</a></td>
   </tr>
 </table>
 
