@@ -64,7 +64,7 @@ OpenELB is licensed under the Apache License, Version 2.0. See [LICENSE](./LICEN
 ## Contributors ✨
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-16-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
@@ -75,6 +75,25 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://github.com/renyunkang"><img src="https://avatars.githubusercontent.com/u/33660223?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yunkang Ren</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=renyunkang" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=renyunkang" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/zheng1"><img src="https://avatars.githubusercontent.com/u/4156721?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Zhengyi Lai</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=zheng1" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=zheng1" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/duanjiong"><img src="https://avatars.githubusercontent.com/u/3678855?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Duan Jiong</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=duanjiong" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=duanjiong" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/KONY128"><img src="https://avatars.githubusercontent.com/u/41882659?v=4?s=100" width="100px;" alt=""/><br /><sub><b>KONY</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=KONY128" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=KONY128" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/chaunceyjiang"><img src="https://avatars.githubusercontent.com/u/17962021?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Chauncey</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=chaunceyjiang" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=chaunceyjiang" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://feynmanzhou.github.io/"><img src="https://avatars.githubusercontent.com/u/40452856?v=4?s=100" width="100px;" alt=""/><br /><sub><b>pengfei</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=FeynmanZhou" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://liangyuanpeng.com/"><img src="https://avatars.githubusercontent.com/u/28711504?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Lan</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=liangyuanpeng" title="Documentation">📖</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/Patrick-LuoYu"><img src="https://avatars.githubusercontent.com/u/76198553?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Patrick-LuoYu</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=Patrick-LuoYu" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://kubesphere.io/"><img src="https://avatars.githubusercontent.com/u/28859385?v=4?s=100" width="100px;" alt=""/><br /><sub><b>rayzhou2017</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=rayzhou2017" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/k0ngk0ng"><img src="https://avatars.githubusercontent.com/u/11732174?v=4?s=100" width="100px;" alt=""/><br /><sub><b>KongKong</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=k0ngk0ng" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=k0ngk0ng" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/iparanoid"><img src="https://avatars.githubusercontent.com/u/6026988?v=4?s=100" width="100px;" alt=""/><br /><sub><b>iparanoid</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=iparanoid" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/GeorgeGuo2018"><img src="https://avatars.githubusercontent.com/u/3407226?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Lutzow</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=GeorgeGuo2018" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://juejin.cn/user/800100194726088/posts"><img src="https://avatars.githubusercontent.com/u/7127874?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Money Liu</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=lx1036" title="Code">💻</a></td>
+    <td align="center"><a href="https://www.linkedin.com/in/sherlock-xu/"><img src="https://avatars.githubusercontent.com/u/65327072?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Sherlock</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=Sherlock113" title="Documentation">📖</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/xyz-li"><img src="https://avatars.githubusercontent.com/u/6263928?v=4?s=100" width="100px;" alt=""/><br /><sub><b>andrew_li</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=xyz-li" title="Code">💻</a></td>
+    <td align="center"><a href="https://linuxsuren.github.io/open-source-best-practice/"><img src="https://avatars.githubusercontent.com/u/1450685?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Rick</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=LinuxSuRen" title="Documentation">📖</a></td>
   </tr>
 </table>
 
