@@ -64,7 +64,7 @@ OpenELB is licensed under the Apache License, Version 2.0. See [LICENSE](./LICEN
 ## Contributors ✨
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
@@ -75,6 +75,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://github.com/renyunkang"><img src="https://avatars.githubusercontent.com/u/33660223?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Yunkang Ren</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=renyunkang" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=renyunkang" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/zheng1"><img src="https://avatars.githubusercontent.com/u/4156721?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Zhengyi Lai</b></sub></a><br /><a href="https://github.com/openelb/openelb/commits?author=zheng1" title="Code">💻</a> <a href="https://github.com/openelb/openelb/commits?author=zheng1" title="Documentation">📖</a></td>
   </tr>
 </table>
 
