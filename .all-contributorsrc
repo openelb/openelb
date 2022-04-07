@@ -14,6 +14,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "zheng1",
+      "name": "Zhengyi Lai",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4156721?v=4",
+      "profile": "https://github.com/zheng1",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
