@@ -74,9 +74,40 @@ func (k *KeepAlived) DelBalancer(configMap string) error {
 }
 
 func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
-	daemonSetClient := k.clientset.AppsV1().DaemonSets(util.EnvNamespace())
+	dsClient := k.clientset.AppsV1().DaemonSets(util.EnvNamespace())
+	ds, err := dsClient.Get(context.TODO(), constant.OpenELBVipName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			ds, err = dsClient.Create(context.TODO(), k.generateVIPDaemonSet(), metav1.CreateOptions{})
+			if err != nil {
+				k.log.Error(err, "keepalived daemonSet create error")
+				return err
+			}
+			k.log.Info(fmt.Sprintf("keepalived daemonSet %s created successfully", ds.Name))
+		} else {
+			k.log.Error(err, "keepalived daemonSet get error")
+			return err
+		}
+	}
+
+	go func() {
+		select {
+		case <-stopCh:
+			deletePolicy := metav1.DeletePropagationForeground
+			if err = dsClient.Delete(context.TODO(), ds.Name, metav1.DeleteOptions{
+				PropagationPolicy: &deletePolicy,
+			}); err != nil {
+				k.log.Error(err, "keepalived daemonSet delete error")
+			}
+		}
+	}()
+
+	return err
+}
+
+func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
 	var privileged = true
-	daemonSet := &appv1.DaemonSet{
+	return &appv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      constant.OpenELBVipName,
 			Namespace: util.EnvNamespace(),
@@ -159,27 +190,6 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 			},
 		},
 	}
-
-	var err error
-	result, err := daemonSetClient.Create(context.TODO(), daemonSet, metav1.CreateOptions{})
-	if err != nil {
-		k.log.Error(err, "keepalived create error")
-	}
-	k.log.Info("Created keepalived ", result.GetObjectMeta().GetName())
-	go func() {
-		select {
-		case <-stopCh:
-			deletePolicy := metav1.DeletePropagationForeground
-			if err = daemonSetClient.Delete(context.TODO(), result.Name, metav1.DeleteOptions{
-				PropagationPolicy: &deletePolicy,
-			}); err != nil {
-				k.log.Error(err, "keepalived ending")
-			}
-
-		}
-	}()
-
-	return err
 }
 
 var _ speaker.Speaker = &KeepAlived{}
