@@ -1110,7 +1110,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubesphere/openelb:v0.4.4
+        image: kubesphere/openelb:v0.5.0
         imagePullPolicy: IfNotPresent
         name: openelb-manager
         ports:
