@@ -4,9 +4,11 @@ OpenELB Roadmap lists the features and Bugfix for each milestone.
 
 | Edition  | Schedule |
 |---|---|
-| Release v0.7.0| Jan, 2022 |
-| Release v0.6.0| Nov, 2021 |
-| Release v0.5.0| Sep, 2021 |
+| Release v0.7.0 | TBD |
+| Release v0.6.0 | Jul, 2022 |
+| Release v0.5.0| May, 2022 |
+| Release v0.4.4 | Feb, 2022 |
+| Release v0.4.3 | Jan, 2022 |
 | Release v0.4.2| Jul, 2021 |
 | Release v0.4.1| Mar, 2021 |
 | Release v0.4.0| Mar, 2021 |
@@ -17,31 +19,45 @@ OpenELB Roadmap lists the features and Bugfix for each milestone.
 
 # v0.7.0
 
-- [ ] Achieve the High Availability in VIP mode based on Keepalived
 - [ ] Achieve the LoadBalancer for kube-apiserver
-- [ ] Support for BGP policies
+- [ ] Support for more routing protocols; Be compatible with the popular CNI
 - [ ] Support VIP Group and more VIPs
-- [ ] Support for IPv6
 
 # v0.6.0
 
-- [ ] Provide the PorterLB Web UI for managing EIP and IP pool
-- [ ] Support for more routing protocols; Be compatible with the popular CNI
+- [ ] Support for IPv6
+- [ ] Support for BGP policies
 - [ ] Provide the Prometheus metrics for monitoring
-- [ ] Integration with KubeSphere Web Console [#1449](https://github.com/kubesphere/console/pull/1449)
+- [ ] Provide the OpenELB Web UI for managing EIP and IP pool
 
 # v0.5.0
+- [x] Achieve the High Availability in VIP mode based on Keepalived [#252](https://github.com/openelb/openelb/pull/252)
+- [x] Integration with KubeSphere Web Console [#1449](https://github.com/kubesphere/console/pull/1449)
+
+# v0.4.4
+
+## Cleanup
+
+- [x] Rename PorterLB to OpenELB ([#242](https://github.com/openelb/openelb/pull/242))
+
+# v0.4.3
+
 ## Feature
-- [ ] Support a new mode `LB Service` [#215](https://github.com/kubesphere/openelb/pull/215)
+
+- [x] Support assign EIP by default with a config to controller ([#236](https://github.com/openelb/openelb/pull/236))
+
 ## Upgrade
-- [ ] Update kubebuilder version [#216](https://github.com/kubesphere/openelb/pull/216)
+
+- [x] Upgrade kube-webhook-certgen ([#234](https://github.com/openelb/openelb/pull/234))
+
 # v0.4.2
+
 ## Feature
 - [x] Using the CNI plugin as a speaker for synchronous routes. [#199](https://github.com/kubesphere/porterlb/pull/199)
 - [x] Rename PorterLB to OpenELB, update documentation accordingly. [#207](https://github.com/kubesphere/openelb/pull/207)
 # v0.4.1
 ## Bugfix
-- [x] Fix the name of the program in the image. [#196](https://github.com/kubesphere/porterlb/pull/196) 
+- [x] Fix the name of the program in the image. [#196](https://github.com/kubesphere/porterlb/pull/196)
 
 # v0.4.0
 ## Feature
