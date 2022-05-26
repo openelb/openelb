@@ -25,12 +25,12 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.6.0
 	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/net v0.0.0-20200528225125-3c3fba18258b
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	google.golang.org/grpc v1.26.0
 	k8s.io/api v0.18.2
 	k8s.io/apimachinery v0.18.2
