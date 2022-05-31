@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Community Discussions
+    url: https://github.com/openelb/openelb/discussions
+    about: Please ask and answer questions and post general ideas in our forums rather than filing an issue.
