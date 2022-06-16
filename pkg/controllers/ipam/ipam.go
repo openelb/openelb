@@ -293,13 +293,14 @@ func (i *IPAM) removeEip(e *networkv1alpha2.Eip) error {
 }
 
 func (i *IPAM) AssignIP(args IPAMArgs) (IPAMResult, error) {
+	ctrl.Log.Info("ipam: assigning ip: ", "address", args.Addr)
 	eips := &networkv1alpha2.EipList{}
 	err := i.List(context.Background(), eips)
 	if err != nil {
 		return IPAMResult{}, err
 	}
 
-	err = fmt.Errorf("no avliable eip")
+	err = fmt.Errorf("no available eip")
 	var result IPAMResult
 
 	for _, eip := range eips.Items {
@@ -333,6 +334,8 @@ func (i *IPAM) AssignIP(args IPAMArgs) (IPAMResult, error) {
 }
 
 func (a IPAMArgs) assignIPFromEip(eip *networkv1alpha2.Eip) string {
+	ctrl.Log.Info("ipam: assigning ip using eip ", "address", eip.Spec.Address)
+
 	if eip.DeletionTimestamp != nil {
 		return ""
 	}
@@ -393,6 +396,8 @@ func (a IPAMArgs) assignIPFromEip(eip *networkv1alpha2.Eip) string {
 
 // look up by key in IPAMArgs
 func (a IPAMArgs) unAssignIPFromEip(eip *networkv1alpha2.Eip, peek bool) string {
+	ctrl.Log.Info("ipam: unassigning ip using eip ", "address", eip.Spec.Address)
+
 	if eip.DeletionTimestamp != nil {
 		return ""
 	}
@@ -422,6 +427,8 @@ func (a IPAMArgs) unAssignIPFromEip(eip *networkv1alpha2.Eip, peek bool) string 
 }
 
 func (i *IPAM) UnAssignIP(args IPAMArgs, peek bool) (IPAMResult, error) {
+	ctrl.Log.Info("ipam: unassigning ip ", "address", args.Addr)
+
 	var result IPAMResult
 
 	eips := &networkv1alpha2.EipList{}

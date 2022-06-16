@@ -3,14 +3,15 @@ package bgp
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
+	"net"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/openelb/openelb/pkg/constant"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
-	"hash/fnv"
 	corev1 "k8s.io/api/core/v1"
-	"net"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -72,6 +73,7 @@ func fromAPIPath(path *api.Path) net.IP {
 }
 
 func (b *Bgp) retriveRoutes(ip string, prefix uint32, nexthops []string) (err error, toAdd, toDelete []string) {
+	ctrl.Log.Info("bgp: retrieving routes")
 	listPathRequest := &api.ListPathRequest{
 		TableType: api.TableType_GLOBAL,
 		Family:    getFamily(ip),
@@ -132,6 +134,7 @@ func (b *Bgp) ready() error {
 }
 
 func (b *Bgp) setBalancer(ip string, nexthops []string) error {
+	ctrl.Log.Info("bgp: configuring next hops")
 	err := b.ready()
 	if err != nil {
 		return err

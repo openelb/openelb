@@ -3,6 +3,8 @@ package app
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/cmd/manager/app/options"
 	"github.com/openelb/openelb/pkg/constant"
@@ -10,7 +12,6 @@ import (
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/controllers/lb"
 	"github.com/openelb/openelb/pkg/leader-elector"
-	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
@@ -22,25 +23,26 @@ import (
 	"k8s.io/apiserver/pkg/util/term"
 	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-func NewOpenELBManagerCommand() *cobra.Command {
-	s := options.NewOpenELBManagerOptions()
+func NewOpenELBManagerCommand(s *options.OpenELBManagerOptions) *cobra.Command {
+	setupLog := ctrl.Log.WithName("setup")
 
 	cmd := &cobra.Command{
 		Use:  "openelb-manager",
 		Long: `The openelb manager is a daemon that `,
 		Run: func(cmd *cobra.Command, args []string) {
-			if errs := s.Validate(); len(errs) != 0 {
-				fmt.Fprintf(os.Stderr, "%v\n", utilerrors.NewAggregate(errs))
+			errs := s.Validate()
+			if len(errs) > 0 {
+				err := fmt.Errorf("%v", utilerrors.NewAggregate(errs))
+				setupLog.Error(err, "validation error in openelb manager")
 				os.Exit(1)
 			}
 
 			if err := Run(s); err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
+				setupLog.Error(err, "error running openelb manager")
 				os.Exit(1)
 			}
 		},
@@ -72,13 +74,11 @@ func NewOpenELBManagerCommand() *cobra.Command {
 }
 
 func Run(c *options.OpenELBManagerOptions) error {
-	log.InitLog(c.LogOptions)
-
 	setupLog := ctrl.Log.WithName("setup")
 
 	mgr, err := manager.NewManager(ctrl.GetConfigOrDie(), c.GenericOptions)
 	if err != nil {
-		setupLog.Error(err, "unable to new manager")
+		setupLog.Error(err, "unable to setup new manager")
 		return err
 	}
 

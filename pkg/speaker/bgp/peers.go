@@ -107,6 +107,7 @@ func (b *Bgp) GetBgpConfStatus() bgpapi.BgpConf {
 
 func (b *Bgp) HandleBgpPeer(neighbor *bgpapi.BgpPeer, delete bool) error {
 	// set default afisafi
+	ctrl.Log.Info("bgp: handling bgp peers")
 	if len(neighbor.Spec.AfiSafis) == 0 {
 		ip := net.ParseIP(neighbor.Spec.Conf.NeighborAddress)
 		if ip == nil {

@@ -17,14 +17,27 @@ limitations under the License.
 package main
 
 import (
-	"github.com/openelb/openelb/cmd/manager/app"
 	"os"
+
+	"github.com/openelb/openelb/cmd/manager/app"
+	"github.com/openelb/openelb/cmd/manager/app/options"
+	"github.com/openelb/openelb/pkg/log"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func main() {
-	command := app.NewOpenELBManagerCommand()
+
+	s := options.NewOpenELBManagerOptions()
+
+	log.InitLog(s.LogOptions)
+	setupLog := ctrl.Log.WithName("setup")
+
+	setupLog.Info("setting up openelb manager")
+
+	command := app.NewOpenELBManagerCommand(s)
 
 	if err := command.Execute(); err != nil {
+		setupLog.Error(err, "unable to start openelb manager")
 		os.Exit(1)
 	}
 }
