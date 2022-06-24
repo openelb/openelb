@@ -19,8 +19,8 @@ const (
 	LabelNodeProxyExcludeNode         string = "node-proxy.openelb.kubesphere.io/exclude-node"
 	NodeProxyExternalIPAnnotationKey  string = "node-proxy.openelb.kubesphere.io/external-ip"
 	NodeProxyInternalIPAnnotationKey  string = "node-proxy.openelb.kubesphere.io/internal-ip"
-	NodeProxyDefaultForwardImage      string = "kubespheredev/openelb-forward:v0.4.2"
-	NodeProxyDefaultProxyImage        string = "kubespheredev/openelb-proxy:v0.4.2"
+	NodeProxyDefaultForwardImage      string = "kubesphere/openelb-forward:v0.5.0"
+	NodeProxyDefaultProxyImage        string = "kubesphere/openelb-proxy:v0.5.0"
 	NameSeparator                     string = "-"
 	IPSeparator                       string = ","
 	EnvArgSplitter                    string = " "
@@ -53,7 +53,7 @@ const (
 	OpenELBConfigMap          = "openelb-vip-configmap"
 	OpenELBVipName            = "openelb-keepalive-vip"
 	OpenELBServiceAccountName = "kube-keepalived-vip"
-	OpenELBKeepAliveImageName = "aledbf/kube-keepalived-vip:0.35"
+	OpenELBKeepAliveImageName = "aledbf/kube-keepalived-vip:0.35" // keepalived image by default
 	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
 	EnvNodeName               = "NODE_NAME"
 )

@@ -2,6 +2,7 @@ package manager
 
 import (
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/manager/client"
 	"github.com/spf13/pflag"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -15,16 +16,18 @@ import (
 )
 
 type GenericOptions struct {
-	WebhookPort   int
-	MetricsAddr   string
-	ReadinessAddr string
+	WebhookPort     int
+	MetricsAddr     string
+	ReadinessAddr   string
+	KeepAlivedImage string
 }
 
 func NewGenericOptions() *GenericOptions {
 	return &GenericOptions{
-		WebhookPort:   443,
-		MetricsAddr:   "0",
-		ReadinessAddr: "0",
+		WebhookPort:     443,
+		MetricsAddr:     "0",
+		ReadinessAddr:   "0",
+		KeepAlivedImage: constant.OpenELBKeepAliveImageName,
 	}
 }
 
@@ -32,6 +35,7 @@ func (options *GenericOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&options.WebhookPort, "webhook-port", options.WebhookPort, "The port that the webhook server serves at")
 	fs.StringVar(&options.MetricsAddr, "metrics-addr", options.MetricsAddr, "The address the metric endpoint binds to.")
 	fs.StringVar(&options.ReadinessAddr, "readiness-addr", options.ReadinessAddr, "The address readinessProbe used")
+	fs.StringVar(&options.KeepAlivedImage, "keepalived-image", constant.OpenELBKeepAliveImageName, "container image for keepalived.")
 }
 
 func NewManager(cfg *rest.Config, options *GenericOptions) (ctrl.Manager, error) {
