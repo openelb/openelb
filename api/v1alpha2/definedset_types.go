@@ -28,8 +28,9 @@ type DefinedSetSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of DefinedSet. Edit DefinedSet_types.go to remove/update
-	Prefixes string `json:"prefix,omitempty"`
+	Prefixes       []*Prefix        `json:"prefixes,omitempty"`
+	Neighbors      []*Neighbor      `json:"neighbours,omitempty"`
+	BgpDefinedSets []*BgpDefinedSet `json:"bgpDefinedSets,omitempty"`
 }
 
 // DefinedSetStatus defines the observed state of DefinedSet
@@ -56,6 +57,48 @@ type DefinedSetList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []DefinedSet `json:"items"`
+}
+
+type Prefix struct {
+	Name       string     `json:"name,omitempty"`
+	PrefixList PrefixList `json:"prefixList,omitempty"`
+}
+
+type PrefixList struct {
+	IpPrefix        string `json:"ipPrefix,omitempty"`
+	MaskLengthRange string `json:"maskLengthRange,omitempty"`
+}
+
+type Neighbor struct {
+	Name         string   `json:"name,omitempty"`
+	NeighborList []string `json:"neighborList,omitempty"`
+}
+
+type BgpDefinedSet struct {
+	CommunitySets      []*CommunitySet      `json:"communitySets,omitempty"`
+	ExtCommunitySets   []*ExtCommunitySet   `json:"extCommunitySets,omitempty"`
+	AsPathSets         []*AsPathSet         `json:"asPathSets,omitempty"`
+	LargeCommunitySets []*LargeCommunitySet `json:"largeCommunitySets,omitempty"`
+}
+
+type CommunitySet struct {
+	Name          string   `json:"name,omitempty"`
+	CommunityList []string `json:"communityList,omitempty"`
+}
+
+type ExtCommunitySet struct {
+	Name             string   `json:"name,omitempty"`
+	ExtCommunityList []string `json:"extCommunityList,omitempty"`
+}
+
+type AsPathSet struct {
+	Name       string   `json:"name,omitempty"`
+	AsPathList []string `json:"asPathList,omitempty"`
+}
+
+type LargeCommunitySet struct {
+	Name               string   `json:"name,omitempty"`
+	LargeCommunityList []string `json:"largeCommunityList,omitempty"`
 }
 
 func init() {

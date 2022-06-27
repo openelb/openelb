@@ -36,10 +36,80 @@ spec:
           spec:
             description: DefinedSetSpec defines the desired state of DefinedSet
             properties:
-              foo:
-                description: Foo is an example field of DefinedSet. Edit DefinedSet_types.go
-                  to remove/update
-                type: string
+              bgpDefinedSets:
+                items:
+                  properties:
+                    asPathSets:
+                      items:
+                        properties:
+                          asPathList:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    communitySets:
+                      items:
+                        properties:
+                          communityList:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    extCommunitySets:
+                      items:
+                        properties:
+                          extCommunityList:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                    largeCommunitySets:
+                      items:
+                        properties:
+                          largeCommunityList:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                        type: object
+                      type: array
+                  type: object
+                type: array
+              neighbours:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    neighborList:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
+              prefixes:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    prefixList:
+                      properties:
+                        ipPrefix:
+                          type: string
+                        maskLengthRange:
+                          type: string
+                      type: object
+                  type: object
+                type: array
             type: object
           status:
             description: DefinedSetStatus defines the observed state of DefinedSet
