@@ -171,6 +171,26 @@ rules:
 - apiGroups:
   - network.kubesphere.io
   resources:
+  - definedsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - definedsets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - network.kubesphere.io
+  resources:
   - eips
   verbs:
   - create

@@ -5,6 +5,7 @@ resources:
   - bases/network.kubesphere.io_eips.yaml
   - bases/network.kubesphere.io_bgppeers.yaml
   - bases/network.kubesphere.io_bgpconfs.yaml
+  - bases/network.kubesphere.io_definedsets.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 #patches:
