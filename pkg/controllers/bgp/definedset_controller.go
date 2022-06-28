@@ -20,11 +20,12 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/api/v1alpha2"
 )
 
 // DefinedSetReconciler reconciles a DefinedSet object
@@ -38,16 +39,24 @@ type DefinedSetReconciler struct {
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=definedsets/status,verbs=get;update;patch
 
 func (r *DefinedSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("definedset", req.NamespacedName)
+	ctx := context.Background()
+	l := r.Log.WithValues("definedset", req.NamespacedName)
+	l.Info("Enter DefinedSet Reconcile")
 
-	// your logic here
+	definedSet := &v1alpha2.DefinedSet{}
+	err := r.Client.Get(ctx, req.NamespacedName, definedSet)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
 
 func (r *DefinedSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkv1alpha2.DefinedSet{}).
+		For(&v1alpha2.DefinedSet{}).
 		Complete(r)
 }
