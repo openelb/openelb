@@ -19,8 +19,13 @@ type server struct {
 	options options.Options
 }
 
-func NewHTTPServer(options options.Options) *server {
+func NewHTTPServer(endpoints []Endpoints, options options.Options) *server {
 	router := chi.NewRouter()
+
+	for _, endpoint := range endpoints {
+		endpoint.Register(router)
+	}
+
 	return &server{
 		handler: cors.New(cors.Options{
 			AllowedOrigins: []string{"*"},

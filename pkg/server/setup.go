@@ -6,6 +6,6 @@ import (
 )
 
 func SetupHTTPServer(opts *options.Options) error {
-	server := lib.NewHTTPServer(*opts)
+	server := lib.NewHTTPServer([]lib.Endpoints{}, *opts)
 	return server.ListenAndServe()
 }
