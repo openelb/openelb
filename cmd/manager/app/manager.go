@@ -3,6 +3,8 @@ package app
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/cmd/manager/app/options"
 	"github.com/openelb/openelb/pkg/constant"
@@ -12,6 +14,7 @@ import (
 	"github.com/openelb/openelb/pkg/leader-elector"
 	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
+	"github.com/openelb/openelb/pkg/server"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/speaker/vip"
@@ -22,7 +25,6 @@ import (
 	"k8s.io/apiserver/pkg/util/term"
 	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -140,11 +142,18 @@ func Run(c *options.OpenELBManagerOptions) error {
 
 	setupLog.Info("registering webhooks to the webhook server")
 
+	go func() {
+		err = server.SetupHTTPServer(c.HTTPOptions)
+		if err != nil {
+			setupLog.Error(err, "unable to setup http server")
+		}
+	}()
+
 	hookServer.Register("/validate-network-kubesphere-io-v1alpha2-svc", &webhook.Admission{Handler: &lb.SvcAnnotator{Client: mgr.GetClient()}})
-	if err := mgr.Start(stopCh); err != nil {
+	if err = mgr.Start(stopCh); err != nil {
 		setupLog.Error(err, "unable to run the manager")
 		return err
 	}
 
-	return nil
+	return err
 }
