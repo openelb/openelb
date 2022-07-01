@@ -44,3 +44,29 @@ func (b *bgpStore) DeleteBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf)
 	err := b.client.Delete(ctx, bgpConf)
 	return err
 }
+
+// CreateBgpPeer creates a new BgpPeer object in the kubernetes cluster.
+func (b *bgpStore) CreateBgpPeer(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
+	err := b.client.Create(ctx, bgpPeer)
+	return err
+}
+
+// GetBgpPeer returns the BgpPeer object in the kubernetes cluster if found.
+func (b *bgpStore) GetBgpPeer(ctx context.Context, name string) (*v1alpha2.BgpPeer, error) {
+	bgpPeer := &v1alpha2.BgpPeer{}
+	err := b.client.Get(ctx, client.ObjectKey{Name: name}, bgpPeer)
+	return bgpPeer, err
+}
+
+// ListBgpPeers returns a list of BgpPeer objects in the kubernetes cluster.
+func (b *bgpStore) ListBgpPeer(ctx context.Context) (*v1alpha2.BgpPeerList, error) {
+	bgpPeers := &v1alpha2.BgpPeerList{}
+	err := b.client.List(ctx, bgpPeers)
+	return bgpPeers, err
+}
+
+// DeleteBgpPeer deletes the BgpPeer object in the kubernetes cluster.
+func (b *bgpStore) DeleteBgpPeer(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
+	err := b.client.Delete(ctx, bgpPeer)
+	return err
+}

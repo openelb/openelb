@@ -72,4 +72,12 @@ type BgpStore interface {
 	// UpdateBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 	// DeleteBgpConf deletes the BgpConf object in the kubernetes cluster.
 	DeleteBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
+	// CreateBgpPeer creates a new BgpPeer object in the kubernetes cluster.
+	CreateBgpPeer(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
+	// GetBgpPeer returns the BgpPeer object in the kubernetes cluster if found.
+	GetBgpPeer(ctx context.Context, name string) (*v1alpha2.BgpPeer, error)
+	// ListBgpPeers returns a list of BgpPeer objects in the kubernetes cluster.
+	ListBgpPeer(ctx context.Context) (*v1alpha2.BgpPeerList, error)
+	// DeleteBgpPeer deletes the BgpPeer object in the kubernetes cluster.
+	DeleteBgpPeer(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
 }

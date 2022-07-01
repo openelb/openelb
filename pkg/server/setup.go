@@ -12,8 +12,10 @@ import (
 func SetupHTTPServer(opts *options.Options) error {
 	bgpStore := kubernetes.NewBgpStore(client.Client)
 	bgpConfService := service.NewBgpConfService(bgpStore)
+	bgpPeerService := service.NewBgpPeerService(bgpStore)
 	server := lib.NewHTTPServer([]lib.Endpoints{
 		endpoint.NewBgpConfEndpoints(bgpConfService),
+		endpoint.NewBgpPeerEndpoints(bgpPeerService),
 	}, *opts)
 	return server.ListenAndServe()
 }
