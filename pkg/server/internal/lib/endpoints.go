@@ -48,7 +48,7 @@ func ServeRequest(req InboundRequest) {
 			writeResponse(req.W, http.StatusInternalServerError, nil)
 		}
 	}
-	writeResponse(req.W, http.StatusOK, resp)
+	writeResponse(req.W, req.StatusCode, resp)
 }
 
 // writeResponse writes the response to the writer with status code and
