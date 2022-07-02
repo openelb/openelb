@@ -7,20 +7,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-// BgpConfService is a interface that is used to manage http requests related to
+// BgpConfService is an interface that is used to manage http requests related to
 // BgpConf.
 type BgpConfService interface {
 	// Create creates a new BgpConf object in the kubernetes cluster.
 	Create(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 	// Get returns the BgpConf object in the kubernetes cluster if found.
 	Get(ctx context.Context) (*v1alpha2.BgpConf, error)
-	// // UpdateBgpConf updates the BgpConf object in the kubernetes cluster.
-	// UpdateBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 	// Delete deletes the BgpConf object in the kubernetes cluster.
 	Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 }
 
-// bgpConfService is a implementation of the BgpConfService.
+// bgpConfService is an implementation of the BgpConfService.
 type bgpConfService struct {
 	bgpStore BgpStore
 }
@@ -52,17 +50,12 @@ func (b *bgpConfService) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
 	return b.bgpStore.GetBgpConf(ctx, "default")
 }
 
-// // UpdateBgpConf updates the BgpConf object in the kubernetes cluster.
-// func (b *bgpConfService) UpdateBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
-// 	return b.bgpStore.UpdateBgpConf(ctx, bgpConf)
-// }
-
 // Delete deletes the BgpConf object in the kubernetes cluster.
 func (b *bgpConfService) Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
 	return b.bgpStore.DeleteBgpConf(ctx, bgpConf)
 }
 
-// BgpStore is a interface for managing OpenELB Bgp resources.
+// BgpStore is an interface for managing OpenELB Bgp resources.
 type BgpStore interface {
 	// CreateBgpConf creates a new BgpConf object in the kubernetes cluster.
 	CreateBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error

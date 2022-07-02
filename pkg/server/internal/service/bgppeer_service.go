@@ -6,7 +6,7 @@ import (
 	"github.com/openelb/openelb/api/v1alpha2"
 )
 
-// BgpPeerService is a interface that is used to manage http requests related to
+// BgpPeerService is an interface that is used to manage http requests related to
 // BgpPeer.
 type BgpPeerService interface {
 	// Create creates a new BgpPeer object in the kubernetes cluster.
@@ -19,7 +19,7 @@ type BgpPeerService interface {
 	Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
 }
 
-// bgpPeerService is a implementation of the BgpPeerService.
+// bgpPeerService is an implementation of the BgpPeerService.
 type bgpPeerService struct {
 	bgpStore BgpStore
 }

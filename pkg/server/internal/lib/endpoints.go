@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-// Endpoints is a interface which all rest Endpoints must implement.
+// Endpoints is an interface which all rest Endpoints must implement.
 type Endpoints interface {
 	Register(router chi.Router)
 }
