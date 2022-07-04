@@ -9,18 +9,18 @@ import (
 	"github.com/openelb/openelb/pkg/server/options"
 )
 
-func SetupHTTPServer(opts *options.Options) error {
+func SetupHTTPServer(stopCh <-chan struct{}, opts *options.Options) error {
 	bgpStore := kubernetes.NewBgpStore(client.Client)
 	eipStore := kubernetes.NewEipStore(client.Client)
 
 	bgpConfService := service.NewBgpConfService(bgpStore)
 	bgpPeerService := service.NewBgpPeerService(bgpStore)
 	eipService := service.NewEipService(eipStore)
-	
+
 	server := lib.NewHTTPServer([]lib.Endpoints{
 		endpoint.NewBgpConfEndpoints(bgpConfService),
 		endpoint.NewBgpPeerEndpoints(bgpPeerService),
 		endpoint.NewEipEndpoints(eipService),
 	}, *opts)
-	return server.ListenAndServe()
+	return server.ListenAndServe(stopCh)
 }

@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -36,17 +33,15 @@ func NewHTTPServer(endpoints []Endpoints, options options.Options) *server {
 	}
 }
 
-func (s *server) ListenAndServe() error {
+func (s *server) ListenAndServe(stopCh <-chan struct{}) error {
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.options.Port),
 		Handler: s.handler,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-sigCh
+		<- stopCh
 		cancel()
 	}()
 

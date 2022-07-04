@@ -143,7 +143,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 	setupLog.Info("registering webhooks to the webhook server")
 
 	go func() {
-		err = server.SetupHTTPServer(c.HTTPOptions)
+		err = server.SetupHTTPServer(stopCh, c.HTTPOptions)
 		if err != nil {
 			setupLog.Error(err, "unable to setup http server")
 		}
