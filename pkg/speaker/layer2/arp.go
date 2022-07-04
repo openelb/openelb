@@ -1,9 +1,11 @@
 package layer2
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -179,6 +181,12 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
 	if nodes[0].Annotations != nil {
 		nexthop := nodes[0].Annotations[constant.OpenELBLayer2Annotation]
+		// check for valid CIDR range
+		if strings.Contains(nexthop, "/") {
+			_, err := a.setBalancerFromIPRange(nexthop)
+			return err
+		}
+		// check for valid ip
 		if net.ParseIP(nexthop) != nil {
 			return a.setBalancer(ip, []string{nexthop})
 		}
@@ -195,6 +203,42 @@ func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
 	}
 
 	return fmt.Errorf("node %s has no nexthop", nodes[0].Name)
+}
+
+func (a *arpSpeaker) setBalancerFromIPRange(cidr string) (net.IP, error) {
+	var err error
+	// convert string to IPNet struct
+	_, ipv4Net, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+	// convert IPNet struct mask and address to uint32
+	// network is BigEndian
+	mask := binary.BigEndian.Uint32(ipv4Net.Mask)
+	start := binary.BigEndian.Uint32(ipv4Net.IP)
+
+	// find the final address
+	finish := (start & mask) | (mask ^ 0xffffffff)
+
+	// loop through addresses as uint32
+	for i := start; i <= finish; i++ {
+		// convert back to net.IP
+		ip := make(net.IP, 4)
+		binary.BigEndian.PutUint32(ip, i)
+		hwAddr, err := a.resolveIP(ip)
+		if err != nil {
+			a.logger.Error(err, "arp: could not resolve ", "ip", ip)
+			continue
+		}
+		if hwAddr.String() != a.intf.HardwareAddr.String() {
+			continue
+		}
+		err = a.setBalancer(ip.String(), []string{ip.String()})
+		if err == nil {
+			return ip, nil
+		}
+	}
+	return nil, err
 }
 
 func (a *arpSpeaker) setBalancer(ip string, nexthops []string) error {
