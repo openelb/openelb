@@ -1,6 +1,7 @@
 package ipam
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -115,6 +116,11 @@ func SetupIPAM(mgr ctrl.Manager) error {
 			if util.DutyOfCNI(nil, e.Meta) {
 				return false
 			}
+
+			if !sameNetworkSegment(e.Object.(*networkv1alpha2.Eip)) {
+				return false
+			}
+
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -124,6 +130,10 @@ func SetupIPAM(mgr ctrl.Manager) error {
 
 			oldEip := e.ObjectOld.(*networkv1alpha2.Eip)
 			newEip := e.ObjectNew.(*networkv1alpha2.Eip)
+
+			if !sameNetworkSegment(newEip) {
+				return false
+			}
 
 			if !reflect.DeepEqual(oldEip.DeletionTimestamp, newEip.DeletionTimestamp) {
 				return true
@@ -458,4 +468,32 @@ func (i *IPAM) UnAssignIP(args IPAMArgs, peek bool) (IPAMResult, error) {
 		"err", err)
 
 	return result, err
+}
+
+// sameNetworkSegment returns true if the NIC and EIP belong to the same network segment
+func sameNetworkSegment(e *networkv1alpha2.Eip) bool {
+	// check if ip is specified in annotations
+	addr, ok := e.ObjectMeta.Annotations[constant.OpenELBLayer2Annotation]
+	if !ok {
+		return true
+	}
+	ip := net.ParseIP(addr)
+	// check for IP address 1 - IP address 2 format
+	if strings.Contains(e.Spec.Address, "-") {
+		ips := strings.Split(e.Spec.Address, "-")
+		ip1 := net.ParseIP(ips[0])
+		ip2 := net.ParseIP(ips[1])
+		return (bytes.Compare(ip, ip1) >= 0 && bytes.Compare(ip, ip2) <= 0)
+	}
+	// check for IP address/Subnet mask format
+	if strings.Contains(e.Spec.Address, "/") {
+		_, ipn, err := net.ParseCIDR(e.Spec.Address)
+		if err != nil {
+			ctrl.Log.Error(err, "ipam: error parsing CIDR for EIP Address")
+			return false
+		}
+		return ipn.Contains(ip)
+	}
+	// check for IP address format
+	return e.Spec.Interface == e.Spec.Address
 }
