@@ -3,6 +3,8 @@ package app
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/cmd/manager/app/options"
 	"github.com/openelb/openelb/pkg/constant"
@@ -12,6 +14,7 @@ import (
 	"github.com/openelb/openelb/pkg/leader-elector"
 	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
+	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/speaker/vip"
@@ -22,7 +25,6 @@ import (
 	"k8s.io/apiserver/pkg/util/term"
 	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -77,6 +79,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 	setupLog := ctrl.Log.WithName("setup")
 
 	mgr, err := manager.NewManager(ctrl.GetConfigOrDie(), c.GenericOptions)
+	setupLog.Info("listen metrics addr : " + c.MetricsAddr)
 	if err != nil {
 		setupLog.Error(err, "unable to new manager")
 		return err
