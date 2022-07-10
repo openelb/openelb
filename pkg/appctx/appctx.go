@@ -1,4 +1,4 @@
-// Copyright 2019 The Kubesphere Authors.
+// Copyright 2022 The Kubesphere Authors.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package appctx
 
 import (
-	"github.com/openelb/openelb/cmd/manager/app"
-	"os"
+	"context"
+
+	"github.com/go-logr/logr"
 )
 
-func main() {
-	command := app.NewOpenELBManagerCommand()
+type contextKey struct{}
 
-	if err := command.Execute(); err != nil {
-		os.Exit(1)
+// GetLogger returns a Logger constructed from ctx or nil if no
+// logger details are found.
+func GetLogger(ctx context.Context) logr.Logger {
+	if v, ok := ctx.Value(contextKey{}).(logr.Logger); ok {
+		return v
 	}
+
+	return nil
+}
+
+// WithLogger returns a new context derived from ctx that embeds the Logger.
+func WithLogger(ctx context.Context, l logr.Logger) context.Context {
+	return context.WithValue(ctx, contextKey{}, l)
 }
