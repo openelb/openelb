@@ -105,7 +105,7 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 	return err
 }
 
-// User can config NodeProxy by ConfigMap to specify the proxy and forward images
+// User can config Keepalived by ConfigMap to specify the images
 // If the ConfigMap exists and the configuration is set, use it,
 // 	otherwise, use the default image got from constants.
 func (k *KeepAlived) getConfig() (*corev1.ConfigMap, error) {
