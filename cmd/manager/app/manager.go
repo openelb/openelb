@@ -3,6 +3,8 @@ package app
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/cmd/manager/app/options"
 	"github.com/openelb/openelb/pkg/constant"
@@ -22,7 +24,6 @@ import (
 	"k8s.io/apiserver/pkg/util/term"
 	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -120,8 +121,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 		return err
 	}
 	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
-		Args:  []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBConfigMap)},
-		Image: constant.OpenELBKeepAliveImageName,
+		Args: []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBConfigMap)},
 	})
 
 	//For keepalive

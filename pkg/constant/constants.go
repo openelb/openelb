@@ -48,12 +48,13 @@ const (
 	OpenELBCNICalico      string = "calico"
 	EipRangeSeparator     string = "-"
 
-	OpenELBSpeakerLocker      = "openelb-speaker"
-	OpenELBNamespace          = "openelb-system"
-	OpenELBConfigMap          = "openelb-vip-configmap"
-	OpenELBVipName            = "openelb-keepalive-vip"
-	OpenELBServiceAccountName = "kube-keepalived-vip"
-	OpenELBKeepAliveImageName = "aledbf/kube-keepalived-vip:0.35" // keepalived image by default
-	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
-	EnvNodeName               = "NODE_NAME"
+	OpenELBSpeakerLocker              = "openelb-speaker"
+	OpenELBNamespace                  = "openelb-system"
+	OpenELBConfigMap                  = "openelb-vip-configmap"
+	OpenELBVipName                    = "openelb-keepalive-vip"
+	OpenELBServiceAccountName         = "kube-keepalived-vip"
+	OpenELBKeepAliveImageName         = "aledbf/kube-keepalived-vip:0.35" // keepalived image by default
+	OpenELBKeepAliveImageConfigMapKey = "keepalived-vip-image"
+	EnvOpenELBNamespace               = "OPENELB_NAMESPACE"
+	EnvNodeName                       = "NODE_NAME"
 )
