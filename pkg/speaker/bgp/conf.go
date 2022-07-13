@@ -13,7 +13,7 @@ func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete 
 		return b.bgpServer.StopBgp(context.Background(), nil)
 	}
 
-	request, err := global.Spec.ConverToGoBgpGlabalConf()
+	request, err := global.Spec.ToGoBgpGlobalConf()
 	if err != nil {
 		return err
 	}
