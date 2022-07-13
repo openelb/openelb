@@ -7,23 +7,29 @@ assignees: ""
 ---
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+
+<!-- A clear and concise description of what the bug is. -->
 
 **To Reproduce**
+
+<!-- 
 Steps to reproduce the behaviour:
 
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
-4. See error
+4. See error 
+-->
 
 **Expected behaviour**
-What did you expect to happen?
+
+<!-- What did you expect to happen? -->
 
 **Output**
-Add the output you're seeing to help explain your problem.
+
+<!-- Add the output you're seeing to help explain your problem. -->
 
 **Version Info**
 
-- Version of Kubernetes: 
-- Version of OpenELB: 
+- Version of Kubernetes:
+- Version of OpenELB:
