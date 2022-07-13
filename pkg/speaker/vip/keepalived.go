@@ -3,6 +3,8 @@ package vip
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/go-logr/logr"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker"
@@ -13,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"strings"
 )
 
 type KeepAlived struct {
@@ -36,7 +37,7 @@ func (k *KeepAlived) SetBalancer(configMap string, nexthops []corev1.Node) error
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constant.OpenELBConfigMap,
+			Name:      constant.OpenELBVipConfigMap,
 			Namespace: util.EnvNamespace(),
 		},
 		Data: map[string]string{
