@@ -14,10 +14,10 @@ type eipRouter struct {
 }
 
 func (e *eipRouter) Register(r chi.Router) {
-	r.Post("/eip", e.create)
-	r.Get("/eip/{name}", e.get)
-	r.Get("/eip", e.list)
-	r.Delete("/eip", e.delete)
+	r.Post("/apis/v1/eip", e.create)
+	r.Get("/apis/v1/eip/{name}", e.get)
+	r.Get("/apis/v1/eip", e.list)
+	r.Delete("/apis/v1/eip", e.delete)
 }
 
 // NewEipRouter returns a new instance of eipRouter which implements the

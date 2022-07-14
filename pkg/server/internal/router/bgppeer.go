@@ -14,10 +14,10 @@ type bgpPeerRouter struct {
 }
 
 func (b *bgpPeerRouter) Register(r chi.Router) {
-	r.Get("/bgppeer/{name}", b.get)
-	r.Get("/bgppeer", b.list)
-	r.Post("/bgppeer", b.create)
-	r.Delete("/bgppeer", b.delete)
+	r.Get("/apis/v1/bgppeer/{name}", b.get)
+	r.Get("/apis/v1/bgppeer", b.list)
+	r.Post("/apis/v1/bgppeer", b.create)
+	r.Delete("/apis/v1/bgppeer", b.delete)
 }
 
 // NewBgpPeerRouter returns a new instance of bgpPeerRouter which

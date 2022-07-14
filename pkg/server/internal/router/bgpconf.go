@@ -14,9 +14,9 @@ type bgpConfRouter struct {
 }
 
 func (b *bgpConfRouter) Register(r chi.Router) {
-	r.Post("/bgpconf", b.create)
-	r.Get("/bgpconf", b.get)
-	r.Delete("/bgpconf", b.delete)
+	r.Post("/apis/v1/bgpconf", b.create)
+	r.Get("/apis/v1/bgpconf", b.get)
+	r.Delete("/apis/v1/bgpconf", b.delete)
 }
 
 // NewBgpConfRouter returns a new instance of bgpConfRouter which
