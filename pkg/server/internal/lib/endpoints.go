@@ -8,9 +8,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-// Endpoints is an interface which all rest Endpoints must implement.
-type Endpoints interface {
-	Register(router chi.Router)
+// Router is an interface which all rest Router must implement.
+type Router interface {
+	Register(httpRouter chi.Router)
 }
 
 // readRequestBody reads the request body and unmarshals it into the given object.

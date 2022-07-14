@@ -1,4 +1,4 @@
-package service
+package handler
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// BgpConfService is an interface that is used to manage http requests related to
+// BgpConfHandler is an interface that is used to manage http requests related to
 // BgpConf.
-type BgpConfService interface {
+type BgpConfHandler interface {
 	// Create creates a new BgpConf object in the kubernetes cluster.
 	Create(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 	// Get returns the BgpConf object in the kubernetes cluster if found.
@@ -19,22 +19,22 @@ type BgpConfService interface {
 	Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 }
 
-// bgpConfService is an implementation of the BgpConfService.
-type bgpConfService struct {
+// bgpConfHandler is an implementation of the BgpConfHandler.
+type bgpConfHandler struct {
 	client client.Client
 }
 
-// NewBgpConfService returns a new instance of bgpConfService which implements
-// the BgpConfService interface. This is used to register the endpoints to
+// NewBgpConfHandler returns a new instance of bgpConfHandler which implements
+// the BgpConfHandler interface. This is used to register the endpoints to
 // the router.
-func NewBgpConfService(client client.Client) *bgpConfService {
-	return &bgpConfService{
+func NewBgpConfHandler(client client.Client) *bgpConfHandler {
+	return &bgpConfHandler{
 		client: client,
 	}
 }
 
 // Create creates a new BgpConf object in the kubernetes cluster.
-func (b *bgpConfService) Create(ctx context.Context,
+func (b *bgpConfHandler) Create(ctx context.Context,
 	bgpConf *v1alpha2.BgpConf) error {
 	if bgpConf.Name != "default" {
 		return errors.NewBadRequest("BgpConf name must be default")
@@ -46,13 +46,13 @@ func (b *bgpConfService) Create(ctx context.Context,
 }
 
 // Get returns the BgpConf object in the kubernetes cluster if found.
-func (b *bgpConfService) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
+func (b *bgpConfHandler) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
 	bgpConf := &v1alpha2.BgpConf{}
 	err := b.client.Get(ctx, client.ObjectKey{Name: "default"}, bgpConf)
 	return bgpConf, err
 }
 
 // Delete deletes the BgpConf object in the kubernetes cluster.
-func (b *bgpConfService) Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
+func (b *bgpConfHandler) Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
 	return b.client.Delete(ctx, bgpConf)
 }

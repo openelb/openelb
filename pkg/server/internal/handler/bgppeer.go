@@ -1,4 +1,4 @@
-package service
+package handler
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// BgpPeerService is an interface that is used to manage http requests related to
+// BgpPeerHandler is an interface that is used to manage http requests related to
 // BgpPeer.
-type BgpPeerService interface {
+type BgpPeerHandler interface {
 	// Create creates a new BgpPeer object in the kubernetes cluster.
 	Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
 	// Get returns the BgpPeer object in the kubernetes cluster if found.
@@ -20,40 +20,40 @@ type BgpPeerService interface {
 	Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
 }
 
-// bgpPeerService is an implementation of the BgpPeerService.
-type bgpPeerService struct {
+// bgpPeerHandler is an implementation of the BgpPeerHandler.
+type bgpPeerHandler struct {
 	client client.Client
 }
 
-// NewBgpPeerService returns a new instance of bgpPeerService which implements
-// the BgpPeerService interface. This is used to register the endpoints to
+// NewBgpPeerHandler returns a new instance of bgpPeerHandler which implements
+// the BgpPeerHandler interface. This is used to register the endpoints to
 // the router.
-func NewBgpPeerService(client client.Client) *bgpPeerService {
-	return &bgpPeerService{
+func NewBgpPeerHandler(client client.Client) *bgpPeerHandler {
+	return &bgpPeerHandler{
 		client: client,
 	}
 }
 
 // Create creates a new BgpPeer object in the kubernetes cluster.
-func (b *bgpPeerService) Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
+func (b *bgpPeerHandler) Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
 	return b.client.Create(ctx, bgpPeer)
 }
 
 // Get returns the BgpPeer object in the kubernetes cluster if found.
-func (b *bgpPeerService) Get(ctx context.Context, name string) (*v1alpha2.BgpPeer, error) {
+func (b *bgpPeerHandler) Get(ctx context.Context, name string) (*v1alpha2.BgpPeer, error) {
 	bgpPeer := &v1alpha2.BgpPeer{}
 	err := b.client.Get(ctx, client.ObjectKey{Name: name}, bgpPeer)
 	return bgpPeer, err
 }
 
 // List returns all the BgpPeer objects in the kubernetes cluster.
-func (b *bgpPeerService) List(ctx context.Context) (*v1alpha2.BgpPeerList, error) {
+func (b *bgpPeerHandler) List(ctx context.Context) (*v1alpha2.BgpPeerList, error) {
 	bgpPeers := &v1alpha2.BgpPeerList{}
 	err := b.client.List(ctx, bgpPeers)
 	return bgpPeers, err
 }
 
 // Delete deletes the BgpPeer object in the kubernetes cluster.
-func (b *bgpPeerService) Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
+func (b *bgpPeerHandler) Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
 	return b.client.Delete(ctx, bgpPeer)
 }

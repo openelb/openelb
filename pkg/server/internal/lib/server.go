@@ -16,11 +16,11 @@ type server struct {
 	options options.Options
 }
 
-func NewHTTPServer(endpoints []Endpoints, options options.Options) *server {
-	router := chi.NewRouter()
+func NewHTTPServer(routers []Router, options options.Options) *server {
+	httpRouter := chi.NewRouter()
 
-	for _, endpoint := range endpoints {
-		endpoint.Register(router)
+	for _, endpoint := range routers {
+		endpoint.Register(httpRouter)
 	}
 
 	return &server{
@@ -28,7 +28,7 @@ func NewHTTPServer(endpoints []Endpoints, options options.Options) *server {
 			AllowedOrigins: []string{"*"},
 			AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
 			AllowedHeaders: []string{"Accept", "Content-Type"},
-		}).Handler(router),
+		}).Handler(httpRouter),
 		options: options,
 	}
 }
