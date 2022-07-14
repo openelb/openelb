@@ -39,29 +39,19 @@ func (s *server) ListenAndServe(stopCh <-chan struct{}) error {
 		Handler: s.handler,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
 	go func() {
-		<- stopCh
-		cancel()
-	}()
-
-	errCh := make(chan error)
-	go func() {
-		err := server.ListenAndServe()
-		select {
-		case errCh <- err:
-		case <-ctx.Done():
-		}
+		errCh <- server.ListenAndServe()
 	}()
 
 	select {
 	case err := <-errCh:
 		return err
-	case <-ctx.Done():
-		shutdownCtx, shutdownCancel :=
+	case <-stopCh:
+		ctx, cancel :=
 			context.WithTimeout(context.Background(), 5*time.Second)
-		defer shutdownCancel()
-		server.Shutdown(shutdownCtx)
-		return shutdownCtx.Err()
+		defer cancel()
+		server.Shutdown(ctx)
+		return ctx.Err()
 	}
 }
