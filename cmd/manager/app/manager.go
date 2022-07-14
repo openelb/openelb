@@ -15,6 +15,7 @@ import (
 	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
 	"github.com/openelb/openelb/pkg/server"
+	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/speaker/vip"
@@ -79,6 +80,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 	setupLog := ctrl.Log.WithName("setup")
 
 	mgr, err := manager.NewManager(ctrl.GetConfigOrDie(), c.GenericOptions)
+	setupLog.Info("listen metrics addr : " + c.MetricsAddr)
 	if err != nil {
 		setupLog.Error(err, "unable to new manager")
 		return err

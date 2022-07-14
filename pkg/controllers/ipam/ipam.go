@@ -11,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/openelb/openelb/pkg/speaker/layer2"
 	"github.com/openelb/openelb/pkg/util"
@@ -159,6 +160,7 @@ func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 
+		metrics.DeleteEipMetrics(eip.Name)
 		controllerutil.RemoveFinalizer(eip, constant.IPAMFinalizerName)
 		return ctrl.Result{}, i.Update(context.Background(), eip)
 	}
@@ -182,6 +184,7 @@ func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if reflect.DeepEqual(clone.Status, eip.Status) {
 		return ctrl.Result{}, nil
 	}
+	i.updateMetrics(eip)
 	return ctrl.Result{}, i.Client.Status().Update(context.Background(), clone)
 }
 
@@ -305,6 +308,7 @@ func (i *IPAM) AssignIP(args IPAMArgs) (IPAMResult, error) {
 	for _, eip := range eips.Items {
 		clone := eip.DeepCopy()
 		addr := args.assignIPFromEip(clone)
+		i.updateMetrics(clone)
 		if addr != "" {
 			if !reflect.DeepEqual(clone, eip) {
 				err = i.Client.Status().Update(context.Background(), clone)
@@ -433,6 +437,7 @@ func (i *IPAM) UnAssignIP(args IPAMArgs, peek bool) (IPAMResult, error) {
 	for _, eip := range eips.Items {
 		clone := eip.DeepCopy()
 		addr := args.unAssignIPFromEip(clone, peek)
+		i.updateMetrics(clone)
 		if addr != "" {
 			if !reflect.DeepEqual(clone, eip) && !peek {
 				err = i.Client.Status().Update(context.Background(), clone)
@@ -458,4 +463,15 @@ func (i *IPAM) UnAssignIP(args IPAMArgs, peek bool) (IPAMResult, error) {
 		"err", err)
 
 	return result, err
+}
+
+func (i *IPAM) updateMetrics(eip *networkv1alpha2.Eip) {
+	total := float64(eip.Status.PoolSize)
+	used := float64(eip.Status.Usage)
+	var svcCount float64 = 0
+	for _, svc := range eip.Status.Used {
+		svcCount = svcCount + float64(len(strings.Split(svc, ";")))
+	}
+
+	metrics.UpdateEipMetrics(eip.Name, total, used, svcCount)
 }
