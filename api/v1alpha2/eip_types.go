@@ -105,7 +105,7 @@ func (e Eip) GetSize() (net.IP, int64, error) {
 
 var _ webhook.Validator = &Eip{}
 
-// +kubebuilder:webhook:path=/validate-network-kubesphere-io-v1alpha2-eip,mutating=false,failurePolicy=fail,groups=network.kubesphere.io,resources=eips,verbs=create;update;delete,versions=v1alpha2,name=validate.eip.network.kubesphere.io
+// +kubebuilder:webhook:path=/validate-network-kubesphere-io-v1alpha2-eip,mutating=false,sideEffects=NoneOnDryRun,failurePolicy=fail,groups=network.kubesphere.io,resources=eips,verbs=create;update;delete,versions=v1alpha2,name=validate.eip.network.kubesphere.io
 
 func (e Eip) IsOverlap(eip Eip) bool {
 	base, size, _ := e.GetSize()
