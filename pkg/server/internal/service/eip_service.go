@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/openelb/openelb/api/v1alpha2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // EipService is an interface that is used to manage http requests related to
@@ -21,46 +22,38 @@ type EipService interface {
 
 // eipService is an implementation of the EipService.
 type eipService struct {
-	eipStore EipStore
+	client client.Client
 }
 
 // NewEipService returns a new instance of eipService which implements
 // the EipService interface. This is used to register the endpoints to
 // the router.
-func NewEipService(eipStore EipStore) *eipService {
+func NewEipService(client client.Client) *eipService {
 	return &eipService{
-		eipStore: eipStore,
+		client: client,
 	}
 }
 
 // Create creates a new Eip object in the kubernetes cluster.
 func (e *eipService) Create(ctx context.Context, eip *v1alpha2.Eip) error {
-	return e.eipStore.CreateEip(ctx, eip)
+	return e.client.Create(ctx, eip)
 }
 
 // Get returns the Eip object in the kubernetes cluster if found.
 func (e *eipService) Get(ctx context.Context, name string) (*v1alpha2.Eip, error) {
-	return e.eipStore.GetEip(ctx, name)
+	eip := &v1alpha2.Eip{}
+	err := e.client.Get(ctx, client.ObjectKey{Name: name}, eip)
+	return eip, err
 }
 
 // ListEips returns the list of Eip objects in the kubernetes cluster.
 func (e *eipService) List(ctx context.Context) (*v1alpha2.EipList, error) {
-	return e.eipStore.ListEip(ctx)
+	eipList := &v1alpha2.EipList{}
+	err := e.client.List(ctx, eipList)
+	return eipList, err
 }
 
 // DeleteEip deletes the Eip object in the kubernetes cluster.
 func (e *eipService) Delete(ctx context.Context, eip *v1alpha2.Eip) error {
-	return e.eipStore.DeleteEip(ctx, eip)
-}
-
-// EipStore is an interface for managing OpenELB EIP rerources.
-type EipStore interface {
-	// CreateEip creates a new Eip object in the kubernetes cluster.
-	CreateEip(ctx context.Context, eip *v1alpha2.Eip) error
-	// GetEip returns the Eip object in the kubernetes cluster if found.
-	GetEip(ctx context.Context, name string) (*v1alpha2.Eip, error)
-	// ListEips returns the list of Eip objects in the kubernetes cluster.
-	ListEip(ctx context.Context) (*v1alpha2.EipList, error)
-	// DeleteEip deletes the Eip object in the kubernetes cluster.
-	DeleteEip(ctx context.Context, eip *v1alpha2.Eip) error
+	return e.client.Delete(ctx, eip)
 }

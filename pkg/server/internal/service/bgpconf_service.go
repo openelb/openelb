@@ -5,6 +5,7 @@ import (
 
 	"github.com/openelb/openelb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // BgpConfService is an interface that is used to manage http requests related to
@@ -20,15 +21,15 @@ type BgpConfService interface {
 
 // bgpConfService is an implementation of the BgpConfService.
 type bgpConfService struct {
-	bgpStore BgpStore
+	client client.Client
 }
 
 // NewBgpConfService returns a new instance of bgpConfService which implements
 // the BgpConfService interface. This is used to register the endpoints to
 // the router.
-func NewBgpConfService(bgpStore BgpStore) *bgpConfService {
+func NewBgpConfService(client client.Client) *bgpConfService {
 	return &bgpConfService{
-		bgpStore: bgpStore,
+		client: client,
 	}
 }
 
@@ -41,36 +42,17 @@ func (b *bgpConfService) Create(ctx context.Context,
 	if bgpConf.Spec.ListenPort == 0 {
 		return errors.NewBadRequest("BgpConf listen port must be set")
 	}
-
-	return b.bgpStore.CreateBgpConf(ctx, bgpConf)
+	return b.client.Create(ctx, bgpConf)
 }
 
 // Get returns the BgpConf object in the kubernetes cluster if found.
 func (b *bgpConfService) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
-	return b.bgpStore.GetBgpConf(ctx, "default")
+	bgpConf := &v1alpha2.BgpConf{}
+	err := b.client.Get(ctx, client.ObjectKey{Name: "default"}, bgpConf)
+	return bgpConf, err
 }
 
 // Delete deletes the BgpConf object in the kubernetes cluster.
 func (b *bgpConfService) Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
-	return b.bgpStore.DeleteBgpConf(ctx, bgpConf)
-}
-
-// BgpStore is an interface for managing OpenELB Bgp resources.
-type BgpStore interface {
-	// CreateBgpConf creates a new BgpConf object in the kubernetes cluster.
-	CreateBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
-	// GetBgpConf returns the BgpConf object in the kubernetes cluster if found.
-	GetBgpConf(ctx context.Context, name string) (*v1alpha2.BgpConf, error)
-	// // UpdateBgpConf updates the BgpConf object in the kubernetes cluster.
-	// UpdateBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
-	// DeleteBgpConf deletes the BgpConf object in the kubernetes cluster.
-	DeleteBgpConf(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
-	// CreateBgpPeer creates a new BgpPeer object in the kubernetes cluster.
-	CreateBgpPeer(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
-	// GetBgpPeer returns the BgpPeer object in the kubernetes cluster if found.
-	GetBgpPeer(ctx context.Context, name string) (*v1alpha2.BgpPeer, error)
-	// ListBgpPeers returns a list of BgpPeer objects in the kubernetes cluster.
-	ListBgpPeer(ctx context.Context) (*v1alpha2.BgpPeerList, error)
-	// DeleteBgpPeer deletes the BgpPeer object in the kubernetes cluster.
-	DeleteBgpPeer(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
+	return b.client.Delete(ctx, bgpConf)
 }

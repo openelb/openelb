@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/openelb/openelb/api/v1alpha2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // BgpPeerService is an interface that is used to manage http requests related to
@@ -21,34 +22,38 @@ type BgpPeerService interface {
 
 // bgpPeerService is an implementation of the BgpPeerService.
 type bgpPeerService struct {
-	bgpStore BgpStore
+	client client.Client
 }
 
 // NewBgpPeerService returns a new instance of bgpPeerService which implements
 // the BgpPeerService interface. This is used to register the endpoints to
 // the router.
-func NewBgpPeerService(bgpStore BgpStore) *bgpPeerService {
+func NewBgpPeerService(client client.Client) *bgpPeerService {
 	return &bgpPeerService{
-		bgpStore: bgpStore,
+		client: client,
 	}
 }
 
 // Create creates a new BgpPeer object in the kubernetes cluster.
 func (b *bgpPeerService) Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
-	return b.bgpStore.CreateBgpPeer(ctx, bgpPeer)
+	return b.client.Create(ctx, bgpPeer)
 }
 
 // Get returns the BgpPeer object in the kubernetes cluster if found.
 func (b *bgpPeerService) Get(ctx context.Context, name string) (*v1alpha2.BgpPeer, error) {
-	return b.bgpStore.GetBgpPeer(ctx, name)
+	bgpPeer := &v1alpha2.BgpPeer{}
+	err := b.client.Get(ctx, client.ObjectKey{Name: name}, bgpPeer)
+	return bgpPeer, err
 }
 
 // List returns all the BgpPeer objects in the kubernetes cluster.
 func (b *bgpPeerService) List(ctx context.Context) (*v1alpha2.BgpPeerList, error) {
-	return b.bgpStore.ListBgpPeer(ctx)
+	bgpPeers := &v1alpha2.BgpPeerList{}
+	err := b.client.List(ctx, bgpPeers)
+	return bgpPeers, err
 }
 
 // Delete deletes the BgpPeer object in the kubernetes cluster.
 func (b *bgpPeerService) Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
-	return b.bgpStore.DeleteBgpPeer(ctx, bgpPeer)
+	return b.client.Delete(ctx, bgpPeer)
 }
