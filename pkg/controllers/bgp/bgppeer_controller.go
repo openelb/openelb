@@ -24,6 +24,7 @@ import (
 
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -110,6 +111,7 @@ func (r BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if util.NeedToAddFinalizer(clone, constant.FinalizerName) {
 		controllerutil.AddFinalizer(clone, constant.FinalizerName)
+		metrics.InitBGPPeerMetrics(clone.Spec.Conf.NeighborAddress, util.GetNodeName())
 		err := r.Update(context.Background(), clone)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -158,6 +160,7 @@ func (r BgpPeerReconciler) updatePeerStatus() {
 		if !reflect.DeepEqual(clone.Status, peer.Status) {
 			r.Status().Update(context.Background(), clone)
 		}
+		r.BgpServer.UpdatePeerMetrics(&peer, !found)
 	}
 }
 

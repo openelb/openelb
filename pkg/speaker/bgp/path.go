@@ -3,14 +3,17 @@ package bgp
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
+	"net"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/openelb/openelb/pkg/constant"
+	"github.com/openelb/openelb/pkg/metrics"
+	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
-	"hash/fnv"
 	corev1 "k8s.io/api/core/v1"
-	"net"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -151,7 +154,28 @@ func (b *Bgp) setBalancer(ip string, nexthops []string) error {
 	if err != nil {
 		return err
 	}
+
+	peerList := b.getPeers()
+	if peerList != nil {
+		for _, peer := range peerList {
+			if len(toAdd) != 0 {
+				metrics.UpdateBGPPathMetrics(peer.Conf.NeighborAddress, util.GetNodeName(), 1, 0)
+			}
+		}
+	}
 	return nil
+}
+
+func (b *Bgp) getPeers() []*api.Peer {
+	peerList := []*api.Peer{}
+	fn := func(p *api.Peer) {
+		peerList = append(peerList, p)
+	}
+	err := b.bgpServer.ListPeer(context.Background(), &api.ListPeerRequest{}, fn)
+	if err != nil {
+		return nil
+	}
+	return peerList
 }
 
 func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
@@ -227,7 +251,11 @@ func (b *Bgp) DelBalancer(ip string) error {
 		Prefixes:  []*api.TableLookupPrefix{lookup},
 	}
 	var errDelete error
+	existPath := true
 	fn := func(d *api.Destination) {
+		if len(d.Paths) == 0 {
+			existPath = false
+		}
 		for _, path := range d.Paths {
 			errDelete = b.bgpServer.DeletePath(context.Background(), &api.DeletePathRequest{
 				Path: path,
@@ -243,6 +271,12 @@ func (b *Bgp) DelBalancer(ip string) error {
 	}
 	if errDelete != nil {
 		return errDelete
+	}
+	peerList := b.getPeers()
+	if peerList != nil && existPath {
+		for _, peer := range peerList {
+			metrics.UpdateBGPPathMetrics(peer.Conf.NeighborAddress, util.GetNodeName(), 0, 1)
+		}
 	}
 	return nil
 }

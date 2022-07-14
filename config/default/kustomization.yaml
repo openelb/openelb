@@ -4,3 +4,4 @@ resources:
   - ../rbac
   - ../workloads
   - ../webhook
+#  - ../prometheus

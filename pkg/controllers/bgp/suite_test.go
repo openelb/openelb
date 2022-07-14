@@ -17,6 +17,11 @@ package bgp
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/openelb/openelb/api/v1alpha2"
@@ -31,14 +36,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
-	"os"
-	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"testing"
-	"time"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -145,7 +146,11 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 
-	mgr, err := manager.NewManager(cfg, manager.NewGenericOptions())
+	mgr, err := manager.NewManager(cfg, &manager.GenericOptions{
+		WebhookPort:   443,
+		MetricsAddr:   "0",
+		ReadinessAddr: "0",
+	})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mgr).ToNot(BeNil())
 

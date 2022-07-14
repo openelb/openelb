@@ -15,6 +15,7 @@ import (
 	"github.com/mdlayher/raw"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/leader-elector"
+	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/vishvananda/netlink"
 	corev1 "k8s.io/api/core/v1"
@@ -242,7 +243,17 @@ func (a *arpSpeaker) setBalancerFromIPRange(cidr string) (net.IP, error) {
 }
 
 func (a *arpSpeaker) setBalancer(ip string, nexthops []string) error {
-	return a.gratuitous(net.ParseIP(ip), net.ParseIP(nexthops[0]))
+	if _, ok := a.ip2mac[ip]; !ok {
+		metrics.InitLayer2Metrics(ip)
+	}
+
+	if err := a.gratuitous(net.ParseIP(ip), net.ParseIP(nexthops[0])); err != nil {
+		return err
+	}
+
+	metrics.UpdateGratuitousSentMetrics(ip)
+	return nil
+
 }
 
 func (a *arpSpeaker) DelBalancer(ip string) error {
@@ -250,6 +261,7 @@ func (a *arpSpeaker) DelBalancer(ip string) error {
 	defer a.lock.Unlock()
 
 	delete(a.ip2mac, ip)
+	metrics.DeleteLayer2Metrics(ip)
 
 	return nil
 }
@@ -307,6 +319,7 @@ func (a *arpSpeaker) processRequest() dropReason {
 		return dropReasonUnknowTargetIP
 	}
 
+	metrics.UpdateRequestsReceivedMetrics(pkt.TargetIP.String())
 	a.logger.Info("got ARP request, sending response",
 		"interface", a.intf.Name,
 		"ip", pkt.TargetIP, "senderIP", pkt.SenderIP,
@@ -323,6 +336,7 @@ func (a *arpSpeaker) processRequest() dropReason {
 		return dropReasonError
 	}
 
+	metrics.UpdateResponsesSentMetrics(pkt.TargetIP.String())
 	return dropReasonNone
 }
 

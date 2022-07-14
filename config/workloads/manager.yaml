@@ -44,6 +44,7 @@ spec:
             - openelb-manager
           args:
             - --api-hosts=:50051
+            - --metrics-addr=:50052
             - --webhook-port=443
           image: controller:latest
           imagePullPolicy: IfNotPresent
