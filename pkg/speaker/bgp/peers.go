@@ -3,8 +3,10 @@ package bgp
 import (
 	"fmt"
 	"net"
+	"strconv"
 
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
@@ -33,7 +35,7 @@ func (b *Bgp) HandleBgpPeerStatus(bgpPeers []bgpapi.BgpPeer) []*bgpapi.BgpPeer {
 	)
 
 	fn := func(peer *api.Peer) {
-		tmp, err := bgpapi.ConverStatusFromGoBgpPeer(peer)
+		tmp, err := bgpapi.GetStatusFromGoBgpPeer(peer)
 		if err != nil {
 			ctrl.Log.Error(err, "failed to ConverStatusFromGoBgpPeer", "peer", peer)
 			return
@@ -125,11 +127,12 @@ func (b *Bgp) HandleBgpPeer(neighbor *bgpapi.BgpPeer, delete bool) error {
 		})
 	}
 
-	request, e := neighbor.Spec.ConverToGoBgpPeer()
+	request, e := neighbor.Spec.ToGoBgpPeer()
 	if e != nil {
 		return e
 	}
 
+	b.UpdatePeerMetrics(neighbor, delete)
 	if delete {
 		b.bgpServer.DeletePeer(context.Background(), &api.DeletePeerRequest{
 			Address:   request.Conf.NeighborAddress,
@@ -147,4 +150,39 @@ func (b *Bgp) HandleBgpPeer(neighbor *bgpapi.BgpPeer, delete bool) error {
 	}
 
 	return nil
+}
+
+func (b *Bgp) UpdatePeerMetrics(peer *bgpapi.BgpPeer, delete bool) {
+	status := peer.Status
+	for node, peerStatus := range status.NodesPeerStatus {
+		var state float64 = 0
+		peerIP := peer.Spec.Conf.NeighborAddress
+		if node != util.GetNodeName() {
+			continue
+		}
+
+		if delete {
+			metrics.DeleteBGPPeerMetrics(peerIP, node)
+			continue
+		}
+
+		stateStr := peerStatus.PeerState.SessionState
+		switch stateStr {
+		case "IDLE":
+			state = 0
+		case "CONNECT":
+			state = 1
+		case "ACTIVE":
+			state = 2
+		case "OPENSENT":
+			state = 3
+		case "OPENCONFIRM":
+			state = 4
+		case "ESTABLISHED":
+			state = 5
+		}
+
+		updateCount, _ := strconv.ParseFloat(peerStatus.PeerState.Messages.Received.Update, 64)
+		metrics.UpdateBGPSessionMetrics(peerIP, node, state, updateCount)
+	}
 }

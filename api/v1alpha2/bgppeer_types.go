@@ -19,6 +19,7 @@ package v1alpha2
 import (
 	"bytes"
 	"encoding/json"
+
 	"github.com/golang/protobuf/jsonpb"
 	api "github.com/osrg/gobgp/api"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -177,45 +178,6 @@ type AfiSafi struct {
 	AddPaths          *AddPaths          `json:"addPaths,omitempty"`
 }
 
-func (c BgpPeerSpec) ConverToGoBgpPeer() (*api.Peer, error) {
-	c.NodeSelector = nil
-
-	jsonBytes, err := json.Marshal(c)
-	if err != nil {
-		return nil, err
-	}
-
-	var result api.Peer
-	m := jsonpb.Unmarshaler{}
-	return &result, m.Unmarshal(bytes.NewReader(jsonBytes), &result)
-}
-
-func ConverStatusFromGoBgpPeer(peer *api.Peer) (NodePeerStatus, error) {
-	var (
-		nodePeerStatus NodePeerStatus
-	)
-
-	m := jsonpb.Marshaler{}
-	jsonStr, err := m.MarshalToString(peer.State)
-	if err != nil {
-		return nodePeerStatus, err
-	}
-
-	err = json.Unmarshal([]byte(jsonStr), &nodePeerStatus.PeerState)
-	if err != nil {
-		return nodePeerStatus, err
-	}
-
-	jsonStr, err = m.MarshalToString(peer.Timers.State)
-	if err != nil {
-		return nodePeerStatus, err
-	}
-
-	err = json.Unmarshal([]byte(jsonStr), &nodePeerStatus.TimersState)
-
-	return nodePeerStatus, err
-}
-
 type EbgpMultihop struct {
 	Enabled     bool   `json:"enabled,omitempty"`
 	MultihopTtl uint32 `json:"multihopTtl,omitempty"`
@@ -240,6 +202,45 @@ type BgpPeerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BgpPeer `json:"items"`
+}
+
+func (c BgpPeerSpec) ToGoBgpPeer() (*api.Peer, error) {
+	c.NodeSelector = nil
+
+	jsonBytes, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+
+	var result api.Peer
+	m := jsonpb.Unmarshaler{}
+	return &result, m.Unmarshal(bytes.NewReader(jsonBytes), &result)
+}
+
+func GetStatusFromGoBgpPeer(peer *api.Peer) (NodePeerStatus, error) {
+	var (
+		nodePeerStatus NodePeerStatus
+	)
+
+	m := jsonpb.Marshaler{}
+	jsonStr, err := m.MarshalToString(peer.State)
+	if err != nil {
+		return nodePeerStatus, err
+	}
+
+	err = json.Unmarshal([]byte(jsonStr), &nodePeerStatus.PeerState)
+	if err != nil {
+		return nodePeerStatus, err
+	}
+
+	jsonStr, err = m.MarshalToString(peer.Timers.State)
+	if err != nil {
+		return nodePeerStatus, err
+	}
+
+	err = json.Unmarshal([]byte(jsonStr), &nodePeerStatus.TimersState)
+
+	return nodePeerStatus, err
 }
 
 func init() {

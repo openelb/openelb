@@ -25,7 +25,7 @@ import (
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/util"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -85,7 +85,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
-	node := &v1.Node{}
+	node := &corev1.Node{}
 	rack := ""
 	err = r.Get(context.Background(), types.NamespacedName{Name: util.GetNodeName()}, node)
 	if err != nil {
@@ -131,7 +131,7 @@ func (r *BgpConfReconciler) reconfigPeers() error {
 	if err != nil {
 		return err
 	}
-	node := &v1.Node{}
+	node := &corev1.Node{}
 	err = r.Get(ctx, types.NamespacedName{Name: util.GetNodeName()}, node)
 	if err != nil {
 		return err
@@ -201,8 +201,8 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	np := predicate.Funcs{
 		UpdateFunc: func(evt event.UpdateEvent) bool {
-			old := evt.ObjectOld.(*v1.Node)
-			new := evt.ObjectNew.(*v1.Node)
+			old := evt.ObjectOld.(*corev1.Node)
+			new := evt.ObjectNew.(*corev1.Node)
 
 			oldHaveLabel := false
 			if old.Labels != nil {
@@ -225,7 +225,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
-	return ctl.Watch(&source.Kind{Type: &v1.Node{}}, &EnqueueRequestForNode{Client: r.Client, peer: false}, np)
+	return ctl.Watch(&source.Kind{Type: &corev1.Node{}}, &EnqueueRequestForNode{Client: r.Client, peer: false}, np)
 }
 
 func SetupBgpConfReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {

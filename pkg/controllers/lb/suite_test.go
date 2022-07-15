@@ -197,8 +197,11 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(cfg).ToNot(BeNil())
 
 	// +kubebuilder:scaffold:scheme
-
-	mgr, err := manager.NewManager(cfg, manager.NewGenericOptions())
+	mgr, err := manager.NewManager(cfg, &manager.GenericOptions{
+		WebhookPort:   443,
+		MetricsAddr:   "0",
+		ReadinessAddr: "0",
+	})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mgr).ToNot(BeNil())
 

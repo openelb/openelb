@@ -23,7 +23,7 @@ type GenericOptions struct {
 func NewGenericOptions() *GenericOptions {
 	return &GenericOptions{
 		WebhookPort:   443,
-		MetricsAddr:   "0",
+		MetricsAddr:   ":50052",
 		ReadinessAddr: "0",
 	}
 }
