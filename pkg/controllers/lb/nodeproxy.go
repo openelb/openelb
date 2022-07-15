@@ -161,7 +161,13 @@ func (r *ServiceReconciler) getForwardImage() string {
 	if err != nil {
 		return constant.NodeProxyDefaultForwardImage
 	}
-	return cm.Data[constant.NodeProxyConfigMapForwardImage]
+
+	image, exist := cm.Data[constant.NodeProxyConfigMapForwardImage]
+	if !exist {
+		return constant.NodeProxyDefaultForwardImage
+	}
+
+	return image
 }
 
 func (r *ServiceReconciler) getProxyImage() string {
@@ -169,7 +175,13 @@ func (r *ServiceReconciler) getProxyImage() string {
 	if err != nil {
 		return constant.NodeProxyDefaultProxyImage
 	}
-	return cm.Data[constant.NodeProxyConfigMapProxyImage]
+
+	image, exist := cm.Data[constant.NodeProxyConfigMapProxyImage]
+	if !exist {
+		return constant.NodeProxyDefaultProxyImage
+	}
+
+	return image
 }
 
 // The only env variable is `PROXY_ARGS`

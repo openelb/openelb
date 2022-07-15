@@ -118,7 +118,12 @@ func (k *KeepAlived) getImage() string {
 	if err != nil {
 		return constant.OpenELBDefaultKeepAliveImage
 	}
-	return cm.Data[constant.OpenELBKeepAliveImage]
+
+	image, exist := cm.Data[constant.OpenELBKeepAliveImage]
+	if !exist {
+		return constant.OpenELBDefaultKeepAliveImage
+	}
+	return image
 }
 
 func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
