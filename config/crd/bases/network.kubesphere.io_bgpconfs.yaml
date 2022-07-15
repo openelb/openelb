@@ -135,6 +135,8 @@ spec:
               listenPort:
                 format: int32
                 type: integer
+              policy:
+                type: string
               routerId:
                 type: string
               useMultiplePaths:
