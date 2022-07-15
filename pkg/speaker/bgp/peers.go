@@ -35,7 +35,7 @@ func (b *Bgp) HandleBgpPeerStatus(bgpPeers []bgpapi.BgpPeer) []*bgpapi.BgpPeer {
 	)
 
 	fn := func(peer *api.Peer) {
-		tmp, err := bgpapi.ConverStatusFromGoBgpPeer(peer)
+		tmp, err := bgpapi.GetStatusFromGoBgpPeer(peer)
 		if err != nil {
 			ctrl.Log.Error(err, "failed to ConverStatusFromGoBgpPeer", "peer", peer)
 			return
@@ -127,7 +127,7 @@ func (b *Bgp) HandleBgpPeer(neighbor *bgpapi.BgpPeer, delete bool) error {
 		})
 	}
 
-	request, e := neighbor.Spec.ConverToGoBgpPeer()
+	request, e := neighbor.Spec.ToGoBgpPeer()
 	if e != nil {
 		return e
 	}

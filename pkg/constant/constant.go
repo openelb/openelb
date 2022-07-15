@@ -50,7 +50,7 @@ const (
 
 	OpenELBSpeakerLocker      = "openelb-speaker"
 	OpenELBNamespace          = "openelb-system"
-	OpenELBConfigMap          = "openelb-vip-configmap"
+	OpenELBVipConfigMap       = "openelb-vip-configmap"
 	OpenELBVipName            = "openelb-keepalive-vip"
 	OpenELBServiceAccountName = "kube-keepalived-vip"
 	OpenELBKeepAliveImageName = "aledbf/kube-keepalived-vip:0.35"
