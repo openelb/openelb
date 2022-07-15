@@ -19,16 +19,11 @@ const (
 	LabelNodeProxyExcludeNode         string = "node-proxy.openelb.kubesphere.io/exclude-node"
 	NodeProxyExternalIPAnnotationKey  string = "node-proxy.openelb.kubesphere.io/external-ip"
 	NodeProxyInternalIPAnnotationKey  string = "node-proxy.openelb.kubesphere.io/internal-ip"
-	NodeProxyDefaultForwardImage      string = "kubesphere/openelb-forward:v0.4.2"
-	NodeProxyDefaultProxyImage        string = "kubesphere/openelb-proxy:v0.4.2"
 	NameSeparator                     string = "-"
 	IPSeparator                       string = ","
 	EnvArgSplitter                    string = " "
 	NodeProxyWorkloadPrefix           string = "node-proxy-"
 	NodeProxyFinalizerName            string = "node-proxy.openelb.kubesphere.io/finalizer"
-	NodeProxyConfigMapName            string = "node-proxy-config"
-	NodeProxyConfigMapForwardImage    string = "forward-image"
-	NodeProxyConfigMapProxyImage      string = "proxy-image"
 
 	KubernetesMasterLabel string = "node-role.kubernetes.io/master"
 
@@ -48,13 +43,20 @@ const (
 	OpenELBCNICalico      string = "calico"
 	EipRangeSeparator     string = "-"
 
-	OpenELBSpeakerLocker              = "openelb-speaker"
-	OpenELBNamespace                  = "openelb-system"
-	OpenELBConfigMap                  = "openelb-vip-configmap"
-	OpenELBVipName                    = "openelb-keepalive-vip"
-	OpenELBServiceAccountName         = "kube-keepalived-vip"
-	OpenELBKeepAliveImageName         = "aledbf/kube-keepalived-vip:0.35" // keepalived image by default
-	OpenELBKeepAliveImageConfigMapKey = "keepalived-vip-image"
-	EnvOpenELBNamespace               = "OPENELB_NAMESPACE"
-	EnvNodeName                       = "NODE_NAME"
+	OpenELBSpeakerLocker      = "openelb-speaker"
+	OpenELBNamespace          = "openelb-system"
+	OpenELBConfigMap          = "openelb-vip-configmap"
+	OpenELBVipName            = "openelb-keepalive-vip"
+	OpenELBServiceAccountName = "kube-keepalived-vip"
+	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
+	EnvNodeName               = "NODE_NAME"
+
+	// default images and specify images
+	OpenELBImagesConfigMap         = "openelb-images"
+	NodeProxyConfigMapForwardImage = "forward-image"
+	NodeProxyConfigMapProxyImage   = "proxy-image"
+	OpenELBKeepAliveImage          = "keepalived-vip-image"
+	OpenELBDefaultKeepAliveImage   = "kubesphere/kube-keepalived-vip:0.35" // keepalived image by default
+	NodeProxyDefaultForwardImage   = "kubesphere/openelb-forward:master"
+	NodeProxyDefaultProxyImage     = "kubesphere/openelb-proxy:master"
 )

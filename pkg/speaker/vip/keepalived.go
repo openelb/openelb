@@ -109,15 +109,16 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 // If the ConfigMap exists and the configuration is set, use it,
 // 	otherwise, use the default image got from constants.
 func (k *KeepAlived) getConfig() (*corev1.ConfigMap, error) {
-	return k.clientset.CoreV1().ConfigMaps(util.EnvNamespace()).Get(context.Background(), constant.OpenELBConfigMap, metav1.GetOptions{})
+	return k.clientset.CoreV1().ConfigMaps(util.EnvNamespace()).
+		Get(context.Background(), constant.OpenELBImagesConfigMap, metav1.GetOptions{})
 }
 
 func (k *KeepAlived) getImage() string {
 	cm, err := k.getConfig()
 	if err != nil {
-		return constant.OpenELBKeepAliveImageName
+		return constant.OpenELBDefaultKeepAliveImage
 	}
-	return cm.Data[constant.OpenELBKeepAliveImageConfigMapKey]
+	return cm.Data[constant.OpenELBKeepAliveImage]
 }
 
 func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {

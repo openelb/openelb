@@ -18,7 +18,6 @@ type GenericOptions struct {
 	WebhookPort     int
 	MetricsAddr     string
 	ReadinessAddr   string
-	KeepAlivedImage string
 }
 
 func NewGenericOptions() *GenericOptions {
