@@ -150,7 +150,7 @@ func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTempl
 // If the ConfigMap exists and the configuration is set, use it,
 // 	otherwise, use the default image got from constants.
 func (r *ServiceReconciler) getNPConfig() (*corev1.ConfigMap, error) {
-	NPCfgName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: constant.NodeProxyConfigMapName}
+	NPCfgName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: constant.OpenELBImagesConfigMap}
 	cm := &corev1.ConfigMap{}
 	err := r.Get(context.Background(), NPCfgName, cm)
 	return cm, err
@@ -161,7 +161,13 @@ func (r *ServiceReconciler) getForwardImage() string {
 	if err != nil {
 		return constant.NodeProxyDefaultForwardImage
 	}
-	return cm.Data[constant.NodeProxyConfigMapForwardImage]
+
+	image, exist := cm.Data[constant.NodeProxyConfigMapForwardImage]
+	if !exist {
+		return constant.NodeProxyDefaultForwardImage
+	}
+
+	return image
 }
 
 func (r *ServiceReconciler) getProxyImage() string {
@@ -169,7 +175,13 @@ func (r *ServiceReconciler) getProxyImage() string {
 	if err != nil {
 		return constant.NodeProxyDefaultProxyImage
 	}
-	return cm.Data[constant.NodeProxyConfigMapProxyImage]
+
+	image, exist := cm.Data[constant.NodeProxyConfigMapProxyImage]
+	if !exist {
+		return constant.NodeProxyDefaultProxyImage
+	}
+
+	return image
 }
 
 // The only env variable is `PROXY_ARGS`

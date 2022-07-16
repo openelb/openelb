@@ -124,7 +124,6 @@ func Run(c *options.OpenELBManagerOptions) error {
 	}
 	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
 		Args:  []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBVipConfigMap)},
-		Image: constant.OpenELBKeepAliveImageName,
 	})
 
 	//For keepalive

@@ -25,8 +25,7 @@ type KeepAlived struct {
 }
 
 type KeepAlivedConfig struct {
-	Args  []string
-	Image string
+	Args []string
 }
 
 func (k *KeepAlived) SetBalancer(configMap string, nexthops []corev1.Node) error {
@@ -106,6 +105,27 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 	return err
 }
 
+// User can config Keepalived by ConfigMap to specify the images
+// If the ConfigMap exists and the configuration is set, use it,
+// 	otherwise, use the default image got from constants.
+func (k *KeepAlived) getConfig() (*corev1.ConfigMap, error) {
+	return k.clientset.CoreV1().ConfigMaps(util.EnvNamespace()).
+		Get(context.Background(), constant.OpenELBImagesConfigMap, metav1.GetOptions{})
+}
+
+func (k *KeepAlived) getImage() string {
+	cm, err := k.getConfig()
+	if err != nil {
+		return constant.OpenELBDefaultKeepAliveImage
+	}
+
+	image, exist := cm.Data[constant.OpenELBKeepAliveImage]
+	if !exist {
+		return constant.OpenELBDefaultKeepAliveImage
+	}
+	return image
+}
+
 func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
 	var privileged = true
 	return &appv1.DaemonSet{
@@ -147,7 +167,7 @@ func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
 					},
 					Containers: []corev1.Container{
 						{
-							Image:           k.conf.Image,
+							Image:           k.getImage(),
 							Name:            constant.OpenELBVipName,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							SecurityContext: &corev1.SecurityContext{
