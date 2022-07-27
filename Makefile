@@ -10,6 +10,20 @@ IMG_FORWARD ?= $(DOCKER_USERNAME)/openelb-forward:$(RELEASE_TAG)
 
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
+ifeq (,$(shell git status --porcelain 2>/dev/null))
+GIT_TREE_STATE="clean"
+else
+GIT_TREE_STATE="dirty"
+endif
+GIT_COMMIT = $(shell git rev-parse HEAD)
+GIT_REPO = $(shell git config --get remote.origin.url)
+DATE = $(shell date +"%Y-%m-%d_%H:%M:%S")
+LDFLAGS= " \
+	-X 'github.com/openelb/openelb/pkg/version.gitVersion=$(RELEASE_TAG)' \
+	-X 'github.com/openelb/openelb/pkg/version.gitCommit=$(GIT_COMMIT)' \
+	-X 'github.com/openelb/openelb/pkg/version.gitTreeState=$(GIT_TREE_STATE)' \
+	-X 'github.com/openelb/openelb/pkg/version.buildDate=$(DATE)' "
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -34,7 +48,7 @@ test: fmt vet
 # Build manager binary
 manager: fmt vet
 	#CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bin/manager github.com/openelb/openelb/cmd/manager
-	CGO_ENABLED=0 go build  -o bin/manager github.com/openelb/openelb/cmd/manager
+	CGO_ENABLED=0 go build  -o bin/manager -ldflags ${LDFLAGS} github.com/openelb/openelb/cmd/manager
 
 
 deploy: generate

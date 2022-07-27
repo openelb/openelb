@@ -15,9 +15,9 @@ import (
 )
 
 type GenericOptions struct {
-	WebhookPort     int
-	MetricsAddr     string
-	ReadinessAddr   string
+	WebhookPort   int
+	MetricsAddr   string
+	ReadinessAddr string
 }
 
 func NewGenericOptions() *GenericOptions {
