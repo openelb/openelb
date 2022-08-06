@@ -8,7 +8,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
@@ -182,17 +181,11 @@ func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 	var nexthops []string
 
 	for _, node := range nodes {
-		rack := ""
-		if node.Labels != nil {
-			rack = node.Labels[constant.OpenELBNodeRack]
+		nexthop, err := b.getNodeNextHop(node)
+		if err != nil {
+			return err
 		}
-		if rack == b.rack || b.rack == "" {
-			nexthop, err := b.getNodeNextHop(node)
-			if err != nil {
-				return err
-			}
-			nexthops = append(nexthops, nexthop)
-		}
+		nexthops = append(nexthops, nexthop)
 	}
 
 	ctrl.Log.Info("bgp setBalancer", "nexthops", nexthops)

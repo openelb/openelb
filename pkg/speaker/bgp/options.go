@@ -6,6 +6,13 @@ import (
 	"github.com/spf13/pflag"
 )
 
+type Bgp struct {
+	log       logr.Logger
+	conf      string
+	client    Client
+	bgpServer *server.BgpServer
+}
+
 type BgpOptions struct {
 	GrpcHosts string `long:"api-hosts" description:"specify the hosts that gobgpd listens on" default:":50051"`
 }
@@ -18,10 +25,4 @@ func NewBgpOptions() *BgpOptions {
 
 func (options *BgpOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&options.GrpcHosts, "api-hosts", options.GrpcHosts, "specify the hosts that gobgpd listens on")
-}
-
-type Bgp struct {
-	bgpServer *server.BgpServer
-	rack      string
-	log       logr.Logger
 }

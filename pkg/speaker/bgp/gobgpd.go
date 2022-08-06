@@ -1,18 +1,24 @@
 package bgp
 
 import (
+	"sync"
+
 	"github.com/openelb/openelb/pkg/speaker"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sync"
 )
 
 var _ speaker.Speaker = &Bgp{}
 
-func NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
+type Client struct {
+	Clientset kubernetes.Interface
+}
+
+func (c *Client) NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
 	maxSize := 4 << 20 //4MB
 	grpcOpts := []grpc.ServerOption{grpc.MaxRecvMsgSize(maxSize), grpc.MaxSendMsgSize(maxSize)}
 
@@ -20,6 +26,7 @@ func NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
 
 	return &Bgp{
 		bgpServer: bgpServer,
+		client:    *c,
 		log:       ctrl.Log.WithName("bgpserver"),
 	}
 }
@@ -29,6 +36,7 @@ func (b *Bgp) run(stopCh <-chan struct{}) {
 
 	log.Info("gobgpd starting")
 	go b.bgpServer.Serve()
+	go b.watchForChanges()
 	<-stopCh
 	log.Info("gobgpd ending")
 	err := b.bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
