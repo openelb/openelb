@@ -2,13 +2,14 @@ package bgp
 
 import (
 	"github.com/go-logr/logr"
+	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
 	"github.com/spf13/pflag"
 )
 
 type Bgp struct {
 	log       logr.Logger
-	conf      string
+	peers     []*api.Peer
 	client    Client
 	bgpServer *server.BgpServer
 }

@@ -165,18 +165,6 @@ func (b *Bgp) setBalancer(ip string, nexthops []string) error {
 	return nil
 }
 
-func (b *Bgp) getPeers() []*api.Peer {
-	peerList := []*api.Peer{}
-	fn := func(p *api.Peer) {
-		peerList = append(peerList, p)
-	}
-	err := b.bgpServer.ListPeer(context.Background(), &api.ListPeerRequest{}, fn)
-	if err != nil {
-		return nil
-	}
-	return peerList
-}
-
 func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 	var nexthops []string
 

@@ -54,6 +54,7 @@ func (b *Bgp) updateConfigMap(eventChannel <-chan watch.Event, conf *string) {
 				} else {
 					b.log.Info("deleted gobgp configuration", "config", *conf)
 					*conf = ""
+					b.UpdatePeerMetrics()
 				}
 			}
 		} else {
@@ -81,6 +82,7 @@ func (b *Bgp) initialConfig(cm *corev1.ConfigMap, conf *string) error {
 	if err == nil {
 		b.log.Info("added gobgp configuration", "config", data)
 		*conf = data
+		b.UpdatePeerMetrics()
 	}
 	return err
 }
@@ -91,7 +93,7 @@ func (b *Bgp) updateConfig(cm *corev1.ConfigMap, conf *string) error {
 		return fmt.Errorf("no gobgp config found")
 	}
 	// read old config
-	prevPath, err := writeToTempFile(b.conf)
+	prevPath, err := writeToTempFile(*conf)
 	defer os.RemoveAll(prevPath)
 	if err != nil {
 		return err
@@ -114,6 +116,7 @@ func (b *Bgp) updateConfig(cm *corev1.ConfigMap, conf *string) error {
 	if err == nil {
 		b.log.Info("updated gobgp configuration", "config", data)
 		*conf = data
+		b.UpdatePeerMetrics()
 	}
 	return err
 }
