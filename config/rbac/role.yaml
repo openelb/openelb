@@ -131,26 +131,6 @@ rules:
 - apiGroups:
   - network.kubesphere.io
   resources:
-  - bgpconfs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgpconfs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
   - eips
   verbs:
   - create
