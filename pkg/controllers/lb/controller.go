@@ -24,7 +24,6 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
-	"github.com/openelb/openelb/api/v1alpha2"
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
@@ -122,29 +121,6 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 	err = ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, ep)
-	if err != nil {
-		return err
-	}
-
-	bp := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			old := e.ObjectOld.(*v1alpha2.BgpConf)
-			new := e.ObjectNew.(*v1alpha2.BgpConf)
-
-			if !reflect.DeepEqual(old.Annotations, new.Annotations) {
-				return true
-			}
-
-			return false
-		},
-	}
-	err = ctl.Watch(&source.Kind{Type: &v1alpha2.BgpConf{}}, &EnqueueRequestForNode{Client: r.Client}, bp)
 	if err != nil {
 		return err
 	}
