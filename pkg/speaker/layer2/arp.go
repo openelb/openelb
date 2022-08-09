@@ -184,8 +184,7 @@ func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
 		nexthop := nodes[0].Annotations[constant.OpenELBLayer2Annotation]
 		// check for valid CIDR range
 		if strings.Contains(nexthop, "/") {
-			_, err := a.setBalancerFromIPRange(nexthop)
-			return err
+			return a.setNextHopFromIPRange(ip, nexthop)
 		}
 		// check for valid ip
 		if net.ParseIP(nexthop) != nil {
@@ -206,12 +205,12 @@ func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
 	return fmt.Errorf("node %s has no nexthop", nodes[0].Name)
 }
 
-func (a *arpSpeaker) setBalancerFromIPRange(cidr string) (net.IP, error) {
+func (a *arpSpeaker) setNextHopFromIPRange(svcIP, cidr string) error {
 	var err error
 	// convert string to IPNet struct
 	_, ipv4Net, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// convert IPNet struct mask and address to uint32
 	// network is BigEndian
@@ -224,22 +223,22 @@ func (a *arpSpeaker) setBalancerFromIPRange(cidr string) (net.IP, error) {
 	// loop through addresses as uint32
 	for i := start; i <= finish; i++ {
 		// convert back to net.IP
-		ip := make(net.IP, 4)
-		binary.BigEndian.PutUint32(ip, i)
-		hwAddr, err := a.resolveIP(ip)
+		nexthop := make(net.IP, 4)
+		binary.BigEndian.PutUint32(nexthop, i)
+		hwAddr, err := a.resolveIP(nexthop)
 		if err != nil {
-			a.logger.Error(err, "arp: could not resolve ", "ip", ip)
+			a.logger.Error(err, "arp: could not resolve ", "ip", nexthop)
 			continue
 		}
 		if hwAddr.String() != a.intf.HardwareAddr.String() {
 			continue
 		}
-		err = a.setBalancer(ip.String(), []string{ip.String()})
+		err = a.setBalancer(svcIP, []string{nexthop.String()})
 		if err == nil {
-			return ip, nil
+			return nil
 		}
 	}
-	return nil, err
+	return err
 }
 
 func (a *arpSpeaker) setBalancer(ip string, nexthops []string) error {
