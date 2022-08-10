@@ -265,6 +265,21 @@ func (i *IPAM) syncEip(e *networkv1alpha2.Eip) error {
 }
 
 func (i *IPAM) removeEip(e *networkv1alpha2.Eip) error {
+	if e.Status.Usage != 0 {
+		for ip, _ := range e.Status.Used {
+			s := speaker.GetSpeaker(e.GetSpeakerName())
+			if s == nil {
+				i.log.Info("remove eip, but there is no speaker")
+				break
+			}
+
+			err := s.DelBalancer(ip)
+			if err != nil {
+				i.log.Error(err, fmt.Sprintf("delete balancer [%s:%s] error", e.GetSpeakerName(), ip))
+			}
+		}
+	}
+
 	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
 		speaker.UnRegisterSpeaker(e.Spec.Interface)
 	}

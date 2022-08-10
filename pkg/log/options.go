@@ -2,6 +2,7 @@ package log
 
 import (
 	"flag"
+
 	"github.com/spf13/pflag"
 	"go.uber.org/zap/zapcore"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -18,7 +19,7 @@ func NewOptions() *Options {
 			Encoder:         nil,
 			DestWritter:     nil,
 			Level:           zapcore.InfoLevel,
-			StacktraceLevel: nil,
+			StacktraceLevel: zapcore.PanicLevel,
 			ZapOpts:         nil,
 		}}
 }
