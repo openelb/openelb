@@ -17,7 +17,7 @@ type BgpPeerHandler interface {
 	// List returns all the BgpPeer objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.BgpPeerList, error)
 	// Delete deletes the BgpPeer object in the kubernetes cluster.
-	Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
+	Delete(ctx context.Context, name string) error
 }
 
 // bgpPeerHandler is an implementation of the BgpPeerHandler.
@@ -54,6 +54,10 @@ func (b *bgpPeerHandler) List(ctx context.Context) (*v1alpha2.BgpPeerList, error
 }
 
 // Delete deletes the BgpPeer object in the kubernetes cluster.
-func (b *bgpPeerHandler) Delete(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
+func (b *bgpPeerHandler) Delete(ctx context.Context, name string) error {
+	bgpPeer, err := b.Get(ctx, name)
+	if err != nil {
+		return err
+	}
 	return b.client.Delete(ctx, bgpPeer)
 }

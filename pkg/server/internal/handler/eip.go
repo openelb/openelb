@@ -17,7 +17,7 @@ type EipHandler interface {
 	// ListEips returns the list of Eip objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.EipList, error)
 	// DeleteEip deletes the Eip object in the kubernetes cluster.
-	Delete(ctx context.Context, eip *v1alpha2.Eip) error
+	Delete(ctx context.Context, name string) error
 }
 
 // eipHandler is an implementation of the EipHandler.
@@ -54,6 +54,10 @@ func (e *eipHandler) List(ctx context.Context) (*v1alpha2.EipList, error) {
 }
 
 // DeleteEip deletes the Eip object in the kubernetes cluster.
-func (e *eipHandler) Delete(ctx context.Context, eip *v1alpha2.Eip) error {
+func (e *eipHandler) Delete(ctx context.Context, name string) error {
+	eip, err := e.Get(ctx, name)
+	if err != nil {
+		return err
+	}
 	return e.client.Delete(ctx, eip)
 }

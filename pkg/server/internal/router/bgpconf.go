@@ -53,14 +53,12 @@ func (b *bgpConfRouter) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *bgpConfRouter) delete(w http.ResponseWriter, r *http.Request) {
-	var bgpConf v1alpha2.BgpConf
 	lib.ServeRequest(lib.InboundRequest{
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Delete(r.Context(), &bgpConf)
+			return nil, b.handler.Delete(r.Context())
 		},
-		ReqBody:    &bgpConf,
 		StatusCode: http.StatusNoContent,
 	})
 }

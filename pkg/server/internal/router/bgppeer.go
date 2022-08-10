@@ -17,7 +17,7 @@ func (b *bgpPeerRouter) Register(r chi.Router) {
 	r.Get("/apis/v1/bgppeer/{name}", b.get)
 	r.Get("/apis/v1/bgppeer", b.list)
 	r.Post("/apis/v1/bgppeer", b.create)
-	r.Delete("/apis/v1/bgppeer", b.delete)
+	r.Delete("/apis/v1/bgppeer/{name}", b.delete)
 }
 
 // NewBgpPeerRouter returns a new instance of bgpPeerRouter which
@@ -66,14 +66,13 @@ func (b *bgpPeerRouter) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *bgpPeerRouter) delete(w http.ResponseWriter, r *http.Request) {
-	var bgpPeer v1alpha2.BgpPeer
+	name := chi.URLParam(r, "name")
 	lib.ServeRequest(lib.InboundRequest{
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Delete(r.Context(), &bgpPeer)
+			return nil, b.handler.Delete(r.Context(), name)
 		},
-		ReqBody:    &bgpPeer,
 		StatusCode: http.StatusNoContent,
 	})
 }

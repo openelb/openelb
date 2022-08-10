@@ -17,7 +17,7 @@ func (e *eipRouter) Register(r chi.Router) {
 	r.Post("/apis/v1/eip", e.create)
 	r.Get("/apis/v1/eip/{name}", e.get)
 	r.Get("/apis/v1/eip", e.list)
-	r.Delete("/apis/v1/eip", e.delete)
+	r.Delete("/apis/v1/eip/{name}", e.delete)
 }
 
 // NewEipRouter returns a new instance of eipRouter which implements the
@@ -64,14 +64,13 @@ func (e *eipRouter) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *eipRouter) delete(w http.ResponseWriter, r *http.Request) {
-	var eip v1alpha2.Eip
+	name := chi.URLParam(r, "name")
 	lib.ServeRequest(lib.InboundRequest{
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, e.handler.Delete(r.Context(), &eip)
+			return nil, e.handler.Delete(r.Context(), name)
 		},
-		ReqBody:    &eip,
 		StatusCode: http.StatusNoContent,
 	})
 }

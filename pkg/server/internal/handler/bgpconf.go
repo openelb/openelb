@@ -16,7 +16,7 @@ type BgpConfHandler interface {
 	// Get returns the BgpConf object in the kubernetes cluster if found.
 	Get(ctx context.Context) (*v1alpha2.BgpConf, error)
 	// Delete deletes the BgpConf object in the kubernetes cluster.
-	Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
+	Delete(ctx context.Context) error
 }
 
 // bgpConfHandler is an implementation of the BgpConfHandler.
@@ -53,6 +53,10 @@ func (b *bgpConfHandler) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
 }
 
 // Delete deletes the BgpConf object in the kubernetes cluster.
-func (b *bgpConfHandler) Delete(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
+func (b *bgpConfHandler) Delete(ctx context.Context) error {
+	bgpConf, err := b.Get(ctx)
+	if err != nil {
+		return err
+	}
 	return b.client.Delete(ctx, bgpConf)
 }
