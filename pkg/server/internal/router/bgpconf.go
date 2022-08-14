@@ -16,6 +16,7 @@ type bgpConfRouter struct {
 func (b *bgpConfRouter) Register(r chi.Router) {
 	r.Post("/apis/v1/bgpconf", b.create)
 	r.Get("/apis/v1/bgpconf", b.get)
+	r.Patch("/apis/v1/bgpconf", b.patch)
 	r.Delete("/apis/v1/bgpconf", b.delete)
 }
 
@@ -48,6 +49,19 @@ func (b *bgpConfRouter) get(w http.ResponseWriter, r *http.Request) {
 		EndpointLogic: func() (interface{}, error) {
 			return b.handler.Get(r.Context())
 		},
+		StatusCode: http.StatusOK,
+	})
+}
+
+func (b *bgpConfRouter) patch(w http.ResponseWriter, r *http.Request) {
+	var bgpConf v1alpha2.BgpConf
+	lib.ServeRequest(lib.InboundRequest{
+		W: w,
+		R: r,
+		EndpointLogic: func() (interface{}, error) {
+			return nil, b.handler.Patch(r.Context(), &bgpConf)
+		},
+		ReqBody: &bgpConf,
 		StatusCode: http.StatusOK,
 	})
 }

@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/openelb/openelb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -15,6 +17,8 @@ type BgpConfHandler interface {
 	Create(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
 	// Get returns the BgpConf object in the kubernetes cluster if found.
 	Get(ctx context.Context) (*v1alpha2.BgpConf, error)
+	// Patch patches the BgpConf object in the kubernetes cluster.
+	Patch(ctx context.Context, patchObj *v1alpha2.BgpConf) error
 	// Delete deletes the BgpConf object in the kubernetes cluster.
 	Delete(ctx context.Context) error
 }
@@ -50,6 +54,22 @@ func (b *bgpConfHandler) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
 	bgpConf := &v1alpha2.BgpConf{}
 	err := b.client.Get(ctx, client.ObjectKey{Name: "default"}, bgpConf)
 	return bgpConf, err
+}
+
+// Patch patches the BgpConf object in the kubernetes cluster.
+func (b *bgpConfHandler) Patch(ctx context.Context,
+	patchObj *v1alpha2.BgpConf) error {
+	bgpConf, err := b.Get(ctx)
+	if err != nil {
+		return err
+	}
+	var patchBytes []byte
+	patchBytes, err = json.Marshal(patchObj)
+	if err != nil {
+		return err
+	}
+	return b.client.Patch(ctx, bgpConf, client.RawPatch(types.MergePatchType,
+		patchBytes))
 }
 
 // Delete deletes the BgpConf object in the kubernetes cluster.

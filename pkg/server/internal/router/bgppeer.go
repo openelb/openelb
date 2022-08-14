@@ -14,9 +14,10 @@ type bgpPeerRouter struct {
 }
 
 func (b *bgpPeerRouter) Register(r chi.Router) {
+	r.Post("/apis/v1/bgppeer", b.create)
 	r.Get("/apis/v1/bgppeer/{name}", b.get)
 	r.Get("/apis/v1/bgppeer", b.list)
-	r.Post("/apis/v1/bgppeer", b.create)
+	r.Patch("/apis/v1/bgppeer/{name}", b.patch)
 	r.Delete("/apis/v1/bgppeer/{name}", b.delete)
 }
 
@@ -61,6 +62,20 @@ func (b *bgpPeerRouter) list(w http.ResponseWriter, r *http.Request) {
 		EndpointLogic: func() (interface{}, error) {
 			return b.handler.List(r.Context())
 		},
+		StatusCode: http.StatusOK,
+	})
+}
+
+func (b *bgpPeerRouter) patch(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	var bgpPeer v1alpha2.BgpPeer
+	lib.ServeRequest(lib.InboundRequest{
+		W: w,
+		R: r,
+		EndpointLogic: func() (interface{}, error) {
+			return nil, b.handler.Patch(r.Context(), name, &bgpPeer)
+		},
+		ReqBody: &bgpPeer,
 		StatusCode: http.StatusOK,
 	})
 }

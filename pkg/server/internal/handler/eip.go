@@ -2,8 +2,10 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/openelb/openelb/api/v1alpha2"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -16,6 +18,8 @@ type EipHandler interface {
 	Get(ctx context.Context, name string) (*v1alpha2.Eip, error)
 	// List returns the list of Eip objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.EipList, error)
+	// Patch patches the Eip object in the kubernetes cluster.
+	Patch(ctx context.Context, name string, patchObj *v1alpha2.Eip) error
 	// Delete deletes the Eip object in the kubernetes cluster.
 	Delete(ctx context.Context, name string) error
 }
@@ -51,6 +55,22 @@ func (e *eipHandler) List(ctx context.Context) (*v1alpha2.EipList, error) {
 	eipList := &v1alpha2.EipList{}
 	err := e.client.List(ctx, eipList)
 	return eipList, err
+}
+
+// Patch patches the Eip object in the kubernetes cluster.
+func (e *eipHandler) Patch(ctx context.Context, name string, 
+	patchObj *v1alpha2.Eip) error {
+	eip, err := e.Get(ctx, name)
+	if err != nil {
+		return err
+	}
+	var patchBytes []byte
+	patchBytes, err = json.Marshal(patchObj)
+	if err != nil {
+		return err
+	}
+	return e.client.Patch(ctx, eip, client.RawPatch(types.MergePatchType,
+		patchBytes))
 }
 
 // Delete deletes the Eip object in the kubernetes cluster.
