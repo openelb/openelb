@@ -14,9 +14,9 @@ type EipHandler interface {
 	Create(ctx context.Context, eip *v1alpha2.Eip) error
 	// Get returns the Eip object in the kubernetes cluster if found.
 	Get(ctx context.Context, name string) (*v1alpha2.Eip, error)
-	// ListEips returns the list of Eip objects in the kubernetes cluster.
+	// List returns the list of Eip objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.EipList, error)
-	// DeleteEip deletes the Eip object in the kubernetes cluster.
+	// Delete deletes the Eip object in the kubernetes cluster.
 	Delete(ctx context.Context, name string) error
 }
 
@@ -46,14 +46,14 @@ func (e *eipHandler) Get(ctx context.Context, name string) (*v1alpha2.Eip, error
 	return eip, err
 }
 
-// ListEips returns the list of Eip objects in the kubernetes cluster.
+// List returns the list of Eip objects in the kubernetes cluster.
 func (e *eipHandler) List(ctx context.Context) (*v1alpha2.EipList, error) {
 	eipList := &v1alpha2.EipList{}
 	err := e.client.List(ctx, eipList)
 	return eipList, err
 }
 
-// DeleteEip deletes the Eip object in the kubernetes cluster.
+// Delete deletes the Eip object in the kubernetes cluster.
 func (e *eipHandler) Delete(ctx context.Context, name string) error {
 	eip, err := e.Get(ctx, name)
 	if err != nil {
