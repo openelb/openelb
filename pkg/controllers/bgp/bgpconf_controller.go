@@ -76,13 +76,13 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	clone := instance.DeepCopy()
 
-	err = r.ReconcilePolicyCM(ctx, clone)
+	cm, err := r.ReconcilePolicyCM(ctx, clone)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
-		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true)
+		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, cm)
 		if err != nil {
 			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
 		}
@@ -117,7 +117,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		clone.Spec.RouterId = util.GetNodeIP(*node).String()
 	}
 
-	err = r.BgpServer.HandleBgpGlobalConfig(clone, rack, false)
+	err = r.BgpServer.HandleBgpGlobalConfig(clone, rack, false, cm)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -137,43 +137,20 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 // ReconcilePolicyCM is part of the reconciliation loop of BgpConf which aims to move
 // the current state of the BgpConf Spec closer to the desired state by adding the Policy name.
-func (r *BgpConfReconciler) ReconcilePolicyCM(ctx context.Context, bgpConf *v1alpha2.BgpConf) error {
-	policyVersion, err := r.getPolicyVersion(ctx, bgpConf)
-	if err != nil {
-		return err
-	}
-	if bgpConf.Annotations == nil {
-		bgpConf.Annotations = make(map[string]string)
-	}
-	// Add the policyVersion as an annotation on the BgpConf Pods.
-	bgpConf.Annotations[constant.OpenELBPolicyAnnotationKey] = policyVersion
-	err = r.Client.Update(ctx, bgpConf)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// getPolicyVersion returns the object version of the Policy ConfigMap.
-func (r *BgpConfReconciler) getPolicyVersion(ctx context.Context, bgpConf *v1alpha2.BgpConf) (string, error) {
-	var policyVersion string
+func (r *BgpConfReconciler) ReconcilePolicyCM(ctx context.Context, bgpConf *v1alpha2.BgpConf) (*corev1.ConfigMap, error) {
 	if bgpConf.Spec.Policy == "" {
-		return policyVersion, nil
+		return nil, nil
 	}
 	policyName := bgpConf.Spec.Policy
 	foundPolicy := &corev1.ConfigMap{}
 	err := r.Get(ctx, types.NamespacedName{Name: policyName, Namespace: util.EnvNamespace()}, foundPolicy)
 	if err != nil {
-		// If a policy ConfigMap name is provided, then it must exist.
-		// TODO: Create an Event for the user to understand why their reconcile is failing.
 		if errors.IsNotFound(err) {
-			return policyVersion, nil
+			return nil, nil
 		}
-		return policyVersion, err
+		return nil, err
 	}
-	// Hash the data in some way, or just use the version of the Object
-	policyVersion = foundPolicy.ResourceVersion
-	return policyVersion, nil
+	return foundPolicy, nil
 }
 
 func (r *BgpConfReconciler) reconfigPeers() error {

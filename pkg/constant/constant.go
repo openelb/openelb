@@ -31,7 +31,6 @@ const (
 	OpenELBEIPAnnotationKeyV1Alpha2 string = "eip.openelb.kubesphere.io/v1alpha2"
 	OpenELBEIPAnnotationDefaultPool string = "eip.openelb.kubesphere.io/is-default-eip"
 	OpenELBProtocolAnnotationKey    string = "protocol.openelb.kubesphere.io/v1alpha1"
-	OpenELBPolicyAnnotationKey      string = "policy.openelb.kubesphere.io/v1alpha2"
 
 	OpenELBNodeRack string = "openelb.kubesphere.io/rack"
 	// TODO: Disable lable modification using webhook
@@ -48,6 +47,7 @@ const (
 	OpenELBNamespace          = "openelb-system"
 	OpenELBVipConfigMap       = "openelb-vip-configmap"
 	OpenELBVipName            = "openelb-keepalive-vip"
+	OpenELBBgpName            = "gobgp.conf"
 	OpenELBServiceAccountName = "kube-keepalived-vip"
 	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
 	EnvNodeName               = "NODE_NAME"

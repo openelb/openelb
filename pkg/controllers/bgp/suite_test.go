@@ -116,21 +116,6 @@ var (
 		},
 		Status: v1alpha2.BgpPeerStatus{},
 	}
-
-	policyConfigMap = &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "policy",
-			Namespace: constant.OpenELBNamespace,
-		},
-		Data: map[string]string{},
-	}
-
-	ns = &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: constant.OpenELBNamespace,
-		},
-	}
 )
 
 func TestAPIs(t *testing.T) {
@@ -189,9 +174,6 @@ var _ = BeforeSuite(func(done Done) {
 	os.Setenv(constant.EnvNodeName, node1.Name)
 
 	err = client.Client.Create(context.Background(), node2)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = client.Client.Create(context.Background(), ns)
 	Expect(err).ToNot(HaveOccurred())
 
 	SetDefaultEventuallyTimeout(3 * time.Second)
@@ -281,6 +263,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 					if clone.Status.NodesConfStatus[util.GetNodeName()].RouterId == bgpConf.Spec.RouterId {
 						return true
 					}
+
 					return false
 				}), 35*time.Second).Should(Equal(false))
 			})
@@ -484,40 +467,6 @@ var _ = Describe("Test GoBGP Controller", func() {
 					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
 						return util.ContainsString(dst.Finalizers, constant.FinalizerName)
 					}), 3*time.Second).Should(Equal(false))
-				})
-			})
-		})
-
-		When("GoBGP policy name", func() {
-			BeforeEach(func() {
-				clone := policyConfigMap.DeepCopy()
-				err := util.Create(context.Background(), client.Client, clone, func() error {
-					return nil
-				})
-				Expect(err).ToNot(HaveOccurred())
-			})
-
-			AfterEach(func() {
-				clone := policyConfigMap.DeepCopy()
-				err := client.Client.Delete(context.Background(), clone)
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(func() bool {
-					err = client.Client.Get(context.Background(), types.NamespacedName{
-						Namespace: clone.Namespace,
-						Name:      clone.Name,
-					}, clone)
-					return k8serrors.IsNotFound(err)
-				}, 3*time.Second).Should(Equal(true))
-			})
-			Context("is added to BgpConf", func() {
-				It("should add to BgpConf annotation", func() {
-					policyCMClone := policyConfigMap.DeepCopy()
-					updateBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) {
-						dst.Spec.Policy = policyCMClone.GetObjectMeta().GetName()
-					})
-					Eventually(util.Check(context.Background(), client.Client, bgpConf, func() bool {
-						return bgpConf.ObjectMeta.Annotations[constant.OpenELBPolicyAnnotationKey] == policyCMClone.ResourceVersion
-					}), 65*time.Second).Should(Equal(true))
 				})
 			})
 		})
