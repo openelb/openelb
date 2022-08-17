@@ -8,7 +8,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
@@ -166,33 +165,15 @@ func (b *Bgp) setBalancer(ip string, nexthops []string) error {
 	return nil
 }
 
-func (b *Bgp) getPeers() []*api.Peer {
-	peerList := []*api.Peer{}
-	fn := func(p *api.Peer) {
-		peerList = append(peerList, p)
-	}
-	err := b.bgpServer.ListPeer(context.Background(), &api.ListPeerRequest{}, fn)
-	if err != nil {
-		return nil
-	}
-	return peerList
-}
-
 func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 	var nexthops []string
 
 	for _, node := range nodes {
-		rack := ""
-		if node.Labels != nil {
-			rack = node.Labels[constant.OpenELBNodeRack]
+		nexthop, err := b.getNodeNextHop(node)
+		if err != nil {
+			return err
 		}
-		if rack == b.rack || b.rack == "" {
-			nexthop, err := b.getNodeNextHop(node)
-			if err != nil {
-				return err
-			}
-			nexthops = append(nexthops, nexthop)
-		}
+		nexthops = append(nexthops, nexthop)
 	}
 
 	ctrl.Log.Info("bgp setBalancer", "nexthops", nexthops)

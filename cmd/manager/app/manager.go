@@ -8,7 +8,6 @@ import (
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/cmd/manager/app/options"
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/controllers/bgp"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/controllers/lb"
 	"github.com/openelb/openelb/pkg/leader-elector"
@@ -95,7 +94,26 @@ func Run(c *options.OpenELBManagerOptions) error {
 		return err
 	}
 
-	bgpServer := bgpd.NewGoBgpd(c.Bgp)
+	stopCh := ctrl.SetupSignalHandler()
+
+	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	leader.LeaderElector(stopCh, k8sClient, *c.Leader)
+
+	// For bgp
+	bgpClient := bgpd.Client{
+		Clientset: k8sClient,
+	}
+
+	bgpServer := bgpClient.NewGoBgpd(c.Bgp)
+
+	err = speaker.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer)
+	if err != nil {
+		setupLog.Error(err, "unable to register bgp speaker")
+		return err
+	}
+	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
+		Args: []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBVipConfigMap)},
+	})
 
 	// Setup all Controllers
 	err = ipam.SetupIPAM(mgr)
@@ -105,36 +123,10 @@ func Run(c *options.OpenELBManagerOptions) error {
 	}
 	networkv1alpha2.Eip{}.SetupWebhookWithManager(mgr)
 
-	err = bgp.SetupBgpConfReconciler(bgpServer, mgr)
-	if err != nil {
-		setupLog.Error(err, "unable to setup bgpconf")
-	}
-
-	err = bgp.SetupBgpPeerReconciler(bgpServer, mgr)
-	if err != nil {
-		setupLog.Error(err, "unable to setup bgppeer")
-	}
-
 	if err = lb.SetupServiceReconciler(mgr); err != nil {
 		setupLog.Error(err, "unable to setup lb controller")
 		return err
 	}
-
-	stopCh := ctrl.SetupSignalHandler()
-
-	//For layer2
-	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	leader.LeaderElector(stopCh, k8sClient, *c.Leader)
-
-	//For gobgp
-	err = speaker.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer)
-	if err != nil {
-		setupLog.Error(err, "unable to register bgp speaker")
-		return err
-	}
-	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
-		Args: []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBVipConfigMap)},
-	})
 
 	//For keepalive
 	err = speaker.RegisterSpeaker(constant.OpenELBProtocolVip, keepalive)
