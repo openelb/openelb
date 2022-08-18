@@ -1,9 +1,10 @@
 package bgp
 
 import (
+	"context"
+
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
 	api "github.com/osrg/gobgp/api"
-	"golang.org/x/net/context"
 )
 
 func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete bool) error {

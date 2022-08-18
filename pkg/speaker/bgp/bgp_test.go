@@ -1,12 +1,14 @@
 package bgp
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
+	"k8s.io/client-go/kubernetes/fake"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"testing"
 )
 
 var (
@@ -26,8 +28,10 @@ var _ = BeforeSuite(func() {
 	bgpOptions := &BgpOptions{
 		GrpcHosts: ":50052",
 	}
-
-	b = NewGoBgpd(bgpOptions)
+	c := &Client{
+		Clientset: fake.NewSimpleClientset(),
+	}
+	b = c.NewGoBgpd(bgpOptions)
 	ch = make(chan struct{})
 
 	go b.Start(ch)
