@@ -3,7 +3,6 @@ package bgp
 import (
 	"sync"
 
-	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
@@ -26,7 +25,7 @@ func (c *Client) NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
 
 	bgpServer := server.NewBgpServer(server.GrpcListenAddress(bgpOptions.GrpcHosts), server.GrpcOption(grpcOpts))
 	v := viper.New()
-	v.SetConfigFile(constant.OpenELBBgpName)
+	v.SetConfigFile(bgpOptions.Conf)
 
 	return &Bgp{
 		bgpServer: bgpServer,

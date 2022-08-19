@@ -51,6 +51,7 @@ var cfg *rest.Config
 var testEnv *envtest.Environment
 var stopCh chan struct{}
 var bgpServer *bgp.Bgp
+var testConfPath string
 
 var (
 	node1 = &corev1.Node{
@@ -155,11 +156,20 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mgr).ToNot(BeNil())
 
+	// temp, err := ioutil.TempFile(os.TempDir(), "temp")
+	// Expect(err).ToNot(HaveOccurred())
+	// testConfPath, err := filepath.Abs(temp.Name())
+	Expect(err).ToNot(HaveOccurred())
+	bgpOptions := &bgp.BgpOptions{
+		GrpcHosts: ":50051",
+		Conf:      "gobgp.toml",
+	}
+
 	// Setup all Controllers
 	c := &bgp.Client{
 		Clientset: fake.NewSimpleClientset(),
 	}
-	bgpServer = c.NewGoBgpd(bgp.NewBgpOptions())
+	bgpServer = c.NewGoBgpd(bgpOptions)
 	bgpServer.Start(stopCh)
 	err = SetupBgpPeerReconciler(bgpServer, mgr)
 	Expect(err).ToNot(HaveOccurred())
@@ -189,6 +199,8 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	close(stopCh)
 	err := testEnv.Stop()
+	Expect(err).ToNot(HaveOccurred())
+	err = os.RemoveAll(testConfPath)
 	Expect(err).ToNot(HaveOccurred())
 })
 

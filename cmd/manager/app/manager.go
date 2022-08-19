@@ -129,8 +129,6 @@ func Run(c *options.OpenELBManagerOptions) error {
 		return err
 	}
 
-
-
 	//For gobgp
 	err = speaker.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer)
 	if err != nil {
