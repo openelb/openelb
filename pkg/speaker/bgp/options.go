@@ -4,6 +4,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/osrg/gobgp/pkg/server"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 type BgpOptions struct {
@@ -24,5 +25,6 @@ type Bgp struct {
 	bgpServer *server.BgpServer
 	rack      string
 	client    Client
+	v         *viper.Viper
 	log       logr.Logger
 }

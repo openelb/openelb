@@ -2,25 +2,55 @@ package bgp
 
 import (
 	"context"
+	"errors"
+	"os"
 
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
-	api "github.com/osrg/gobgp/api"
+	"github.com/openelb/openelb/pkg/constant"
+	"github.com/osrg/gobgp/pkg/config"
+	"github.com/spf13/viper"
 )
 
 func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete bool) error {
 	b.rack = rack
-
 	if delete {
 		return b.bgpServer.StopBgp(context.Background(), nil)
 	}
+	return b.CreateOrUpdateBgpConfig(global)
+}
 
-	request, err := global.Spec.ToGoBgpGlobalConf()
+func (b *Bgp) CreateOrUpdateBgpConfig(bgpConf *bgpapi.BgpConf) error {
+	if _, err := os.Stat(constant.OpenELBBgpName); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Create(constant.OpenELBBgpName); err != nil {
+			return err
+		}
+	}
+	viper := viper.New()
+	if err := viper.MergeConfigMap(GetBgpConfigSetMap(bgpConf)); err != nil {
+		return err
+	}
+	if err := b.v.MergeConfigMap(viper.AllSettings()); err != nil {
+		return err
+	}
+	if err := b.v.WriteConfigAs(constant.OpenELBBgpName); err != nil {
+		return err
+	}
+	if err := b.bgpServer.StopBgp(context.Background(), nil); err != nil {
+		return err
+	}
+	bcs, err := config.ReadConfigFile(b.v.ConfigFileUsed(), "toml")
 	if err != nil {
 		return err
 	}
+	_, err = config.InitialConfig(context.Background(), b.bgpServer, bcs, bgpConf.Spec.GracefulRestart.Enabled)
+	return err
+}
 
-	b.bgpServer.StopBgp(context.Background(), nil)
-	return b.bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
-		Global: request,
-	})
+func GetBgpConfigSetMap(bgpConf *bgpapi.BgpConf) map[string]interface{} {
+	return map[string]interface{}{
+		"global.config.as":                 bgpConf.Spec.As,
+		"global.config.router-id":          bgpConf.Spec.RouterId,
+		"global.config.port":               bgpConf.Spec.ListenPort,
+		"global.config.local-address-list": bgpConf.Spec.ListenAddresses,
+	}
 }

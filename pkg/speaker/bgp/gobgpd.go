@@ -3,9 +3,11 @@ package bgp
 import (
 	"sync"
 
+	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
+	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes"
@@ -23,10 +25,13 @@ func (c *Client) NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
 	grpcOpts := []grpc.ServerOption{grpc.MaxRecvMsgSize(maxSize), grpc.MaxSendMsgSize(maxSize)}
 
 	bgpServer := server.NewBgpServer(server.GrpcListenAddress(bgpOptions.GrpcHosts), server.GrpcOption(grpcOpts))
+	v := viper.New()
+	v.SetConfigFile(constant.OpenELBBgpName)
 
 	return &Bgp{
 		bgpServer: bgpServer,
 		client:    *c,
+		v:         v,
 		log:       ctrl.Log.WithName("bgpserver"),
 	}
 }

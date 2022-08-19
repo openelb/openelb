@@ -66,13 +66,15 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	clone := instance.DeepCopy()
+	if err = r.BgpServer.CreateOrUpdateBgpConfig(clone); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
 		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true)
 		if err != nil {
 			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
 		}
-
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
 		return ctrl.Result{}, r.Update(context.Background(), clone)
 	}

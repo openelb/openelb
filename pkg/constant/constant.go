@@ -47,6 +47,7 @@ const (
 	OpenELBNamespace          = "openelb-system"
 	OpenELBVipConfigMap       = "openelb-vip-configmap"
 	OpenELBVipName            = "openelb-keepalive-vip"
+	OpenELBBgpName            = "gobgp.toml"
 	OpenELBServiceAccountName = "kube-keepalived-vip"
 	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
 	EnvNodeName               = "NODE_NAME"
