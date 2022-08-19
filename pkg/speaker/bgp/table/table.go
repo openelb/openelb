@@ -168,7 +168,6 @@ func toStatementApi(s *config.Statement) *api.Statement {
 		}
 		cs.AfiSafiIn = afiSafiIn
 	}
-	cs.RpkiResult = int32(s.Conditions.BgpConditions.RpkiValidationResult.ToInt())
 	as := &api.Actions{
 		RouteAction: func() api.RouteAction {
 			switch s.Actions.RouteDisposition {
