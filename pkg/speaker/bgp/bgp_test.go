@@ -2,6 +2,7 @@ package bgp
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -27,13 +28,13 @@ func TestServerd(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	By("Init bgp server and config")
-	// temp, err := ioutil.TempFile(os.TempDir(), "temp")
-	// Expect(err).ToNot(HaveOccurred())
-	// testConfPath, err = filepath.Abs(temp.Name())
-	// Expect(err).ToNot(HaveOccurred())
+	temp, err := os.CreateTemp("", "test.*.toml")
+	Expect(err).ToNot(HaveOccurred())
+	testConfPath, err = filepath.Abs(temp.Name())
+	Expect(err).ToNot(HaveOccurred())
 	bgpOptions := &BgpOptions{
 		GrpcHosts: ":50052",
-		Conf:      "gobgp.toml",
+		Conf:      testConfPath,
 	}
 	c := &Client{
 		Clientset: fake.NewSimpleClientset(),

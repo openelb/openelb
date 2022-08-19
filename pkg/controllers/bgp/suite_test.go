@@ -156,13 +156,13 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mgr).ToNot(BeNil())
 
-	// temp, err := ioutil.TempFile(os.TempDir(), "temp")
-	// Expect(err).ToNot(HaveOccurred())
-	// testConfPath, err := filepath.Abs(temp.Name())
+	temp, err := os.CreateTemp("", "test.*.toml")
+	Expect(err).ToNot(HaveOccurred())
+	testConfPath, err := filepath.Abs(temp.Name())
 	Expect(err).ToNot(HaveOccurred())
 	bgpOptions := &bgp.BgpOptions{
 		GrpcHosts: ":50051",
-		Conf:      "gobgp.toml",
+		Conf:      testConfPath,
 	}
 
 	// Setup all Controllers
