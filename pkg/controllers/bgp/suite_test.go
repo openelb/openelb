@@ -34,6 +34,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,6 +51,7 @@ var cfg *rest.Config
 var testEnv *envtest.Environment
 var stopCh chan struct{}
 var bgpServer *bgp.Bgp
+var testConfPath string
 
 var (
 	node1 = &corev1.Node{
@@ -154,8 +156,20 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mgr).ToNot(BeNil())
 
+	temp, err := os.CreateTemp("", "test.*.toml")
+	Expect(err).ToNot(HaveOccurred())
+	testConfPath, err := filepath.Abs(temp.Name())
+	Expect(err).ToNot(HaveOccurred())
+	bgpOptions := &bgp.BgpOptions{
+		GrpcHosts: ":50051",
+		Conf:      testConfPath,
+	}
+
 	// Setup all Controllers
-	bgpServer = bgp.NewGoBgpd(bgp.NewBgpOptions())
+	c := &bgp.Client{
+		Clientset: fake.NewSimpleClientset(),
+	}
+	bgpServer = c.NewGoBgpd(bgpOptions)
 	bgpServer.Start(stopCh)
 	err = SetupBgpPeerReconciler(bgpServer, mgr)
 	Expect(err).ToNot(HaveOccurred())
@@ -185,6 +199,8 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	close(stopCh)
 	err := testEnv.Stop()
+	Expect(err).ToNot(HaveOccurred())
+	err = os.RemoveAll(testConfPath)
 	Expect(err).ToNot(HaveOccurred())
 })
 

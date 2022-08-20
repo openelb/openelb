@@ -1,17 +1,22 @@
 package bgp
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
+	"k8s.io/client-go/kubernetes/fake"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"testing"
 )
 
 var (
-	b  *Bgp
-	ch chan struct{}
+	b            *Bgp
+	ch           chan struct{}
+	testConfPath string
 )
 
 func TestServerd(t *testing.T) {
@@ -23,11 +28,18 @@ func TestServerd(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	By("Init bgp server and config")
+	temp, err := os.CreateTemp("", "test.*.toml")
+	Expect(err).ToNot(HaveOccurred())
+	testConfPath, err = filepath.Abs(temp.Name())
+	Expect(err).ToNot(HaveOccurred())
 	bgpOptions := &BgpOptions{
 		GrpcHosts: ":50052",
+		Conf:      testConfPath,
 	}
-
-	b = NewGoBgpd(bgpOptions)
+	c := &Client{
+		Clientset: fake.NewSimpleClientset(),
+	}
+	b = c.NewGoBgpd(bgpOptions)
 	ch = make(chan struct{})
 
 	go b.Start(ch)
@@ -36,6 +48,8 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	By("stop bgp server")
 	close(ch)
+	err := os.RemoveAll(testConfPath)
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = Describe("BGP test", func() {
