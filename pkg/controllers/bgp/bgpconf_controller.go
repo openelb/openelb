@@ -27,6 +27,7 @@ import (
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -37,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -153,6 +155,29 @@ func (r *BgpConfReconciler) ReconcilePolicyCM(ctx context.Context, bgpConf *v1al
 	return foundPolicy, nil
 }
 
+func (r *BgpConfReconciler) Map(configMap handler.MapObject) []reconcile.Request {
+	attachedBgpConfs := &v1alpha2.BgpConfList{}
+	listOps := &client.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(policyField, configMap.Meta.GetName()),
+		Namespace:     configMap.Meta.GetNamespace(),
+	}
+	err := r.List(context.TODO(), attachedBgpConfs, listOps)
+	if err != nil {
+		return []reconcile.Request{}
+	}
+
+	requests := make([]reconcile.Request, len(attachedBgpConfs.Items))
+	for i, item := range attachedBgpConfs.Items {
+		requests[i] = reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      item.GetName(),
+				Namespace: item.GetNamespace(),
+			},
+		}
+	}
+	return requests
+}
+
 func (r *BgpConfReconciler) reconfigPeers() error {
 	ctx := context.Background()
 
@@ -240,7 +265,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(p).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
-			&handler.EnqueueRequestForObject{},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: r},
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Named("BgpConfController").
