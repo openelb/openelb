@@ -137,7 +137,10 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, r.reconfigPeers()
 }
 
-func (r *BgpConfReconciler) getPolicyConfigMap(ctx context.Context, bgpConf *v1alpha2.BgpConf) (*corev1.ConfigMap, error) {
+func (r *BgpConfReconciler) getPolicyConfigMap(
+	ctx context.Context,
+	bgpConf *v1alpha2.BgpConf,
+) (*corev1.ConfigMap, error) {
 	if bgpConf.Spec.Policy == "" {
 		return nil, nil
 	}
@@ -157,7 +160,6 @@ func (r *BgpConfReconciler) Map(configMap handler.MapObject) []reconcile.Request
 	attachedBgpConfs := &v1alpha2.BgpConfList{}
 	listOps := &client.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(policyField, configMap.Meta.GetName()),
-		Namespace:     configMap.Meta.GetNamespace(),
 	}
 	err := r.List(context.TODO(), attachedBgpConfs, listOps)
 	if err != nil {
@@ -168,8 +170,7 @@ func (r *BgpConfReconciler) Map(configMap handler.MapObject) []reconcile.Request
 	for i, item := range attachedBgpConfs.Items {
 		requests[i] = reconcile.Request{
 			NamespacedName: types.NamespacedName{
-				Name:      item.GetName(),
-				Namespace: item.GetNamespace(),
+				Name: item.GetName(),
 			},
 		}
 	}
@@ -246,14 +247,15 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// The policy field must be indexed by the manager, so that we will be able to lookup BgpConf by a referenced ConfigMap name.
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &v1alpha2.BgpConf{}, policyField, func(rawObj runtime.Object) []string {
-		// Extract the ConfigMap name from the BgpConf Spec, if one is provided
-		bgpConf := rawObj.(*v1alpha2.BgpConf)
-		if bgpConf.Spec.Policy == "" {
-			return nil
-		}
-		return []string{bgpConf.Spec.Policy}
-	})
+	err := mgr.GetFieldIndexer().
+		IndexField(context.Background(), &v1alpha2.BgpConf{}, policyField, func(rawObj runtime.Object) []string {
+			// Extract the ConfigMap name from the BgpConf Spec, if one is provided
+			bgpConf := rawObj.(*v1alpha2.BgpConf)
+			if bgpConf.Spec.Policy == "" {
+				return nil
+			}
+			return []string{bgpConf.Spec.Policy}
+		})
 	if err != nil {
 		return err
 	}
