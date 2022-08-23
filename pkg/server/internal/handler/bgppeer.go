@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 
-	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/projectcalico/go-json/json"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/openelb/openelb/api/v1alpha2"
 )
 
 // BgpPeerHandler is an interface that is used to manage http requests related to

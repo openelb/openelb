@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/openelb/openelb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/openelb/openelb/api/v1alpha2"
 )
 
 // BgpConfHandler is an interface that is used to manage http requests related to
