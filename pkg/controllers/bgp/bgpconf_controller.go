@@ -78,13 +78,13 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	clone := instance.DeepCopy()
 
-	cm, err := r.ReconcilePolicyCM(ctx, clone)
+	cm, err := r.getPolicyConfigMap(ctx, clone)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
-		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, cm)
+		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, nil)
 		if err != nil {
 			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
 		}
@@ -137,9 +137,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, r.reconfigPeers()
 }
 
-// ReconcilePolicyCM is part of the reconciliation loop of BgpConf which aims to move
-// the current state of the BgpConf Spec closer to the desired state by adding the Policy name.
-func (r *BgpConfReconciler) ReconcilePolicyCM(ctx context.Context, bgpConf *v1alpha2.BgpConf) (*corev1.ConfigMap, error) {
+func (r *BgpConfReconciler) getPolicyConfigMap(ctx context.Context, bgpConf *v1alpha2.BgpConf) (*corev1.ConfigMap, error) {
 	if bgpConf.Spec.Policy == "" {
 		return nil, nil
 	}

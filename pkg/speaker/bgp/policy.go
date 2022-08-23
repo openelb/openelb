@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
+	api "github.com/osrg/gobgp/api"
+	"github.com/osrg/gobgp/pkg/server"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker/bgp/config"
 	"github.com/openelb/openelb/pkg/speaker/bgp/table"
-	api "github.com/osrg/gobgp/api"
-	"github.com/osrg/gobgp/pkg/server"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 func (b *Bgp) UpdatePolicy(cm *corev1.ConfigMap) error {
@@ -33,7 +33,7 @@ func (b *Bgp) UpdatePolicy(cm *corev1.ConfigMap) error {
 	p := config.ConfigSetToRoutingPolicy(newConfig)
 	rp, err := table.NewAPIRoutingPolicyFromConfigStruct(p)
 	if err != nil {
-		b.log.Error(err, "failed to update policy config")
+		b.log.Error(err, "failed to convert bgp policy")
 		return err
 	}
 	err = b.bgpServer.SetPolicies(context.Background(), &api.SetPoliciesRequest{
@@ -41,7 +41,7 @@ func (b *Bgp) UpdatePolicy(cm *corev1.ConfigMap) error {
 		Policies:    rp.Policies,
 	})
 	if err != nil {
-		b.log.Info("successfully updated policy config")
+		b.log.Error(err, "failed to set bgp policy")
 		return err
 	}
 	return b.AssignGlobalpolicy(context.Background(), b.bgpServer, &newConfig.Global.ApplyPolicy.Config)
@@ -78,7 +78,7 @@ func (b *Bgp) AssignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServe
 		}),
 	})
 	if err != nil {
-		b.log.Info("failed setting policy assignment")
+		b.log.Error(err, "failed setting import policy assignment")
 		return err
 	}
 	def = toDefaultTable(a.DefaultExportPolicy)
@@ -92,7 +92,7 @@ func (b *Bgp) AssignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServe
 		}),
 	})
 	if err != nil {
-		b.log.Info("failed setting policy assignment")
+		b.log.Error(err, "failed setting export policy assignment")
 		return err
 	}
 	return nil

@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openelb/openelb/pkg/speaker/bgp/config"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/packet/bgp"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/openelb/openelb/pkg/speaker/bgp/config"
 )
 
 const (
@@ -108,8 +109,8 @@ var _regexpMedActionType = regexp.MustCompile(`([+-]?)(\d+)`)
 
 func toStatementApi(s *config.Statement) *api.Statement {
 	cs := &api.Conditions{}
-	o, _ := NewMatchOption(s.Conditions.MatchPrefixSet.MatchSetOptions)
 	if s.Conditions.MatchPrefixSet.PrefixSet != "" {
+		o, _ := NewMatchOption(s.Conditions.MatchPrefixSet.MatchSetOptions)
 		cs.PrefixSet = &api.MatchSet{
 			MatchType: api.MatchType(o),
 			Name:      s.Conditions.MatchPrefixSet.PrefixSet,
@@ -183,7 +184,9 @@ func toStatementApi(s *config.Statement) *api.Statement {
 				return nil
 			}
 			return &api.CommunityAction{
-				ActionType:  api.CommunityActionType(config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetCommunity.Options)]),
+				ActionType: api.CommunityActionType(
+					config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetCommunity.Options)],
+				),
 				Communities: s.Actions.BgpActions.SetCommunity.SetCommunityMethod.CommunitiesList}
 		}(),
 		Med: func() *api.MedAction {
@@ -192,7 +195,7 @@ func toStatementApi(s *config.Statement) *api.Statement {
 				return nil
 			}
 			matches := _regexpMedActionType.FindStringSubmatch(medStr)
-			if len(matches) == 0 {
+			if len(matches) < 3 {
 				return nil
 			}
 			action := api.MedActionType_MED_REPLACE
@@ -231,7 +234,9 @@ func toStatementApi(s *config.Statement) *api.Statement {
 				return nil
 			}
 			return &api.CommunityAction{
-				ActionType:  api.CommunityActionType(config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetExtCommunity.Options)]),
+				ActionType: api.CommunityActionType(
+					config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetExtCommunity.Options)],
+				),
 				Communities: s.Actions.BgpActions.SetExtCommunity.SetExtCommunityMethod.CommunitiesList,
 			}
 		}(),
@@ -240,7 +245,9 @@ func toStatementApi(s *config.Statement) *api.Statement {
 				return nil
 			}
 			return &api.CommunityAction{
-				ActionType:  api.CommunityActionType(config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetLargeCommunity.Options)]),
+				ActionType: api.CommunityActionType(
+					config.BgpSetCommunityOptionTypeToIntMap[config.BgpSetCommunityOptionType(s.Actions.BgpActions.SetLargeCommunity.Options)],
+				),
 				Communities: s.Actions.BgpActions.SetLargeCommunity.SetLargeCommunityMethod.CommunitiesList,
 			}
 		}(),

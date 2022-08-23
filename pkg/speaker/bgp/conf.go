@@ -28,7 +28,10 @@ func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete 
 	}
 
 	if cm != nil {
-		b.UpdatePolicy(cm)
+		err = b.UpdatePolicy(cm)
+		if err != nil {
+			b.log.Error(err, "failed to update bgp policy")
+		}
 	}
 	return nil
 }
