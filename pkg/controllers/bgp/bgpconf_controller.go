@@ -261,8 +261,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha2.BgpConf{}).
-		WithEventFilter(p).
+		For(&v1alpha2.BgpConf{}, builder.WithPredicates(p)).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: r},
