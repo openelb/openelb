@@ -54,17 +54,7 @@ const (
 	MATCH_OPTION_INVERT
 )
 
-func (o MatchOption) ConvertToMatchSetOptionsRestrictedType() config.MatchSetOptionsRestrictedType {
-	switch o {
-	case MATCH_OPTION_ANY:
-		return config.MATCH_SET_OPTIONS_RESTRICTED_TYPE_ANY
-	case MATCH_OPTION_INVERT:
-		return config.MATCH_SET_OPTIONS_RESTRICTED_TYPE_INVERT
-	}
-	return "unknown"
-}
-
-func NewMatchOption(c interface{}) (MatchOption, error) {
+func newMatchOption(c interface{}) (MatchOption, error) {
 	switch t := c.(type) {
 	case config.MatchSetOptionsType:
 		t = t.DefaultAsNeeded()
@@ -92,7 +82,7 @@ type Policy struct {
 	Name string
 }
 
-func (p *Policy) ToConfig() *config.PolicyDefinition {
+func (p *Policy) toConfig() *config.PolicyDefinition {
 	return &config.PolicyDefinition{
 		Name: p.Name,
 	}
@@ -110,14 +100,14 @@ var _regexpMedActionType = regexp.MustCompile(`([+-]?)(\d+)`)
 func toStatementApi(s *config.Statement) *api.Statement {
 	cs := &api.Conditions{}
 	if s.Conditions.MatchPrefixSet.PrefixSet != "" {
-		o, _ := NewMatchOption(s.Conditions.MatchPrefixSet.MatchSetOptions)
+		o, _ := newMatchOption(s.Conditions.MatchPrefixSet.MatchSetOptions)
 		cs.PrefixSet = &api.MatchSet{
 			MatchType: api.MatchType(o),
 			Name:      s.Conditions.MatchPrefixSet.PrefixSet,
 		}
 	}
 	if s.Conditions.MatchNeighborSet.NeighborSet != "" {
-		o, _ := NewMatchOption(s.Conditions.MatchNeighborSet.MatchSetOptions)
+		o, _ := newMatchOption(s.Conditions.MatchNeighborSet.MatchSetOptions)
 		cs.NeighborSet = &api.MatchSet{
 			MatchType: api.MatchType(o),
 			Name:      s.Conditions.MatchNeighborSet.NeighborSet,
@@ -279,11 +269,11 @@ func toStatementApi(s *config.Statement) *api.Statement {
 	}
 }
 
-func NewAPIPolicyFromTableStruct(p *Policy) *api.Policy {
-	return ToPolicyApi(p.ToConfig())
+func newAPIPolicyFromTableStruct(p *Policy) *api.Policy {
+	return toPolicyApi(p.toConfig())
 }
 
-func ToPolicyApi(p *config.PolicyDefinition) *api.Policy {
+func toPolicyApi(p *config.PolicyDefinition) *api.Policy {
 	return &api.Policy{
 		Name: p.Name,
 		Statements: func() []*api.Statement {
@@ -321,7 +311,7 @@ func NewAPIPolicyAssignmentFromTableStruct(t *PolicyAssignment) *api.PolicyAssig
 		Policies: func() []*api.Policy {
 			l := make([]*api.Policy, 0)
 			for _, p := range t.Policies {
-				l = append(l, NewAPIPolicyFromTableStruct(p))
+				l = append(l, newAPIPolicyFromTableStruct(p))
 			}
 			return l
 		}(),
@@ -335,7 +325,7 @@ func NewAPIRoutingPolicyFromConfigStruct(c *config.RoutingPolicy) (*api.RoutingP
 	}
 	policies := make([]*api.Policy, 0, len(c.PolicyDefinitions))
 	for _, policy := range c.PolicyDefinitions {
-		policies = append(policies, ToPolicyApi(&policy))
+		policies = append(policies, toPolicyApi(&policy))
 	}
 
 	return &api.RoutingPolicy{

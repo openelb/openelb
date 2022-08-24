@@ -73,7 +73,7 @@ func NewAPIDefinedSetsFromConfigStruct(t *DefinedSets) ([]*api.DefinedSet, error
 }
 
 func newAPIPrefixFromConfigStruct(c Prefix) (*api.Prefix, error) {
-	min, max, err := ParseMaskLength(c.IpPrefix, c.MasklengthRange)
+	min, max, err := parseMaskLength(c.IpPrefix, c.MasklengthRange)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func newAPIPrefixFromConfigStruct(c Prefix) (*api.Prefix, error) {
 
 var _regexpPrefixMaskLengthRange = regexp.MustCompile(`(\d+)\.\.(\d+)`)
 
-func ParseMaskLength(prefix, mask string) (int, int, error) {
+func parseMaskLength(prefix, mask string) (int, int, error) {
 	_, ipNet, err := net.ParseCIDR(prefix)
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid prefix: %s", prefix)

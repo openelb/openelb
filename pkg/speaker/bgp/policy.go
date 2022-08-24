@@ -15,10 +15,13 @@ import (
 	"github.com/openelb/openelb/pkg/speaker/bgp/table"
 )
 
-func (b *Bgp) UpdatePolicy(cm *corev1.ConfigMap) error {
+func (b *Bgp) updatePolicy(cm *corev1.ConfigMap) error {
+	if cm == nil {
+		return nil
+	}
 	policyConf, ok := cm.Data[constant.OpenELBBgpName]
 	if !ok {
-		b.log.Info("error in %s configmap, %s missing", constant.OpenELBBgpName)
+		b.log.Info("invalid configmap, %s missing", constant.OpenELBBgpName)
 		return nil
 	}
 	path, err := writeToTempFile(policyConf)
@@ -33,7 +36,6 @@ func (b *Bgp) UpdatePolicy(cm *corev1.ConfigMap) error {
 	p := config.ConfigSetToRoutingPolicy(newConfig)
 	rp, err := table.NewAPIRoutingPolicyFromConfigStruct(p)
 	if err != nil {
-		b.log.Error(err, "failed to convert bgp policy")
 		return err
 	}
 	err = b.bgpServer.SetPolicies(context.Background(), &api.SetPoliciesRequest{
@@ -41,13 +43,12 @@ func (b *Bgp) UpdatePolicy(cm *corev1.ConfigMap) error {
 		Policies:    rp.Policies,
 	})
 	if err != nil {
-		b.log.Error(err, "failed to set bgp policy")
 		return err
 	}
-	return b.AssignGlobalpolicy(context.Background(), b.bgpServer, &newConfig.Global.ApplyPolicy.Config)
+	return b.assignGlobalpolicy(context.Background(), b.bgpServer, &newConfig.Global.ApplyPolicy.Config)
 }
 
-func (b *Bgp) AssignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServer, a *config.ApplyPolicyConfig) error {
+func (b *Bgp) assignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServer, a *config.ApplyPolicyConfig) error {
 	toDefaultTable := func(r config.DefaultPolicyType) table.RouteType {
 		var def table.RouteType
 		switch r {
