@@ -137,10 +137,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, r.reconfigPeers()
 }
 
-func (r *BgpConfReconciler) getPolicyConfigMap(
-	ctx context.Context,
-	bgpConf *v1alpha2.BgpConf,
-) (*corev1.ConfigMap, error) {
+func (r *BgpConfReconciler) getPolicyConfigMap(ctx context.Context, bgpConf *v1alpha2.BgpConf) (*corev1.ConfigMap, error) {
 	if bgpConf.Spec.Policy == "" {
 		return nil, nil
 	}
