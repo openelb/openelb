@@ -25,7 +25,7 @@ func NewHTTPServer(routers []Router, options options.Options) *server {
 
 	return &server{
 		handler: cors.New(cors.Options{
-			AllowedOrigins: []string{"*"},
+			AllowedOrigins: []string{"http://localhost:3000"},
 			AllowCredentials: true,
 			AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 			AllowedHeaders: []string{"Accept", "Content-Type"},
