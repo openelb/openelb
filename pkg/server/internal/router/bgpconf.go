@@ -54,14 +54,14 @@ func (b *bgpConfRouter) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *bgpConfRouter) patch(w http.ResponseWriter, r *http.Request) {
-	var bgpConf v1alpha2.BgpConf
+	var patch []byte
 	lib.ServeRequest(lib.InboundRequest{
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Patch(r.Context(), &bgpConf)
+			return nil, b.handler.Patch(r.Context(), patch)
 		},
-		ReqBody: &bgpConf,
+		ReqBody: &patch,
 		StatusCode: http.StatusOK,
 	})
 }

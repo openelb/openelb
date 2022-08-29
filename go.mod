@@ -20,7 +20,6 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/osrg/gobgp v0.0.0-20210101133947-496b372f7b8d
 	github.com/pelletier/go-toml v1.4.0 // indirect
-	github.com/projectcalico/go-json v0.0.0-20161128004156-6219dc7339ba
 	github.com/projectcalico/libcalico-go v1.7.2-0.20191104213956-8f81e1e344ce
 	github.com/prometheus/client_golang v1.12.0
 	github.com/spf13/cobra v1.0.0

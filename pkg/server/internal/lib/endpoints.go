@@ -2,7 +2,9 @@ package lib
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"reflect"
 
 	"github.com/go-chi/chi/v5"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +20,18 @@ func readRequestBody(r *http.Request, bodyObj interface{}) error {
 	if r.Body == nil {
 		return nil
 	}
-	return json.NewDecoder(r.Body).Decode(bodyObj)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	switch bodyObj.(type) {
+	case *[]byte:
+		reflect.Indirect(reflect.ValueOf(bodyObj)).Set(reflect.ValueOf(body))
+	default:
+		err = json.Unmarshal(body, bodyObj)
+	}
+	return err
 }
 
 // ServeRequest handles an inbound request.

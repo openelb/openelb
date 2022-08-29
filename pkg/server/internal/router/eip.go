@@ -66,14 +66,14 @@ func (e *eipRouter) list(w http.ResponseWriter, r *http.Request) {
 
 func (e *eipRouter) patch(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
-	var eip v1alpha2.Eip
+	var patch []byte
 	lib.ServeRequest(lib.InboundRequest{
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, e.handler.Patch(r.Context(), name, &eip)
+			return nil, e.handler.Patch(r.Context(), name, patch)
 		},
-		ReqBody: &eip,
+		ReqBody: &patch,
 		StatusCode: http.StatusOK,
 	})
 }

@@ -3,10 +3,9 @@ package handler
 import (
 	"context"
 
-	"github.com/projectcalico/go-json/json"
+	"github.com/openelb/openelb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"github.com/openelb/openelb/api/v1alpha2"
 )
 
 // BgpPeerHandler is an interface that is used to manage http requests related to
@@ -19,7 +18,7 @@ type BgpPeerHandler interface {
 	// List returns all the BgpPeer objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.BgpPeerList, error)
 	// Patch patches the BgpPeer object in the kubernetes cluster.
-	Patch(ctx context.Context, name string, patchObj *v1alpha2.BgpPeer) error
+	Patch(ctx context.Context, name string, patch []byte) error
 	// Delete deletes the BgpPeer object in the kubernetes cluster.
 	Delete(ctx context.Context, name string) error
 }
@@ -59,18 +58,13 @@ func (b *bgpPeerHandler) List(ctx context.Context) (*v1alpha2.BgpPeerList, error
 
 // Patch patches the BgpPeer object in the kubernetes cluster.
 func (b *bgpPeerHandler) Patch(ctx context.Context, name string,
-	patchObj *v1alpha2.BgpPeer) error {
+	patch []byte) error {
 	bgpPeer, err := b.Get(ctx, name)
 	if err != nil {
 		return err
 	}
-	var patchBytes []byte
-	patchBytes, err = json.Marshal(patchObj)
-	if err != nil {
-		return err
-	}
 	return b.client.Patch(ctx, bgpPeer, client.RawPatch(types.MergePatchType,
-		patchBytes))
+		patch))
 }
 
 // Delete deletes the BgpPeer object in the kubernetes cluster.

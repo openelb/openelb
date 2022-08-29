@@ -68,14 +68,14 @@ func (b *bgpPeerRouter) list(w http.ResponseWriter, r *http.Request) {
 
 func (b *bgpPeerRouter) patch(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
-	var bgpPeer v1alpha2.BgpPeer
+	var patch []byte
 	lib.ServeRequest(lib.InboundRequest{
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Patch(r.Context(), name, &bgpPeer)
+			return nil, b.handler.Patch(r.Context(), name, patch)
 		},
-		ReqBody: &bgpPeer,
+		ReqBody: &patch,
 		StatusCode: http.StatusOK,
 	})
 }
