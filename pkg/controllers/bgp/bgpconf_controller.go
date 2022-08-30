@@ -27,19 +27,24 @@ import (
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var (
 	syncStatusPeriod = 30
+	policyField      = ".spec.policy"
 )
 
 // BgpConfReconciler reconciles a BgpConf object
@@ -50,9 +55,13 @@ type BgpConfReconciler struct {
 	cleaned bool
 }
 
-// +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster BgpConf CRD closer to the desired state.
 func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 
@@ -60,15 +69,22 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	err := r.Client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			// Object not found, return. Created objects are automatically garbage collected.
 			return ctrl.Result{}, nil
 		}
+		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
 
 	clone := instance.DeepCopy()
 
+	cm, err := r.getPolicyConfigMap(ctx, clone)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
-		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true)
+		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, nil)
 		if err != nil {
 			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
 		}
@@ -103,7 +119,7 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		clone.Spec.RouterId = util.GetNodeIP(*node).String()
 	}
 
-	err = r.BgpServer.HandleBgpGlobalConfig(clone, rack, false)
+	err = r.BgpServer.HandleBgpGlobalConfig(clone, rack, false, cm)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -119,6 +135,43 @@ func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	return ctrl.Result{}, r.reconfigPeers()
+}
+
+func (r *BgpConfReconciler) getPolicyConfigMap(ctx context.Context, bgpConf *v1alpha2.BgpConf) (*corev1.ConfigMap, error) {
+	if bgpConf.Spec.Policy == "" {
+		return nil, nil
+	}
+	policyName := bgpConf.Spec.Policy
+	foundPolicy := &corev1.ConfigMap{}
+	err := r.Get(ctx, types.NamespacedName{Name: policyName, Namespace: util.EnvNamespace()}, foundPolicy)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return foundPolicy, nil
+}
+
+func (r *BgpConfReconciler) Map(configMap handler.MapObject) []reconcile.Request {
+	attachedBgpConfs := &v1alpha2.BgpConfList{}
+	listOps := &client.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(policyField, configMap.Meta.GetName()),
+	}
+	err := r.List(context.TODO(), attachedBgpConfs, listOps)
+	if err != nil {
+		return []reconcile.Request{}
+	}
+
+	requests := make([]reconcile.Request, len(attachedBgpConfs.Items))
+	for i, item := range attachedBgpConfs.Items {
+		requests[i] = reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name: item.GetName(),
+			},
+		}
+	}
+	return requests
 }
 
 func (r *BgpConfReconciler) reconfigPeers() error {
@@ -190,9 +243,27 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
+	// The policy field must be indexed by the manager, so that we will be able to lookup BgpConf by a referenced ConfigMap name.
+	err := mgr.GetFieldIndexer().
+		IndexField(context.Background(), &v1alpha2.BgpConf{}, policyField, func(rawObj runtime.Object) []string {
+			// Extract the ConfigMap name from the BgpConf Spec, if one is provided
+			bgpConf := rawObj.(*v1alpha2.BgpConf)
+			if bgpConf.Spec.Policy == "" {
+				return nil
+			}
+			return []string{bgpConf.Spec.Policy}
+		})
+	if err != nil {
+		return err
+	}
+
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha2.BgpConf{}).
-		WithEventFilter(p).
+		For(&v1alpha2.BgpConf{}, builder.WithPredicates(p)).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: r},
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Named("BgpConfController").
 		Build(r)
 	if err != nil {

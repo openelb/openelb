@@ -4,9 +4,10 @@ import (
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete bool) error {
+func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete bool, cm *corev1.ConfigMap) error {
 	b.rack = rack
 
 	if delete {
@@ -19,7 +20,15 @@ func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete 
 	}
 
 	b.bgpServer.StopBgp(context.Background(), nil)
-	return b.bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
+	err = b.bgpServer.StartBgp(context.Background(), &api.StartBgpRequest{
 		Global: request,
 	})
+	if err != nil {
+		return err
+	}
+	err = b.updatePolicy(cm)
+	if err != nil {
+		b.log.Error(err, "failed to update bgp policy")
+	}
+	return nil
 }
