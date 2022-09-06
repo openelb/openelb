@@ -2,6 +2,7 @@ package manager
 
 import (
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/manager/client"
 	"github.com/spf13/pflag"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -22,9 +23,9 @@ type GenericOptions struct {
 
 func NewGenericOptions() *GenericOptions {
 	return &GenericOptions{
-		WebhookPort:   443,
-		MetricsAddr:   ":50052",
-		ReadinessAddr: "0",
+		WebhookPort:   constant.ManagerWebHookPort,
+		MetricsAddr:   constant.ManagerMetricsAddr,
+		ReadinessAddr: constant.ManagerReadinessAddr,
 	}
 }
 
