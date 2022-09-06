@@ -6,11 +6,13 @@ FROM golang:1.15 as openelb-builder
 
 COPY / /go/src/github.com/openelb/openelb
 
-WORKDIR /go/src/github.com/openelb/openelb
-RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/openelb/openelb/cmd/...
-RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/osrg/gobgp/cmd/gobgp
+RUN go env -w GOPROXY=https://goproxy.cn,direct
 
-FROM alpine:3.9
+WORKDIR /go/src/github.com/openelb/openelb
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOARM=6 go install -i -ldflags '-w -s' github.com/openelb/openelb/cmd/...
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOARM=6 go install -i -ldflags '-w -s' github.com/osrg/gobgp/cmd/gobgp
+
+FROM alpine:3.16.2
 RUN apk add --update ca-certificates iptables && update-ca-certificates
 COPY --from=openelb-builder /go/bin/agent /usr/local/bin/openelb-agent
 COPY --from=openelb-builder /go/bin/manager /usr/local/bin/openelb-manager

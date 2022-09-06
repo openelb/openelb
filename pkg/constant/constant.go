@@ -4,12 +4,12 @@ const (
 	FinalizerName     string = "finalizer.lb.kubesphere.io/v1alpha1"
 	IPAMFinalizerName string = "finalizer.ipam.kubesphere.io/v1alpha1"
 
-	// When used for annotation, it means that the service address is assigned by the openelb
+	// OpenELBAnnotationKey When used for annotation, it means that the service address is assigned by the openelb
 	// When used as a label, it indicates on which node the openelb manager is deployed
 	OpenELBAnnotationKey   string = "lb.kubesphere.io/v1alpha1"
 	OpenELBAnnotationValue string = "openelb"
 
-	// Indicates the node to which layer2 traffic is sent
+	// OpenELBLayer2Annotation Indicates the node to which layer2 traffic is sent
 	OpenELBLayer2Annotation string = "layer2.openelb.kubesphere.io/v1alpha1"
 
 	NodeProxyTypeAnnotationKey        string = "node-proxy.openelb.kubesphere.io/type"
@@ -33,7 +33,7 @@ const (
 	OpenELBProtocolAnnotationKey    string = "protocol.openelb.kubesphere.io/v1alpha1"
 
 	OpenELBNodeRack string = "openelb.kubesphere.io/rack"
-	// TODO: Disable lable modification using webhook
+	// OpenELBCNI TODO: Disable lable modification using webhook
 	OpenELBCNI string = "openelb.kubesphere.io/cni"
 
 	OpenELBProtocolBGP    string = "bgp"
@@ -52,7 +52,7 @@ const (
 	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
 	EnvNodeName               = "NODE_NAME"
 
-	// default images and specify images
+	// OpenELBImagesConfigMap default images and specify images
 	OpenELBImagesConfigMap         = "openelb-images"
 	NodeProxyConfigMapForwardImage = "forward-image"
 	NodeProxyConfigMapProxyImage   = "proxy-image"
@@ -60,4 +60,9 @@ const (
 	OpenELBDefaultKeepAliveImage   = "kubesphere/kube-keepalived-vip:0.35" // keepalived image by default
 	NodeProxyDefaultForwardImage   = "kubesphere/openelb-forward:master"
 	NodeProxyDefaultProxyImage     = "kubesphere/openelb-proxy:master"
+
+	// ManagerWebHookPort Manager configuration
+	ManagerWebHookPort   = 443
+	ManagerMetricsAddr   = ":50052"
+	ManagerReadinessAddr = "0"
 )
