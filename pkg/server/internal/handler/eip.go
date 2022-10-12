@@ -12,15 +12,15 @@ import (
 // Eip.
 type EipHandler interface {
 	// Create creates a new Eip object in the kubernetes cluster.
-	Create(ctx context.Context, eip *v1alpha2.Eip) error
+	Create(ctx context.Context, eip *v1alpha2.Eip) (Create, error)
 	// Get returns the Eip object in the kubernetes cluster if found.
 	Get(ctx context.Context, name string) (*v1alpha2.Eip, error)
 	// List returns the list of Eip objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.EipList, error)
 	// Patch patches the Eip object in the kubernetes cluster.
-	Patch(ctx context.Context, name string, patch []byte) error
+	Patch(ctx context.Context, name string, patch []byte) (Update, error)
 	// Delete deletes the Eip object in the kubernetes cluster.
-	Delete(ctx context.Context, name string) error
+	Delete(ctx context.Context, name string) (Delete, error)
 }
 
 // eipHandler is an implementation of the EipHandler.
@@ -38,8 +38,11 @@ func NewEipHandler(client client.Client) *eipHandler {
 }
 
 // Create creates a new Eip object in the kubernetes cluster.
-func (e *eipHandler) Create(ctx context.Context, eip *v1alpha2.Eip) error {
-	return e.client.Create(ctx, eip)
+func (e *eipHandler) Create(ctx context.Context, eip *v1alpha2.Eip) (Create, error) {
+	if err := e.client.Create(ctx, eip); err != nil {
+		return Create{}, err
+	}
+	return Create{Created: true}, nil
 }
 
 // Get returns the Eip object in the kubernetes cluster if found.
@@ -58,20 +61,28 @@ func (e *eipHandler) List(ctx context.Context) (*v1alpha2.EipList, error) {
 
 // Patch patches the Eip object in the kubernetes cluster.
 func (e *eipHandler) Patch(ctx context.Context, name string,
-	patch []byte) error {
+	patch []byte) (Update, error) {
 	eip, err := e.Get(ctx, name)
 	if err != nil {
-		return err
+		return Update{}, err
 	}
-	return e.client.Patch(ctx, eip, client.RawPatch(types.MergePatchType,
+	err = e.client.Patch(ctx, eip, client.RawPatch(types.MergePatchType,
 		patch))
+	if err != nil {
+		return Update{}, err
+	}
+	return Update{Updated: true}, nil
 }
 
 // Delete deletes the Eip object in the kubernetes cluster.
-func (e *eipHandler) Delete(ctx context.Context, name string) error {
+func (e *eipHandler) Delete(ctx context.Context, name string) (Delete, error) {
 	eip, err := e.Get(ctx, name)
 	if err != nil {
-		return err
+		return Delete{}, err
 	}
-	return e.client.Delete(ctx, eip)
+	err = e.client.Delete(ctx, eip)
+	if err != nil {
+		return Delete{}, err
+	}
+	return Delete{Deleted: true}, nil
 }

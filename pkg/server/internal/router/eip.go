@@ -35,7 +35,7 @@ func (e *eipRouter) create(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, e.handler.Create(r.Context(), &eip)
+			return e.handler.Create(r.Context(), &eip)
 		},
 		ReqBody:    &eip,
 		StatusCode: http.StatusCreated,
@@ -71,9 +71,9 @@ func (e *eipRouter) patch(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, e.handler.Patch(r.Context(), name, patch)
+			return e.handler.Patch(r.Context(), name, patch)
 		},
-		ReqBody: &patch,
+		ReqBody:    &patch,
 		StatusCode: http.StatusOK,
 	})
 }
@@ -84,7 +84,7 @@ func (e *eipRouter) delete(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, e.handler.Delete(r.Context(), name)
+			return e.handler.Delete(r.Context(), name)
 		},
 		StatusCode: http.StatusNoContent,
 	})

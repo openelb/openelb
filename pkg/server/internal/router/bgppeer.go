@@ -36,7 +36,7 @@ func (b *bgpPeerRouter) create(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Create(r.Context(), &bgpPeer)
+			return b.handler.Create(r.Context(), &bgpPeer)
 		},
 		ReqBody:    &bgpPeer,
 		StatusCode: http.StatusCreated,
@@ -73,9 +73,9 @@ func (b *bgpPeerRouter) patch(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Patch(r.Context(), name, patch)
+			return b.handler.Patch(r.Context(), name, patch)
 		},
-		ReqBody: &patch,
+		ReqBody:    &patch,
 		StatusCode: http.StatusOK,
 	})
 }
@@ -86,7 +86,7 @@ func (b *bgpPeerRouter) delete(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Delete(r.Context(), name)
+			return b.handler.Delete(r.Context(), name)
 		},
 		StatusCode: http.StatusNoContent,
 	})

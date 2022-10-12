@@ -13,13 +13,13 @@ import (
 // BgpConf.
 type BgpConfHandler interface {
 	// Create creates a new BgpConf object in the kubernetes cluster.
-	Create(ctx context.Context, bgpConf *v1alpha2.BgpConf) error
+	Create(ctx context.Context, bgpConf *v1alpha2.BgpConf) (Create, error)
 	// Get returns the BgpConf object in the kubernetes cluster if found.
 	Get(ctx context.Context) (*v1alpha2.BgpConf, error)
 	// Patch patches the BgpConf object in the kubernetes cluster.
-	Patch(ctx context.Context, patch []byte) error
+	Patch(ctx context.Context, patch []byte) (Update, error)
 	// Delete deletes the BgpConf object in the kubernetes cluster.
-	Delete(ctx context.Context) error
+	Delete(ctx context.Context) (Delete, error)
 }
 
 // bgpConfHandler is an implementation of the BgpConfHandler.
@@ -38,14 +38,17 @@ func NewBgpConfHandler(client client.Client) *bgpConfHandler {
 
 // Create creates a new BgpConf object in the kubernetes cluster.
 func (b *bgpConfHandler) Create(ctx context.Context,
-	bgpConf *v1alpha2.BgpConf) error {
+	bgpConf *v1alpha2.BgpConf) (Create, error) {
 	if bgpConf.Name != "default" {
-		return errors.NewBadRequest("BgpConf name must be default")
+		return Create{}, errors.NewBadRequest("BgpConf name must be default")
 	}
 	if bgpConf.Spec.ListenPort == 0 {
-		return errors.NewBadRequest("BgpConf listen port must be set")
+		return Create{}, errors.NewBadRequest("BgpConf listen port must be set")
 	}
-	return b.client.Create(ctx, bgpConf)
+	if err := b.client.Create(ctx, bgpConf); err != nil {
+		return Create{}, err
+	}
+	return Create{Created: true}, nil
 }
 
 // Get returns the BgpConf object in the kubernetes cluster if found.
@@ -56,20 +59,28 @@ func (b *bgpConfHandler) Get(ctx context.Context) (*v1alpha2.BgpConf, error) {
 }
 
 // Patch patches the BgpConf object in the kubernetes cluster.
-func (b *bgpConfHandler) Patch(ctx context.Context, patch []byte) error {
+func (b *bgpConfHandler) Patch(ctx context.Context, patch []byte) (Update, error) {
 	bgpConf, err := b.Get(ctx)
 	if err != nil {
-		return err
+		return Update{}, err
 	}
-	return b.client.Patch(ctx, bgpConf, client.RawPatch(types.MergePatchType,
+	err = b.client.Patch(ctx, bgpConf, client.RawPatch(types.MergePatchType,
 		patch))
+	if err != nil {
+		return Update{}, err
+	}
+	return Update{Updated: true}, nil
 }
 
 // Delete deletes the BgpConf object in the kubernetes cluster.
-func (b *bgpConfHandler) Delete(ctx context.Context) error {
+func (b *bgpConfHandler) Delete(ctx context.Context) (Delete, error) {
 	bgpConf, err := b.Get(ctx)
 	if err != nil {
-		return err
+		return Delete{}, err
 	}
-	return b.client.Delete(ctx, bgpConf)
+	err = b.client.Delete(ctx, bgpConf)
+	if err != nil {
+		return Delete{}, err
+	}
+	return Delete{Deleted: true}, nil
 }

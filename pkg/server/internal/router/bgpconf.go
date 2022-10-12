@@ -35,7 +35,7 @@ func (b *bgpConfRouter) create(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Create(r.Context(), &bgpConf)
+			return b.handler.Create(r.Context(), &bgpConf)
 		},
 		ReqBody:    &bgpConf,
 		StatusCode: http.StatusCreated,
@@ -59,9 +59,9 @@ func (b *bgpConfRouter) patch(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Patch(r.Context(), patch)
+			return b.handler.Patch(r.Context(), patch)
 		},
-		ReqBody: &patch,
+		ReqBody:    &patch,
 		StatusCode: http.StatusOK,
 	})
 }
@@ -71,7 +71,7 @@ func (b *bgpConfRouter) delete(w http.ResponseWriter, r *http.Request) {
 		W: w,
 		R: r,
 		EndpointLogic: func() (interface{}, error) {
-			return nil, b.handler.Delete(r.Context())
+			return b.handler.Delete(r.Context())
 		},
 		StatusCode: http.StatusNoContent,
 	})

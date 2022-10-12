@@ -12,15 +12,15 @@ import (
 // BgpPeer.
 type BgpPeerHandler interface {
 	// Create creates a new BgpPeer object in the kubernetes cluster.
-	Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error
+	Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) (Create, error)
 	// Get returns the BgpPeer object in the kubernetes cluster if found.
 	Get(ctx context.Context, name string) (*v1alpha2.BgpPeer, error)
 	// List returns all the BgpPeer objects in the kubernetes cluster.
 	List(ctx context.Context) (*v1alpha2.BgpPeerList, error)
 	// Patch patches the BgpPeer object in the kubernetes cluster.
-	Patch(ctx context.Context, name string, patch []byte) error
+	Patch(ctx context.Context, name string, patch []byte) (Update, error)
 	// Delete deletes the BgpPeer object in the kubernetes cluster.
-	Delete(ctx context.Context, name string) error
+	Delete(ctx context.Context, name string) (Delete, error)
 }
 
 // bgpPeerHandler is an implementation of the BgpPeerHandler.
@@ -38,8 +38,11 @@ func NewBgpPeerHandler(client client.Client) *bgpPeerHandler {
 }
 
 // Create creates a new BgpPeer object in the kubernetes cluster.
-func (b *bgpPeerHandler) Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) error {
-	return b.client.Create(ctx, bgpPeer)
+func (b *bgpPeerHandler) Create(ctx context.Context, bgpPeer *v1alpha2.BgpPeer) (Create, error) {
+	if err := b.client.Create(ctx, bgpPeer); err != nil {
+		return Create{}, err
+	}
+	return Create{Created: true}, nil
 }
 
 // Get returns the BgpPeer object in the kubernetes cluster if found.
@@ -58,20 +61,28 @@ func (b *bgpPeerHandler) List(ctx context.Context) (*v1alpha2.BgpPeerList, error
 
 // Patch patches the BgpPeer object in the kubernetes cluster.
 func (b *bgpPeerHandler) Patch(ctx context.Context, name string,
-	patch []byte) error {
+	patch []byte) (Update, error) {
 	bgpPeer, err := b.Get(ctx, name)
 	if err != nil {
-		return err
+		return Update{}, err
 	}
-	return b.client.Patch(ctx, bgpPeer, client.RawPatch(types.MergePatchType,
+	err = b.client.Patch(ctx, bgpPeer, client.RawPatch(types.MergePatchType,
 		patch))
+	if err != nil {
+		return Update{}, err
+	}
+	return Update{Updated: true}, nil
 }
 
 // Delete deletes the BgpPeer object in the kubernetes cluster.
-func (b *bgpPeerHandler) Delete(ctx context.Context, name string) error {
+func (b *bgpPeerHandler) Delete(ctx context.Context, name string) (Delete, error) {
 	bgpPeer, err := b.Get(ctx, name)
 	if err != nil {
-		return err
+		return Delete{}, err
 	}
-	return b.client.Delete(ctx, bgpPeer)
+	err = b.client.Delete(ctx, bgpPeer)
+	if err != nil {
+		return Delete{}, err
+	}
+	return Delete{Deleted: true}, nil
 }

@@ -8,7 +8,7 @@ type Options struct {
 
 func NewOptions() *Options {
 	return &Options{
-		Port: 80,
+		Port: 8080,
 	}
 }
 
