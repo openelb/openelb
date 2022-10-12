@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://openelb.github.io/"><img src="doc/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
+<a href="https://openelb.github.io/"><img src="docs/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
 </p>
 
 <p align="center">
@@ -53,7 +53,7 @@ OpenELB 已经被采用在[很多公司](./ADOPTERS.md)，如果您也正在使�
 
 ## 开发计划
 
-[OpenELB 开发计划](doc/roadmap.md)列出了每个里程碑下的功能以及 Bug 修复。如果您有新的想法、功能需求或者建议,欢迎提交 proposal。
+[OpenELB 开发计划](docs/roadmap.md)列出了每个里程碑下的功能以及 Bug 修复。如果您有新的想法、功能需求或者建议,欢迎提交 proposal。
 
 ## 参与贡献以及讨论
 

@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
         # Change the value of image field below to your controller image URL
-        - image: kubespheredev/openelb:v0.4.2
+        - image: kubesphere/openelb:v0.5.1
           name: openelb-manager
           resources:
             limits:

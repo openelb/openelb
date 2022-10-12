@@ -19,6 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"net/http"
+	"reflect"
+
+	"github.com/go-logr/logr"
 	"github.com/openelb/openelb/api/v1alpha2"
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
@@ -32,9 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"math/rand"
-	"net/http"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -62,6 +64,7 @@ import (
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
 	client.Client
+	log logr.Logger
 	record.EventRecorder
 }
 
@@ -424,11 +427,11 @@ func (r *ServiceReconciler) getServiceNodes(svc *corev1.Service) ([]corev1.Node,
 	active := make(map[string]bool)
 	for _, subnet := range endpoints.Subsets {
 		for _, addr := range subnet.Addresses {
+			if addr.NodeName == nil {
+				continue
+			}
 			active[*addr.NodeName] = true
 		}
-	}
-	if len(active) <= 0 {
-		return nil, nil
 	}
 
 	//2. get next hops
@@ -439,17 +442,26 @@ func (r *ServiceReconciler) getServiceNodes(svc *corev1.Service) ([]corev1.Node,
 	}
 
 	resultNodes := make([]corev1.Node, 0)
-	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal {
+	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) > 0 {
 		for _, node := range nodeList.Items {
 			if active[node.Name] {
 				resultNodes = append(resultNodes, node)
 			}
 		}
-	} else {
-		for _, node := range nodeList.Items {
-			if nodeReady(&node) {
-				resultNodes = append(resultNodes, node)
-			}
+
+		return resultNodes, nil
+	}
+
+	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) == 0 {
+		clone := svc.DeepCopy()
+		clone.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
+		_ = r.Update(context.Background(), clone)
+		r.log.Info(fmt.Sprintf("endpoint don't have nodeName, so cannot set externalTrafficPolicy to Local"))
+	}
+
+	for _, node := range nodeList.Items {
+		if nodeReady(&node) {
+			resultNodes = append(resultNodes, node)
 		}
 	}
 
@@ -459,7 +471,8 @@ func (r *ServiceReconciler) getServiceNodes(svc *corev1.Service) ([]corev1.Node,
 func SetupServiceReconciler(mgr ctrl.Manager) error {
 	lb := &ServiceReconciler{
 		Client:        mgr.GetClient(),
-		EventRecorder: mgr.GetEventRecorderFor("OpenELB Manager"),
+		log:           ctrl.Log.WithName("Manager"),
+		EventRecorder: mgr.GetEventRecorderFor("Manager"),
 	}
 	err := lb.SetupWithManager(mgr)
 	return err

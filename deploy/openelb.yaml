@@ -138,6 +138,8 @@ spec:
               listenPort:
                 format: int32
                 type: integer
+              policy:
+                type: string
               routerId:
                 type: string
               useMultiplePaths:
@@ -857,6 +859,14 @@ metadata:
   name: openelb-manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - apps
   resources:
   - daemonsets
@@ -990,6 +1000,12 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - bgpconfs/finalizers
+  verbs:
+  - update
 - apiGroups:
   - network.kubesphere.io
   resources:
@@ -1170,7 +1186,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubesphere/openelb:v0.5.0
+        image: kubesphere/openelb:v0.5.1
         imagePullPolicy: IfNotPresent
         name: openelb-manager
         ports:

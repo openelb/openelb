@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://openelb.github.io/"><img src="doc/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
+<a href="https://openelb.github.io/"><img src="docs/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
 </p>
 
 <p align="center">
@@ -51,7 +51,7 @@ OpenELB has been adopted by [many companies](./ADOPTERS.md) all over the world. 
 
 ## Roadmap
 
-[OpenELB Roadmap](doc/roadmap.md) lists the features and bug fixes for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal.
+[OpenELB Roadmap](docs/roadmap.md) lists the features and bug fixes for each milestone. If you have any new ideas, feature requests or suggestions, please submit a proposal.
 
 ## Support, Discussion and Contributing
 

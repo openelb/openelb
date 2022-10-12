@@ -1,12 +1,13 @@
 package bgp
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"testing"
 )
 
 var (
@@ -47,7 +48,7 @@ var _ = Describe("BGP test", func() {
 					RouterId:   "10.0.255.254",
 					ListenPort: 17900,
 				},
-			}, "", false)
+			}, "", false, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -58,7 +59,7 @@ var _ = Describe("BGP test", func() {
 					RouterId:   "10.0.255.253",
 					ListenPort: 17902,
 				},
-			}, "", false)
+			}, "", false, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -67,7 +68,7 @@ var _ = Describe("BGP test", func() {
 				Spec: bgpapi.BgpConfSpec{
 					RouterId: "10.0.255.254",
 				},
-			}, "", true)
+			}, "", true, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -91,7 +92,7 @@ var _ = Describe("BGP test", func() {
 					RouterId:   "10.0.255.254",
 					ListenPort: 17900,
 				},
-			}, "", false)
+			}, "", false, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 

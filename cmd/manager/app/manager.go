@@ -20,6 +20,7 @@ import (
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/speaker/vip"
 	"github.com/openelb/openelb/pkg/util"
+	"github.com/openelb/openelb/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -70,6 +71,15 @@ func NewOpenELBManagerCommand() *cobra.Command {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s\n\n"+usageFmt, cmd.Long, cmd.UseLine())
 		cliflag.PrintSections(cmd.OutOrStdout(), namedFlagSets, cols)
 	})
+
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print the version of openelb-manager",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Println(version.Get().String())
+		},
+	}
+	cmd.AddCommand(versionCmd)
 
 	return cmd
 }
@@ -124,8 +134,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 		return err
 	}
 	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
-		Args:  []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBConfigMap)},
-		Image: constant.OpenELBKeepAliveImageName,
+		Args: []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBVipConfigMap)},
 	})
 
 	//For keepalive

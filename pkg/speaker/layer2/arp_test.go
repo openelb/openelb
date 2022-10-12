@@ -131,10 +131,10 @@ var _ = Describe("ARP Speak", func() {
 			Expect(mac.String()).Should(Equal(veth.HardwareAddr.String()))
 		})
 		By("ip range", func() {
-			ip, err := sp.setBalancerFromIPRange("192.168.0.0/24")
+			err := sp.setNextHopFromIPRange("192.168.166.3", "192.168.0.0/24")
 			Expect(err).ShouldNot(HaveOccurred())
 			peer, _ := net.InterfaceByName(VethPeerIfName)
-			mac, _, err := arping.PingOverIface(ip, *peer)
+			mac, _, err := arping.PingOverIface(net.ParseIP("192.168.166.3"), *peer)
 			Expect(err).ShouldNot(HaveOccurred())
 			veth, _ := net.InterfaceByName(VethIfName)
 			Expect(mac.String()).Should(Equal(veth.HardwareAddr.String()))
