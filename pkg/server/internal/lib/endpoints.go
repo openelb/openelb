@@ -2,7 +2,7 @@ package lib
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 
@@ -21,7 +21,7 @@ func readRequestBody(r *http.Request, bodyObj interface{}) error {
 		return nil
 	}
 	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
@@ -46,22 +46,23 @@ func ServeRequest(req InboundRequest) {
 	if err != nil {
 		switch {
 		case errors.IsTimeout(err) || errors.IsServerTimeout(err):
-			writeResponse(req.W, http.StatusGatewayTimeout, nil)
+			writeResponse(req.W, http.StatusGatewayTimeout, err)
 		case errors.IsNotFound(err):
-			writeResponse(req.W, http.StatusNotFound, nil)
+			writeResponse(req.W, http.StatusNotFound, err)
 		case errors.IsAlreadyExists(err) || errors.IsConflict(err):
-			writeResponse(req.W, http.StatusConflict, nil)
+			writeResponse(req.W, http.StatusConflict, err)
 		case errors.IsBadRequest(err):
-			writeResponse(req.W, http.StatusBadRequest, nil)
+			writeResponse(req.W, http.StatusBadRequest, err)
 		case errors.IsTooManyRequests(err):
-			writeResponse(req.W, http.StatusTooManyRequests, nil)
+			writeResponse(req.W, http.StatusTooManyRequests, err)
 		case errors.IsNotAcceptable(err):
-			writeResponse(req.W, http.StatusNotAcceptable, nil)
+			writeResponse(req.W, http.StatusNotAcceptable, err)
 		default:
-			writeResponse(req.W, http.StatusInternalServerError, nil)
+			writeResponse(req.W, http.StatusInternalServerError, err)
 		}
+	} else {
+		writeResponse(req.W, req.StatusCode, resp)
 	}
-	writeResponse(req.W, req.StatusCode, resp)
 }
 
 // writeResponse writes the response to the writer with status code and

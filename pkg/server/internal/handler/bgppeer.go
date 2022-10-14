@@ -19,6 +19,8 @@ type BgpPeerHandler interface {
 	List(ctx context.Context) (*v1alpha2.BgpPeerList, error)
 	// Patch patches the BgpPeer object in the kubernetes cluster.
 	Patch(ctx context.Context, name string, patch []byte) (Update, error)
+	// Update edits the BgpPeer object in the kubernetes cluster.
+	Update(ctx context.Context, name string, newObj *v1alpha2.BgpPeer) (Update, error)
 	// Delete deletes the BgpPeer object in the kubernetes cluster.
 	Delete(ctx context.Context, name string) (Delete, error)
 }
@@ -68,6 +70,23 @@ func (b *bgpPeerHandler) Patch(ctx context.Context, name string,
 	}
 	err = b.client.Patch(ctx, bgpPeer, client.RawPatch(types.MergePatchType,
 		patch))
+	if err != nil {
+		return Update{}, err
+	}
+	return Update{Updated: true}, nil
+}
+
+// Update edits the BgpPeer object in the kubernetes cluster.
+func (b *bgpPeerHandler) Update(ctx context.Context, name string,
+	newObj *v1alpha2.BgpPeer) (Update, error) {
+	bgpPeer, err := b.Get(ctx, name)
+	if err != nil {
+		return Update{}, err
+	}
+	if newObj.ResourceVersion == "" {
+		newObj.ResourceVersion = bgpPeer.ResourceVersion
+	}
+	err = b.client.Update(ctx, newObj)
 	if err != nil {
 		return Update{}, err
 	}

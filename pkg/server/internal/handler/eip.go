@@ -19,6 +19,8 @@ type EipHandler interface {
 	List(ctx context.Context) (*v1alpha2.EipList, error)
 	// Patch patches the Eip object in the kubernetes cluster.
 	Patch(ctx context.Context, name string, patch []byte) (Update, error)
+	// Update edits the Eip object in the kubernetes cluster.
+	Update(ctx context.Context, name string, newObj *v1alpha2.Eip) (Update, error)
 	// Delete deletes the Eip object in the kubernetes cluster.
 	Delete(ctx context.Context, name string) (Delete, error)
 }
@@ -68,6 +70,23 @@ func (e *eipHandler) Patch(ctx context.Context, name string,
 	}
 	err = e.client.Patch(ctx, eip, client.RawPatch(types.MergePatchType,
 		patch))
+	if err != nil {
+		return Update{}, err
+	}
+	return Update{Updated: true}, nil
+}
+
+// Update edits the Eip object in the kubernetes cluster.
+func (e *eipHandler) Update(ctx context.Context, name string,
+	newObj *v1alpha2.Eip) (Update, error) {
+	eip, err := e.Get(ctx, name)
+	if err != nil {
+		return Update{}, err
+	}
+	if newObj.ResourceVersion == "" {
+		newObj.ResourceVersion = eip.ResourceVersion
+	}
+	err = e.client.Update(ctx, newObj)
 	if err != nil {
 		return Update{}, err
 	}

@@ -17,6 +17,7 @@ func (b *bgpConfRouter) Register(r chi.Router) {
 	r.Post("/apis/v1/bgp/conf", b.create)
 	r.Get("/apis/v1/bgp/conf", b.get)
 	r.Patch("/apis/v1/bgp/conf", b.patch)
+	r.Put("/apis/v1/bgp/conf", b.update)
 	r.Delete("/apis/v1/bgp/conf", b.delete)
 }
 
@@ -64,6 +65,19 @@ func (b *bgpConfRouter) patch(w http.ResponseWriter, r *http.Request) {
 		ReqBody:    &patch,
 		StatusCode: http.StatusOK,
 	})
+}
+
+func (b *bgpConfRouter) update(w http.ResponseWriter, r *http.Request) {
+	var bgpConf v1alpha2.BgpConf
+	lib.ServeRequest(lib.InboundRequest{
+		W: w,
+		R: r,
+		EndpointLogic: func() (interface{}, error) {
+			return b.handler.Update(r.Context(), &bgpConf)
+		},
+		ReqBody: &bgpConf,
+		StatusCode: http.StatusOK,
+	}) 
 }
 
 func (b *bgpConfRouter) delete(w http.ResponseWriter, r *http.Request) {

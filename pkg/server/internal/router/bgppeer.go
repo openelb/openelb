@@ -18,6 +18,7 @@ func (b *bgpPeerRouter) Register(r chi.Router) {
 	r.Get("/apis/v1/bgp/{name}", b.get)
 	r.Get("/apis/v1/bgp", b.list)
 	r.Patch("/apis/v1/bgp/{name}", b.patch)
+	r.Put("/apis/v1/bgp/{name}", b.update)
 	r.Delete("/apis/v1/bgp/{name}", b.delete)
 }
 
@@ -76,6 +77,20 @@ func (b *bgpPeerRouter) patch(w http.ResponseWriter, r *http.Request) {
 			return b.handler.Patch(r.Context(), name, patch)
 		},
 		ReqBody:    &patch,
+		StatusCode: http.StatusOK,
+	})
+}
+
+func (b *bgpPeerRouter) update(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	var bgpPeer v1alpha2.BgpPeer
+	lib.ServeRequest(lib.InboundRequest{
+		W: w,
+		R: r,
+		EndpointLogic: func() (interface{}, error) {
+			return b.handler.Update(r.Context(), name, &bgpPeer)
+		},
+		ReqBody: &bgpPeer,
 		StatusCode: http.StatusOK,
 	})
 }

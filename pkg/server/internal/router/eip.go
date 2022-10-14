@@ -18,6 +18,7 @@ func (e *eipRouter) Register(r chi.Router) {
 	r.Get("/apis/v1/eip/{name}", e.get)
 	r.Get("/apis/v1/eip", e.list)
 	r.Patch("/apis/v1/eip/{name}", e.patch)
+	r.Put("/apis/v1/eip/{name}", e.update)
 	r.Delete("/apis/v1/eip/{name}", e.delete)
 }
 
@@ -74,6 +75,20 @@ func (e *eipRouter) patch(w http.ResponseWriter, r *http.Request) {
 			return e.handler.Patch(r.Context(), name, patch)
 		},
 		ReqBody:    &patch,
+		StatusCode: http.StatusOK,
+	})
+}
+
+func (b *eipRouter) update(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	var eip v1alpha2.Eip
+	lib.ServeRequest(lib.InboundRequest{
+		W: w,
+		R: r,
+		EndpointLogic: func() (interface{}, error) {
+			return b.handler.Update(r.Context(), name, &eip)
+		},
+		ReqBody: &eip,
 		StatusCode: http.StatusOK,
 	})
 }

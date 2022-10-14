@@ -18,6 +18,8 @@ type BgpConfHandler interface {
 	Get(ctx context.Context) (*v1alpha2.BgpConf, error)
 	// Patch patches the BgpConf object in the kubernetes cluster.
 	Patch(ctx context.Context, patch []byte) (Update, error)
+	// Update edits the BgpConf object in the kubernetes cluster.
+	Update(ctx context.Context, newObj *v1alpha2.BgpConf) (Update, error)
 	// Delete deletes the BgpConf object in the kubernetes cluster.
 	Delete(ctx context.Context) (Delete, error)
 }
@@ -66,6 +68,23 @@ func (b *bgpConfHandler) Patch(ctx context.Context, patch []byte) (Update, error
 	}
 	err = b.client.Patch(ctx, bgpConf, client.RawPatch(types.MergePatchType,
 		patch))
+	if err != nil {
+		return Update{}, err
+	}
+	return Update{Updated: true}, nil
+}
+
+// Update edits the BgpConf object in the kubernetes cluster.
+func (b *bgpConfHandler) Update(ctx context.Context,
+	newObj *v1alpha2.BgpConf) (Update, error) {
+	bgpConf, err := b.Get(ctx)
+	if err != nil {
+		return Update{}, err
+	}
+	if newObj.ResourceVersion == "" {
+		newObj.ResourceVersion = bgpConf.ResourceVersion
+	}
+	err = b.client.Update(ctx, newObj)
 	if err != nil {
 		return Update{}, err
 	}
