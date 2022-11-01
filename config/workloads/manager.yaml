@@ -36,6 +36,8 @@ spec:
         # cloud controller manages should be able to run on masters
         - key: "node-role.kubernetes.io/master"
           effect: NoSchedule
+        - key: "node-role.kubernetes.io/control-plane"
+          effect: NoSchedule
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: openelb-admission
