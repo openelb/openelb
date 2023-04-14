@@ -14,6 +14,7 @@ import (
 	"github.com/openelb/openelb/pkg/leader-elector"
 	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
+	"github.com/openelb/openelb/pkg/server"
 	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
@@ -152,11 +153,18 @@ func Run(c *options.OpenELBManagerOptions) error {
 
 	setupLog.Info("registering webhooks to the webhook server")
 
+	go func() {
+		err = server.SetupHTTPServer(stopCh, c.HTTPOptions)
+		if err != nil {
+			setupLog.Error(err, "unable to setup http server")
+		}
+	}()
+
 	hookServer.Register("/validate-network-kubesphere-io-v1alpha2-svc", &webhook.Admission{Handler: &lb.SvcAnnotator{Client: mgr.GetClient()}})
-	if err := mgr.Start(stopCh); err != nil {
+	if err = mgr.Start(stopCh); err != nil {
 		setupLog.Error(err, "unable to run the manager")
 		return err
 	}
 
-	return nil
+	return err
 }

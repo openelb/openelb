@@ -5,6 +5,8 @@ go 1.16
 require (
 	github.com/coreos/go-iptables v0.4.2
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
+	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-chi/cors v1.2.1
 	github.com/go-logr/logr v0.1.0
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
