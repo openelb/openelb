@@ -2,7 +2,7 @@
 # Use of this source code is governed by an Apache license
 # that can be found in the LICENSE file.
 
-FROM golang:1.15 as openelb-builder
+FROM golang:1.16 as openelb-builder
 
 COPY / /go/src/github.com/openelb/openelb
 
