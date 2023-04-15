@@ -25,7 +25,7 @@ OpenELB was originally created by [KubeSphere](https://kubesphere.io) and is cur
 
 ## Why OpenELB
 
-In cloud-based Kubernetes clusters, Services are usually exposed by using load balancers provided by cloud vendors. However, cloud-based load balancers are unavailable in bare-metal or on-premise environments. OpenELB allows users to create **LoadBalancer Services** in bare-metal, egde, and virtualization environments for external access, and provides the same user experience as cloud-based load balancers.
+In cloud-based Kubernetes clusters, Services are usually exposed by using load balancers provided by cloud vendors. However, cloud-based load balancers are unavailable in bare-metal or on-premise environments. OpenELB allows users to create **LoadBalancer Services** in bare-metal, edge, and virtualization environments for external access, and provides the same user experience as cloud-based load balancers.
 
 ## Core Features
 
