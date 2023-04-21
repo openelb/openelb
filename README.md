@@ -21,7 +21,7 @@ _Read this in other languages: [English](README.md), [中文](README_zh.md)._
 
 OpenELB is an open-source load balancer implementation designed for exposing the LoadBalancer type of Kubernetes services in bare metal, edge, and virtualization environments.
 
-OpenELB was originally created by [KubeSphere](https://kubesphere.io) and is currently a vendor neutral and CNCF [Sandbox Project](https://www.cncf.io/sandbox-projects/).
+OpenELB was originally created by [KubeSphere](https://kubesphere.io), and is currently a vendor neutral and CNCF [Sandbox Project](https://www.cncf.io/sandbox-projects/).
 
 ## Why OpenELB
 
