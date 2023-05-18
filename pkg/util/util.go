@@ -2,12 +2,12 @@ package util
 
 import (
 	"context"
+	"net"
+	"os"
+
 	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"net"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,12 +32,12 @@ func RemoveString(slice []string, s string) (result []string) {
 
 // IsDeletionCandidate checks if object is candidate to be deleted
 func IsDeletionCandidate(obj metav1.Object, finalizer string) bool {
-	return obj.GetDeletionTimestamp() != nil && ContainsString(obj.GetFinalizers(), finalizer)
+	return !obj.GetDeletionTimestamp().IsZero() && ContainsString(obj.GetFinalizers(), finalizer)
 }
 
 // NeedToAddFinalizer checks if need to add finalizer to object
 func NeedToAddFinalizer(obj metav1.Object, finalizer string) bool {
-	return obj.GetDeletionTimestamp() == nil && !ContainsString(obj.GetFinalizers(), finalizer)
+	return obj.GetDeletionTimestamp().IsZero() && !ContainsString(obj.GetFinalizers(), finalizer)
 }
 
 // Find node first NodeInternalIP, should check result
@@ -73,12 +73,8 @@ func DutyOfCNI(metaOld metav1.Object, metaNew metav1.Object) bool {
 
 type CheckFn func() bool
 
-func Check(ctx context.Context, c client.Client, obj runtime.Object, f CheckFn) bool {
-	key, err := client.ObjectKeyFromObject(obj)
-	if err != nil {
-		return false
-	}
-
+func Check(ctx context.Context, c client.Client, obj client.Object, f CheckFn) bool {
+	key := client.ObjectKeyFromObject(obj)
 	if err := c.Get(ctx, key, obj); err != nil {
 		return false
 	}
@@ -88,7 +84,7 @@ func Check(ctx context.Context, c client.Client, obj runtime.Object, f CheckFn) 
 
 type CreateFn func() error
 
-func Create(ctx context.Context, c client.Client, obj runtime.Object, f CreateFn) error {
+func Create(ctx context.Context, c client.Client, obj client.Object, f CreateFn) error {
 	err := f()
 	if err != nil {
 		return err

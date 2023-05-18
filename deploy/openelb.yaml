@@ -1143,7 +1143,7 @@ metadata:
   labels:
     app: openelb-manager
     control-plane: openelb-manager
-  name: openelb-manager
+  name: openelb-controller
   namespace: openelb-system
 spec:
   selector:
@@ -1172,11 +1172,11 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
       - args:
-        - --api-hosts=:50051
         - --metrics-addr=:50052
         - --webhook-port=443
+        - --leader-elect
         command:
-        - openelb-manager
+        - openelb-controller
         env:
         - name: OPENELB_NAMESPACE
           valueFrom:
@@ -1186,24 +1186,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubesphere/openelb:v0.5.1
+        image: kubesphere/openelb-controller:v0.6.0
         imagePullPolicy: IfNotPresent
-        name: openelb-manager
+        name: openelb-controller
         ports:
         - containerPort: 443
           name: webhook
           protocol: TCP
-        readinessProbe:
-          exec:
-            command:
-            - sh
-            - -c
-            - |
-              gobgp -p 50051 global
-          failureThreshold: 3
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
         resources:
           limits:
             cpu: 100m
@@ -1211,16 +1200,10 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
-        securityContext:
-          capabilities:
-            add:
-            - NET_ADMIN
-            - SYS_TIME
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs/
           name: webhook-cert
           readOnly: true
-      hostNetwork: true
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: openelb-admission

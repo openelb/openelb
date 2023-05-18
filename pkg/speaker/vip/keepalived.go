@@ -171,7 +171,8 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 
 // User can config Keepalived by ConfigMap to specify the images
 // If the ConfigMap exists and the configuration is set, use it,
-// 	otherwise, use the default image got from constants.
+//
+//	otherwise, use the default image got from constants.
 func (k *KeepAlived) getConfig() (*corev1.ConfigMap, error) {
 	return k.client.CoreV1().ConfigMaps(util.EnvNamespace()).
 		Get(context.Background(), constant.OpenELBImagesConfigMap, metav1.GetOptions{})

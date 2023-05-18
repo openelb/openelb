@@ -2,6 +2,7 @@ package bgp
 
 import (
 	"context"
+
 	"github.com/openelb/openelb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -44,11 +45,11 @@ func (e *EnqueueRequestForNode) Create(evt event.CreateEvent, q workqueue.RateLi
 
 // Update implements EventHandler
 func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	if evt.MetaOld == nil {
+	if evt.ObjectOld == nil {
 		nodeEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
 	}
 
-	if evt.MetaNew == nil {
+	if evt.ObjectNew == nil {
 		nodeEnqueueLog.Error(nil, "UpdateEvent received with no new metadata", "event", evt)
 	}
 

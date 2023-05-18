@@ -1,3 +1,5 @@
 resources:
-  - manager.yaml
+#  - manager.yaml
+# - speaker.yaml
+  - controller.yaml
   - cert.yaml

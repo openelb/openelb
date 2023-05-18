@@ -90,7 +90,7 @@ func (b *bgpPeerRouter) update(w http.ResponseWriter, r *http.Request) {
 		EndpointLogic: func() (interface{}, error) {
 			return b.handler.Update(r.Context(), name, &bgpPeer)
 		},
-		ReqBody: &bgpPeer,
+		ReqBody:    &bgpPeer,
 		StatusCode: http.StatusOK,
 	})
 }

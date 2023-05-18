@@ -17,6 +17,7 @@ package lb
 
 import (
 	"context"
+	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -24,11 +25,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/client"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/manager"
-	"github.com/openelb/openelb/pkg/manager/client"
-	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,7 +39,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
@@ -49,7 +48,8 @@ import (
 
 var cfg *rest.Config
 var testEnv *envtest.Environment
-var stopCh chan struct{}
+var stopCh context.Context
+var cancel context.CancelFunc
 
 var (
 	node1 = &corev1.Node{
@@ -142,47 +142,18 @@ var (
 		},
 		Status: corev1.ServiceStatus{},
 	}
-
-	endpoints = &corev1.Endpoints{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      svc.Name,
-			Namespace: svc.Namespace,
-		},
-		Subsets: []corev1.EndpointSubset{
-			{
-				Addresses: []corev1.EndpointAddress{
-					{
-						IP:       "192.168.0.1",
-						NodeName: &node1.Name,
-					},
-				},
-				NotReadyAddresses: nil,
-				Ports: []corev1.EndpointPort{
-					{
-						Port:     80,
-						Protocol: corev1.ProtocolTCP,
-					},
-				},
-			},
-		},
-	}
-
-	bgpFakeSpeak    = speaker.NewFake()
-	layer2FakeSpeak = speaker.NewFake()
-	dummySpeak      = speaker.NewFake()
 )
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	stopCh = make(chan struct{})
+	stopCh, cancel = context.WithCancel(context.Background())
 	log := zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter))
 	ctrl.SetLogger(log)
 
 	RunSpecsWithDefaultAndCustomReporters(t,
 		"LB Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+		[]Reporter{})
 }
 
 var _ = BeforeSuite(func(done Done) {
@@ -225,18 +196,12 @@ var _ = BeforeSuite(func(done Done) {
 	err = client.Client.Create(context.Background(), node2)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = speaker.RegisterSpeaker(eip.GetSpeakerName(), bgpFakeSpeak)
-	Expect(err).ToNot(HaveOccurred())
 	err = client.Client.Create(context.Background(), eip)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = speaker.RegisterSpeaker(eipLayer2.GetSpeakerName(), layer2FakeSpeak)
-	Expect(err).ToNot(HaveOccurred())
 	err = client.Client.Create(context.Background(), eipLayer2)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = speaker.RegisterSpeaker(eipForCNI.GetSpeakerName(), dummySpeak)
-	Expect(err).ToNot(HaveOccurred())
 	err = client.Client.Create(context.Background(), eipForCNI)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -248,7 +213,7 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	close(stopCh)
+	cancel()
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
@@ -290,18 +255,10 @@ var _ = Describe("OpenELB LoadBalancer Service", func() {
 		Eventually(checkEipUsage(eip, 0), 3*time.Second).Should(BeTrue())
 		Eventually(checkEipUsage(eipLayer2, 0), 3*time.Second).Should(BeTrue())
 
-		cloneEP := endpoints.DeepCopy()
-		err := client.Client.Create(context.Background(), cloneEP)
-		Expect(err).ToNot(HaveOccurred())
-		Eventually(func() error {
-			return client.Client.Get(context.Background(), types.NamespacedName{
-				Namespace: cloneEP.Namespace,
-				Name:      cloneEP.Name,
-			}, cloneEP)
-		}, 3*time.Second).ShouldNot(HaveOccurred())
-
 		clone := svc.DeepCopy()
-		err = client.Client.Create(context.Background(), clone)
+		clone.Annotations[constant.OpenELBProtocolAnnotationKey] = eip.GetProtocol()
+		clone.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2] = eip.GetName()
+		err := client.Client.Create(context.Background(), clone)
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(func() error {
 			return client.Client.Get(context.Background(), types.NamespacedName{
@@ -328,15 +285,6 @@ var _ = Describe("OpenELB LoadBalancer Service", func() {
 			return k8serrors.IsNotFound(err)
 		}, 3*time.Second).Should(Equal(true))
 
-		cloneEP := endpoints.DeepCopy()
-		Eventually(func() bool {
-			err := client.Client.Get(context.Background(), types.NamespacedName{
-				Namespace: cloneEP.Namespace,
-				Name:      cloneEP.Name,
-			}, cloneEP)
-			return k8serrors.IsNotFound(err)
-		}, 3*time.Second).Should(Equal(true))
-
 		Eventually(checkEipUsage(eip, 0), 3*time.Second).Should(BeTrue())
 		Eventually(checkEipUsage(eipLayer2, 0), 3*time.Second).Should(BeTrue())
 	})
@@ -349,201 +297,13 @@ var _ = Describe("OpenELB LoadBalancer Service", func() {
 
 	It("LoadBalancer Service should assign ingress ip", func() {
 		Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-			return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-				[]string{
-					node2.Name,
-					node1.Name,
-				})
+			if len(dst.Status.LoadBalancer.Ingress) == 0 {
+				return false
+			}
+			return eip.Contains(net.ParseIP(dst.Status.LoadBalancer.Ingress[0].IP))
 		}), 3*time.Second).Should(Equal(true))
 	})
 
-	It("Nexthops should be all nodes", func() {
-		Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-			return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-				[]string{
-					node2.Name,
-					node1.Name,
-				})
-		}), 3*time.Second).Should(Equal(true))
-	})
-
-	When("Endpoint is empty", func() {
-		BeforeEach(func() {
-			updateEndpoints(endpoints, func(dst *corev1.Endpoints) {
-				dst.Subsets = []corev1.EndpointSubset{
-					{
-						NotReadyAddresses: []corev1.EndpointAddress{
-							{
-								IP:       node1.Status.Addresses[0].Address,
-								NodeName: &node1.Name,
-							},
-						},
-						Ports: []corev1.EndpointPort{
-							{
-								Port:     80,
-								Protocol: corev1.ProtocolTCP,
-							},
-						},
-					},
-				}
-			})
-		})
-		It("the nexthops should not be empty", func() {
-			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-				return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-					[]string{
-						node2.Name,
-						node1.Name,
-					})
-			}), 3*time.Second).Should(Equal(true))
-		})
-	})
-
-	Context("ExternalTrafficPolicy == ServiceExternalTrafficPolicyTypeLocal", func() {
-		BeforeEach(func() {
-			updateSvc(svc, func(dst *corev1.Service) {
-				dst.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
-			})
-		})
-
-		It("external local service should forward to loacl node", func() {
-			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-				return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-					[]string{
-						node1.Name,
-					})
-			}), 3*time.Second).Should(Equal(true))
-		})
-
-		It("nexthop should change when endpoint changed", func() {
-			updateEndpoints(endpoints, func(dst *corev1.Endpoints) {
-				dst.Subsets = []corev1.EndpointSubset{
-					{
-						Addresses: []corev1.EndpointAddress{
-							{
-								IP:       node2.Status.Addresses[0].Address,
-								NodeName: &node2.Name,
-							},
-						},
-						NotReadyAddresses: []corev1.EndpointAddress{
-							{
-								IP:       node1.Status.Addresses[0].Address,
-								NodeName: &node1.Name,
-							},
-						},
-						Ports: []corev1.EndpointPort{
-							{
-								Port:     80,
-								Protocol: corev1.ProtocolTCP,
-							},
-						},
-					},
-				}
-			})
-
-			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-				return bgpFakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-					[]string{
-						node2.Name,
-					})
-			}), 3*time.Second).Should(Equal(true))
-		})
-	})
-
-	When("Eip has label "+constant.OpenELBCNI, func() {
-		BeforeEach(func() {
-			updateSvc(svc, func(dst *corev1.Service) {
-				dst.Labels[constant.OpenELBCNI] = constant.OpenELBCNICalico
-			})
-		})
-
-		It("Speaker should be dummy", func() {
-			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-				return !dummySpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-					[]string{
-						node2.Name,
-						node1.Name,
-					})
-			}), 3*time.Second).Should(Equal(true))
-		})
-	})
-
-	Context("Change to Layer2 LoadBalancer Service", func() {
-		BeforeEach(func() {
-			updateSvc(svc, func(dst *corev1.Service) {
-				dst.Annotations[constant.OpenELBProtocolAnnotationKey] = constant.OpenELBProtocolLayer2
-			})
-		})
-
-		It("Nexthops should not be all nodes", func() {
-			Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-				return !layer2FakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP,
-					[]string{
-						node2.Name,
-						node1.Name,
-					})
-			}), 3*time.Second).Should(Equal(true))
-		})
-
-		Context("ExternalTrafficPolicy == ServiceExternalTrafficPolicyTypeLocal", func() {
-			BeforeEach(func() {
-				updateSvc(svc, func(dst *corev1.Service) {
-					dst.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeLocal
-				})
-			})
-
-			It("layer2 service should have annotation", func() {
-				Eventually(checkEipUsage(eip, 0), 3*time.Second).Should(BeTrue())
-				Eventually(checkEipUsage(eipLayer2, 1), 3*time.Second).Should(BeTrue())
-
-				Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-					if dst.Annotations[constant.OpenELBLayer2Annotation] == node1.Name {
-						return true
-					}
-
-					return layer2FakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP, []string{
-						node1.Name,
-					})
-				}), 3*time.Second).Should(Equal(true))
-
-				By("When the endpoint changes, the annotation changes at the same time.")
-				updateEndpoints(endpoints, func(dst *corev1.Endpoints) {
-					dst.Subsets = []corev1.EndpointSubset{
-						{
-							Addresses: []corev1.EndpointAddress{
-								{
-									IP:       node2.Status.Addresses[0].Address,
-									NodeName: &node2.Name,
-								},
-							},
-							NotReadyAddresses: []corev1.EndpointAddress{
-								{
-									IP:       node1.Status.Addresses[0].Address,
-									NodeName: &node1.Name,
-								},
-							},
-							Ports: []corev1.EndpointPort{
-								{
-									Port:     80,
-									Protocol: corev1.ProtocolTCP,
-								},
-							},
-						},
-					}
-				})
-
-				Eventually(checkSvc(svc, func(dst *corev1.Service) bool {
-					if dst.Annotations[constant.OpenELBLayer2Annotation] == node2.Name {
-						return true
-					}
-
-					return layer2FakeSpeak.Equal(dst.Status.LoadBalancer.Ingress[0].IP, []string{
-						node2.Name,
-					})
-				}), 3*time.Second).Should(Equal(true))
-			})
-		})
-	})
 })
 
 func updateSvc(origin *corev1.Service, fn func(dst *corev1.Service)) {

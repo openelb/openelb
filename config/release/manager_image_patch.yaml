@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openelb-manager
+  name: openelb-controller
 spec:
   template:
     spec:
       containers:
         # Change the value of image field below to your controller image URL
-        - image: kubesphere/openelb:v0.5.1
-          name: openelb-manager
+        - image: kubesphere/openelb-controller:v0.6.0
+          name: openelb-controller
           resources:
             limits:
               cpu: 100m

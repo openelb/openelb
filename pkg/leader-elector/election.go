@@ -2,6 +2,9 @@ package leader
 
 import (
 	"context"
+	"os"
+	"time"
+
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -9,8 +12,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"os"
-	"time"
 )
 
 var (
@@ -28,7 +29,7 @@ func envNodename() string {
 func LeaderElector(stopCh <-chan struct{}, client *clientset.Clientset, opts Options) {
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
-			Name:      constant.OpenELBSpeakerLocker,
+			Name:      constant.OpenELBControllerLocker,
 			Namespace: util.EnvNamespace(),
 		},
 		Client: client.CoordinationV1(),

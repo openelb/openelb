@@ -39,7 +39,7 @@ func (e *EnqueueRequestForNode) getServices() []corev1.Service {
 
 // Create implements EventHandler
 func (e *EnqueueRequestForNode) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
-	if evt.Meta == nil {
+	if evt.Object == nil {
 		nodeEnqueueLog.Error(nil, "CreateEvent received with no metadata", "event", evt)
 		return
 	}
@@ -102,11 +102,11 @@ func nodeInternalAndExternalIP(obj runtime.Object) (externalIP, internalIP strin
 
 // Update implements EventHandler
 func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	if evt.MetaOld == nil {
+	if evt.ObjectOld == nil {
 		nodeEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
 	}
 
-	if evt.MetaNew == nil {
+	if evt.ObjectNew == nil {
 		nodeEnqueueLog.Error(nil, "UpdateEvent received with no new metadata", "event", evt)
 	}
 
@@ -120,7 +120,7 @@ func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLi
 
 // Delete implements EventHandler
 func (e *EnqueueRequestForNode) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	if evt.Meta == nil {
+	if evt.Object == nil {
 		nodeEnqueueLog.Error(nil, "DeleteEvent received with no metadata", "event", evt)
 		return
 	}
@@ -167,7 +167,7 @@ func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 
 // Create implements EventHandler
 func (e *EnqueueRequestForDeAndDs) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
-	if evt.Meta == nil {
+	if evt.Object == nil {
 		deAndDsEnqueueLog.Error(nil, "CreateEvent received with no metadata", "event", evt)
 		return
 	}
@@ -182,11 +182,11 @@ func (e *EnqueueRequestForDeAndDs) Create(evt event.CreateEvent, q workqueue.Rat
 
 // Update implements EventHandler
 func (e *EnqueueRequestForDeAndDs) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	if evt.MetaOld == nil {
+	if evt.ObjectOld == nil {
 		deAndDsEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
 	}
 
-	if evt.MetaNew == nil {
+	if evt.ObjectNew == nil {
 		deAndDsEnqueueLog.Error(nil, "UpdateEvent received with no new metadata", "event", evt)
 	}
 
@@ -200,7 +200,7 @@ func (e *EnqueueRequestForDeAndDs) Update(evt event.UpdateEvent, q workqueue.Rat
 
 // Delete implements EventHandler
 func (e *EnqueueRequestForDeAndDs) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	if evt.Meta == nil {
+	if evt.Object == nil {
 		deAndDsEnqueueLog.Error(nil, "DeleteEvent received with no metadata", "event", evt)
 		return
 	}
