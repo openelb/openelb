@@ -88,7 +88,7 @@ func (b *eipRouter) update(w http.ResponseWriter, r *http.Request) {
 		EndpointLogic: func() (interface{}, error) {
 			return b.handler.Update(r.Context(), name, &eip)
 		},
-		ReqBody: &eip,
+		ReqBody:    &eip,
 		StatusCode: http.StatusOK,
 	})
 }

@@ -62,9 +62,7 @@ type BgpConfReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster BgpConf CRD closer to the desired state.
-func (r *BgpConfReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-
+func (r *BgpConfReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	instance := &v1alpha2.BgpConf{}
 	err := r.Client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
@@ -153,10 +151,10 @@ func (r *BgpConfReconciler) getPolicyConfigMap(ctx context.Context, bgpConf *v1a
 	return foundPolicy, nil
 }
 
-func (r *BgpConfReconciler) Map(configMap handler.MapObject) []reconcile.Request {
+func (r *BgpConfReconciler) Map(configMap client.Object) []reconcile.Request {
 	attachedBgpConfs := &v1alpha2.BgpConfList{}
 	listOps := &client.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector(policyField, configMap.Meta.GetName()),
+		FieldSelector: fields.OneTermEqualSelector(policyField, configMap.GetName()),
 	}
 	err := r.List(context.TODO(), attachedBgpConfs, listOps)
 	if err != nil {
@@ -218,7 +216,7 @@ func shouldReconcile(obj runtime.Object) bool {
 func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if util.DutyOfCNI(nil, e.Meta) {
+			if util.DutyOfCNI(nil, e.Object) {
 				return false
 			}
 			return shouldReconcile(e.Object)
@@ -228,7 +226,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				oldConf := e.ObjectOld.(*v1alpha2.BgpConf)
 				newConf := e.ObjectNew.(*v1alpha2.BgpConf)
 
-				if !util.DutyOfCNI(e.MetaOld, e.MetaNew) {
+				if !util.DutyOfCNI(e.ObjectOld, e.ObjectNew) {
 					if !reflect.DeepEqual(oldConf.DeletionTimestamp, newConf.DeletionTimestamp) {
 						return true
 					}
@@ -245,7 +243,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// The policy field must be indexed by the manager, so that we will be able to lookup BgpConf by a referenced ConfigMap name.
 	err := mgr.GetFieldIndexer().
-		IndexField(context.Background(), &v1alpha2.BgpConf{}, policyField, func(rawObj runtime.Object) []string {
+		IndexField(context.Background(), &v1alpha2.BgpConf{}, policyField, func(rawObj client.Object) []string {
 			// Extract the ConfigMap name from the BgpConf Spec, if one is provided
 			bgpConf := rawObj.(*v1alpha2.BgpConf)
 			if bgpConf.Spec.Policy == "" {
@@ -261,7 +259,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha2.BgpConf{}, builder.WithPredicates(p)).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: r},
+			handler.EnqueueRequestsFromMapFunc(r.Map),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Named("BgpConfController").
@@ -349,7 +347,7 @@ func (r BgpConfReconciler) updateConfStatus() {
 	r.Client.Status().Update(context.Background(), clone)
 }
 
-func (r BgpConfReconciler) run(stopCh <-chan struct{}) {
+func (r BgpConfReconciler) run(ctx context.Context) {
 	t := time.NewTicker(time.Duration(syncStatusPeriod) * time.Second)
 
 	for {
@@ -357,19 +355,19 @@ func (r BgpConfReconciler) run(stopCh <-chan struct{}) {
 		case <-t.C:
 			r.updateConfStatus()
 
-		case <-stopCh:
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (r BgpConfReconciler) Start(stopCh <-chan struct{}) error {
+func (r BgpConfReconciler) Start(ctx context.Context) error {
 	err := r.CleanBgpConfStatus()
 	if err != nil {
 		return err
 	}
 
-	go r.run(stopCh)
+	go r.run(ctx)
 
 	return nil
 }

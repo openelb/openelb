@@ -136,7 +136,7 @@ func (b *Bgp) HandleBgpPeer(neighbor *bgpapi.BgpPeer, delete bool) error {
 					Family:  defaultFamily(ip),
 					Enabled: true,
 				}
-			}	
+			}
 		}
 	}
 

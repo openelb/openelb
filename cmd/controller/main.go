@@ -17,8 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"github.com/openelb/openelb/cmd/manager/app"
 	"os"
+
+	"github.com/openelb/openelb/cmd/controller/app"
 )
 
 func main() {

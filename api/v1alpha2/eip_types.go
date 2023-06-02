@@ -23,11 +23,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/openelb/openelb/pkg/client"
 	"github.com/openelb/openelb/pkg/util"
 	"github.com/openelb/openelb/pkg/validate"
 
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/manager/client"
 	cnet "github.com/projectcalico/libcalico-go/lib/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -130,6 +130,7 @@ type EipStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="cidr",type=string,JSONPath=`.spec.address`
@@ -147,6 +148,7 @@ type Eip struct {
 }
 
 // +kubebuilder:object:root=true
+
 // EipList contains a list of Eip
 type EipList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -154,7 +156,7 @@ type EipList struct {
 	Items           []Eip `json:"items"`
 }
 
-// +kubebuilder:webhook:path=/validate-network-kubesphere-io-v1alpha2-eip,mutating=false,sideEffects=NoneOnDryRun,failurePolicy=fail,groups=network.kubesphere.io,resources=eips,verbs=create;update;delete,versions=v1alpha2,name=validate.eip.network.kubesphere.io
+// +kubebuilder:webhook:admissionReviewVersions=v1,path=/validate-network-kubesphere-io-v1alpha2-eip,mutating=false,sideEffects=NoneOnDryRun,failurePolicy=fail,groups=network.kubesphere.io,resources=eips,verbs=create;update;delete,versions=v1alpha2,name=validate.eip.network.kubesphere.io
 
 func (e Eip) IsOverlap(eip Eip) bool {
 	base, size, _ := e.GetSize()
@@ -168,6 +170,13 @@ func (e Eip) IsOverlap(eip Eip) bool {
 		return false
 	}
 	return true
+}
+
+func (e Eip) Contains(ip net.IP) bool {
+	base, size, _ := e.GetSize()
+
+	return cnet.IPToBigInt(cnet.IP{IP: ip}).Cmp(cnet.IPToBigInt(cnet.IP{IP: base})) >= 0 &&
+		cnet.IPToBigInt(cnet.IP{IP: ip}).Cmp(big.NewInt(0).Add(cnet.IPToBigInt(cnet.IP{IP: base}), big.NewInt(size-1))) <= 0
 }
 
 func (e Eip) ValidateCreate() error {
@@ -212,6 +221,7 @@ func (e Eip) ValidateUpdate(old runtime.Object) error {
 	return nil
 }
 
+// TODO :validate eip is not used:
 func (e Eip) ValidateDelete() error {
 	return nil
 }

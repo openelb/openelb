@@ -80,7 +80,7 @@ func newARPSpeaker(ifi *net.Interface) (*arpSpeaker, error) {
 	return ret, nil
 }
 
-//The source mac address must be on the network card, otherwise arp spoof could drop you packets.
+// The source mac address must be on the network card, otherwise arp spoof could drop you packets.
 func generateArp(intfHW net.HardwareAddr, op arp.Operation, srcHW net.HardwareAddr, srcIP net.IP, dstHW net.HardwareAddr, dstIP net.IP) ([]byte, error) {
 	pkt, err := arp.NewPacket(op, srcHW, srcIP, dstHW, dstIP)
 	if err != nil {

@@ -69,7 +69,7 @@ func peerMatchNode(peer *v1alpha2.BgpPeer, node *corev1.Node) (bool, error) {
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgppeers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgppeers/status,verbs=get;update;patch
 
-func (r BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r BgpPeerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("request", req.NamespacedName)
 
 	matchNode := true
@@ -121,13 +121,13 @@ func (r BgpPeerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, r.BgpServer.HandleBgpPeer(clone, !matchNode)
 }
 
-func (r BgpPeerReconciler) Start(stopCh <-chan struct{}) error {
+func (r BgpPeerReconciler) Start(ctx context.Context) error {
 	err := r.CleanBgpPeerStatus()
 	if err != nil {
 		return err
 	}
 
-	go r.run(stopCh)
+	go r.run(ctx)
 
 	return nil
 }
@@ -164,7 +164,7 @@ func (r BgpPeerReconciler) updatePeerStatus() {
 	}
 }
 
-func (r BgpPeerReconciler) run(stopCh <-chan struct{}) {
+func (r BgpPeerReconciler) run(ctx context.Context) {
 	t := time.NewTicker(time.Duration(syncStatusPeriod) * time.Second)
 
 	for {
@@ -172,7 +172,7 @@ func (r BgpPeerReconciler) run(stopCh <-chan struct{}) {
 		case <-t.C:
 			r.updatePeerStatus()
 
-		case <-stopCh:
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -183,7 +183,7 @@ func (r BgpPeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&v1alpha2.BgpPeer{}).
 		WithEventFilter(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				if util.DutyOfCNI(nil, e.Meta) {
+				if util.DutyOfCNI(nil, e.Object) {
 					return false
 				}
 				return true
@@ -191,7 +191,7 @@ func (r BgpPeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				oldPeer := e.ObjectOld.(*v1alpha2.BgpPeer)
 				newPeer := e.ObjectNew.(*v1alpha2.BgpPeer)
-				if !util.DutyOfCNI(e.MetaOld, e.MetaNew) {
+				if !util.DutyOfCNI(e.ObjectOld, e.ObjectNew) {
 					if !reflect.DeepEqual(oldPeer.DeletionTimestamp, newPeer.DeletionTimestamp) {
 						return true
 					}

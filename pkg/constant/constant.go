@@ -43,7 +43,7 @@ const (
 	OpenELBCNICalico      string = "calico"
 	EipRangeSeparator     string = "-"
 
-	OpenELBSpeakerLocker      = "openelb-speaker"
+	OpenELBControllerLocker   = "openelb-controller"
 	OpenELBNamespace          = "openelb-system"
 	OpenELBVipConfigMap       = "openelb-vip-configmap"
 	OpenELBVipName            = "openelb-keepalive-vip"

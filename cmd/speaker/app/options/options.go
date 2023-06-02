@@ -9,7 +9,7 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 )
 
-type OpenELBManagerOptions struct {
+type OpenELBSpeakerOptions struct {
 	Bgp *bgp.BgpOptions
 	*manager.GenericOptions
 	LogOptions  *log.Options
@@ -17,8 +17,8 @@ type OpenELBManagerOptions struct {
 	HTTPOptions *server.Options
 }
 
-func NewOpenELBManagerOptions() *OpenELBManagerOptions {
-	return &OpenELBManagerOptions{
+func NewOpenELBSpeakerOptions() *OpenELBSpeakerOptions {
+	return &OpenELBSpeakerOptions{
 		Bgp:            bgp.NewBgpOptions(),
 		GenericOptions: manager.NewGenericOptions(),
 		LogOptions:     log.NewOptions(),
@@ -27,12 +27,12 @@ func NewOpenELBManagerOptions() *OpenELBManagerOptions {
 	}
 }
 
-func (s *OpenELBManagerOptions) Validate() []error {
+func (s *OpenELBSpeakerOptions) Validate() []error {
 	var errs []error
 	return errs
 }
 
-func (s *OpenELBManagerOptions) Flags() cliflag.NamedFlagSets {
+func (s *OpenELBSpeakerOptions) Flags() cliflag.NamedFlagSets {
 	fss := cliflag.NamedFlagSets{}
 
 	s.Bgp.AddFlags(fss.FlagSet("bgp"))

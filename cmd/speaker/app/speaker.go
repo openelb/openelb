@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"os"
 
-	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
-	"github.com/openelb/openelb/cmd/manager/app/options"
+	"github.com/openelb/openelb/cmd/speaker/app/options"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/bgp"
-	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/controllers/lb"
 	"github.com/openelb/openelb/pkg/leader-elector"
 	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
-	"github.com/openelb/openelb/pkg/server"
 	_ "github.com/openelb/openelb/pkg/metrics"
+	"github.com/openelb/openelb/pkg/server"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
 	"github.com/openelb/openelb/pkg/speaker/vip"
@@ -24,19 +22,19 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apiserver/pkg/util/term"
 	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/term"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-func NewOpenELBManagerCommand() *cobra.Command {
-	s := options.NewOpenELBManagerOptions()
+func NewOpenELBSpeakerCommand() *cobra.Command {
+	s := options.NewOpenELBSpeakerOptions()
 
 	cmd := &cobra.Command{
-		Use:  "openelb-manager",
-		Long: `The openelb manager is a daemon that `,
+		Use:  "openelb-speaker",
+		Long: `The openelb speaker is a daemon that `,
 		Run: func(cmd *cobra.Command, args []string) {
 			if errs := s.Validate(); len(errs) != 0 {
 				fmt.Fprintf(os.Stderr, "%v\n", utilerrors.NewAggregate(errs))
@@ -84,10 +82,10 @@ func NewOpenELBManagerCommand() *cobra.Command {
 	return cmd
 }
 
-func Run(c *options.OpenELBManagerOptions) error {
+func Run(c *options.OpenELBSpeakerOptions) error {
 	log.InitLog(c.LogOptions)
 
-	setupLog := ctrl.Log.WithName("setup")
+	setupLog := ctrl.Log.WithName("speaker")
 
 	mgr, err := manager.NewManager(ctrl.GetConfigOrDie(), c.GenericOptions)
 	setupLog.Info("listen metrics addr : " + c.MetricsAddr)
@@ -97,14 +95,6 @@ func Run(c *options.OpenELBManagerOptions) error {
 	}
 
 	bgpServer := bgpd.NewGoBgpd(c.Bgp)
-
-	// Setup all Controllers
-	err = ipam.SetupIPAM(mgr)
-	if err != nil {
-		setupLog.Error(err, "unable to setup ipam")
-		return err
-	}
-	networkv1alpha2.Eip{}.SetupWebhookWithManager(mgr)
 
 	err = bgp.SetupBgpConfReconciler(bgpServer, mgr)
 	if err != nil {
@@ -125,7 +115,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 
 	//For layer2
 	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	leader.LeaderElector(stopCh, k8sClient, *c.Leader)
+	leader.LeaderElector(stopCh.Done(), k8sClient, *c.Leader)
 
 	//For gobgp
 	err = speaker.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer)
@@ -154,7 +144,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 	setupLog.Info("registering webhooks to the webhook server")
 
 	go func() {
-		err = server.SetupHTTPServer(stopCh, c.HTTPOptions)
+		err = server.SetupHTTPServer(stopCh.Done(), c.HTTPOptions)
 		if err != nil {
 			setupLog.Error(err, "unable to setup http server")
 		}

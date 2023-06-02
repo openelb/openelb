@@ -109,6 +109,22 @@ var _ = Describe("Test eip types", func() {
 		Expect(e.IsOverlap(e2)).Should(BeTrue())
 	})
 
+	It("Test Contains", func() {
+		e := &Eip{
+			TypeMeta:   metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{},
+			Spec: EipSpec{
+				Address: "192.168.0.100-192.168.0.200",
+			},
+			Status: EipStatus{},
+		}
+		Expect(e.Contains(net.ParseIP("192.168.0.100"))).Should(BeTrue())
+		Expect(e.Contains(net.ParseIP("192.168.0.200"))).Should(BeTrue())
+		Expect(e.Contains(net.ParseIP("192.168.0.150"))).Should(BeTrue())
+		Expect(e.Contains(net.ParseIP("192.168.0.99"))).Should(BeFalse())
+		Expect(e.Contains(net.ParseIP("192.168.0.201"))).Should(BeFalse())
+	})
+
 	It("Test ValidateUpdate", func() {
 		e := &Eip{
 			TypeMeta:   metav1.TypeMeta{},

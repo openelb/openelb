@@ -75,9 +75,9 @@ func (b *bgpConfRouter) update(w http.ResponseWriter, r *http.Request) {
 		EndpointLogic: func() (interface{}, error) {
 			return b.handler.Update(r.Context(), &bgpConf)
 		},
-		ReqBody: &bgpConf,
+		ReqBody:    &bgpConf,
 		StatusCode: http.StatusOK,
-	}) 
+	})
 }
 
 func (b *bgpConfRouter) delete(w http.ResponseWriter, r *http.Request) {

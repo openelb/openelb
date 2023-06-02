@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"reflect"
 
@@ -45,6 +44,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+)
+
+const (
+	ReasonDeleteLoadBalancer = "deleteLoadBalancer"
+	ReasonAddLoadBalancer    = "addLoadBalancer"
+	AddLoadBalancerMsg       = "success to add nexthops %v"
+	AddLoadBalancerFailedMsg = "failed to add nexthops %v, err=%v"
+	DelLoadBalancerMsg       = "loadbalancer ip changed from %s to %s"
+	DelLoadBalancerFailedMsg = "speaker del loadbalancer failed, err=%v"
 )
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -112,13 +120,13 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	//endpoints
 	ep := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return r.shouldReconcileEP(e.MetaNew)
+			return r.shouldReconcileEP(e.ObjectNew)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			return r.shouldReconcileEP(e.Meta)
+			return r.shouldReconcileEP(e.Object)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return r.shouldReconcileEP(e.Meta)
+			return r.shouldReconcileEP(e.Object)
 		},
 	}
 	err = ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, ep)
@@ -176,13 +184,13 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	dedsp := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Maybe Deployment or DaemonSet was modified, so both should be looked at
-			return r.shouldReconcileDeDs(e.MetaNew) || r.shouldReconcileDeDs(e.MetaOld)
+			return r.shouldReconcileDeDs(e.ObjectNew) || r.shouldReconcileDeDs(e.ObjectOld)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			return r.shouldReconcileDeDs(e.Meta)
+			return r.shouldReconcileDeDs(e.Object)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return r.shouldReconcileDeDs(e.Meta)
+			return r.shouldReconcileDeDs(e.Object)
 		},
 	}
 	err = ctl.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
@@ -193,99 +201,19 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
-	return mgr.GetFieldIndexer().IndexField(context.TODO(), &corev1.Pod{}, "status.phase", func(rawObj runtime.Object) []string {
+	return mgr.GetFieldIndexer().IndexField(context.TODO(), &corev1.Pod{}, "status.phase", func(rawObj client.Object) []string {
 		pod := rawObj.(*corev1.Pod)
 		return []string{string(pod.Status.Phase)}
 	})
 }
 
-func (r *ServiceReconciler) callSetLoadBalancer(result ipam.IPAMResult, svc *corev1.Service) error {
-	nodes, err := r.getServiceNodes(svc)
-	if err != nil {
-		return err
-	}
-
-	svcIP := result.Addr
-
-	var announceNodes []corev1.Node
-	if result.Protocol == constant.OpenELBProtocolLayer2 {
-		if len(nodes) == 0 {
-			return result.Sp.DelBalancer(svcIP)
-		}
-
-		index := rand.Int() % len(nodes)
-		found := false
-		preNode, ok := svc.Annotations[constant.OpenELBLayer2Annotation]
-		if ok {
-			for i, node := range nodes {
-				if node.Name == preNode {
-					index = i
-					found = true
-					break
-				}
-			}
-		}
-
-		if !found {
-			if svc.Annotations == nil {
-				svc.Annotations = make(map[string]string)
-			}
-			svc.Annotations[constant.OpenELBLayer2Annotation] = nodes[index].Name
-
-			err = r.Update(context.Background(), svc)
-			if err != nil {
-				return err
-			}
-		}
-
-		announceNodes = append(announceNodes, nodes[index])
-	} else {
-		announceNodes = append(announceNodes, nodes...)
-	}
-	if result.Protocol == constant.OpenELBProtocolVip {
-		vip := fmt.Sprintf("%s:%s", svcIP, svc.Namespace+"/"+svc.Name)
-		return result.Sp.SetBalancer(vip, nil)
-	}
-	return result.Sp.SetBalancer(svcIP, announceNodes)
-}
-
-func (r *ServiceReconciler) callDelLoadBalancer(result ipam.IPAMResult, svc *corev1.Service) error {
-	if result.Addr != "" {
-		if svc.Annotations != nil && svc.Annotations[constant.OpenELBLayer2Annotation] != "" {
-			delete(svc.Annotations, constant.OpenELBLayer2Annotation)
-			err := r.Update(context.Background(), svc)
-			if err != nil {
-				return err
-			}
-		}
-		if result.Protocol == constant.OpenELBProtocolVip {
-			vip := fmt.Sprintf("%s:%s", result.Addr, svc.Namespace+"/"+svc.Name)
-			return result.Sp.DelBalancer(vip)
-		}
-		return result.Sp.DelBalancer(result.Addr)
-	}
-	return nil
-}
-
-const (
-	ReasonDeleteLoadBalancer = "deleteLoadBalancer"
-	ReasonAddLoadBalancer    = "addLoadBalancer"
-	AddLoadBalancerMsg       = "success to add nexthops %v"
-	AddLoadBalancerFailedMsg = "failed to add nexthops %v, err=%v"
-	DelLoadBalancerMsg       = "loadbalancer ip changed from %s to %s"
-	DelLoadBalancerFailedMsg = "speaker del loadbalancer failed, err=%v"
-)
-
-func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	var (
-		result ipam.IPAMResult
-	)
-
+func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("service", req.NamespacedName)
-	log.Info("setup openelb service")
+	log.Info("start setup openelb service")
+	defer log.Info("finish reconcile openelb service")
 
 	svc := &corev1.Service{}
-	err := r.Get(context.TODO(), req.NamespacedName, svc)
+	err := r.Get(ctx, req.NamespacedName, svc)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -298,38 +226,28 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return r.reconcileNP(svc)
 	}
 
-	args := r.constructIPAMArgs(svc)
-	result, err = ipam.IPAMAllocator.UnAssignIP(args, true)
-	if err != nil {
+	request, err := r.constructIPAMRequest(svc)
+	if err != nil || request == nil {
 		return ctrl.Result{}, err
 	}
 
-	// Check if the IP address specified by the service should be changed.
-	if args.ShouldUnAssignIP(result) {
-		err = r.callDelLoadBalancer(result, svc)
-		if err != nil {
-			r.Event(svc, corev1.EventTypeWarning, ReasonDeleteLoadBalancer, fmt.Sprintf(DelLoadBalancerFailedMsg, err))
-			return ctrl.Result{}, err
-		}
-		_, err = ipam.IPAMAllocator.UnAssignIP(args, false)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		result.Clean()
+	if request.Release == nil && request.Allocate == nil {
+		return ctrl.Result{}, nil
 	}
 
-	if !args.Unalloc {
-		if !result.Assigned() {
-			result, err = ipam.IPAMAllocator.AssignIP(args)
-			if err != nil {
-				r.updateServiceEipInfo(result, svc)
-				return ctrl.Result{}, err
-			}
-		}
-
-		err = r.callSetLoadBalancer(result, svc)
+	if request.Release != nil {
+		err = ipam.Allocator.ReleaseIP(request)
 		if err != nil {
+			log.Error(err, "release ip", "request", request)
+			return ctrl.Result{}, err
+		}
+	}
+
+	result := ipam.Result{}
+	if request.Allocate != nil {
+		result, err = ipam.Allocator.AssignIP(request)
+		if err != nil {
+			log.Error(err, "assign ip", "request", request)
 			return ctrl.Result{}, err
 		}
 	}
@@ -337,18 +255,18 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, r.updateServiceEipInfo(result, svc)
 }
 
-func (r *ServiceReconciler) updateServiceEipInfo(result ipam.IPAMResult, svc *corev1.Service) error {
+func (r *ServiceReconciler) updateServiceEipInfo(result ipam.Result, svc *corev1.Service) error {
 	clone := svc.DeepCopy()
 
 	//update eip labels and annotations
 	if clone.Labels == nil {
 		clone.Labels = make(map[string]string)
 	}
-	if result.Assigned() {
+	if result.Record != nil {
 		if !util.ContainsString(clone.Finalizers, constant.FinalizerName) {
 			controllerutil.AddFinalizer(clone, constant.FinalizerName)
 		}
-		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = result.Eip
+		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = result.Record.Eip
 	} else {
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
 		delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
@@ -362,57 +280,44 @@ func (r *ServiceReconciler) updateServiceEipInfo(result ipam.IPAMResult, svc *co
 
 	//update ingress status
 	clone.Status.LoadBalancer.Ingress = nil
-	if result.Assigned() {
+	if result.Record != nil {
 		clone.Status.LoadBalancer.Ingress = append(clone.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{
-			IP: result.Addr,
+			IP: result.Record.IP,
 		})
 	}
+
 	if !reflect.DeepEqual(svc.Status, clone.Status) {
 		err := r.Status().Update(context.Background(), clone)
 		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
 
-func (r *ServiceReconciler) constructIPAMArgs(svc *corev1.Service) ipam.IPAMArgs {
-	args := ipam.IPAMArgs{
-		Unalloc: true,
+func (r *ServiceReconciler) constructIPAMRequest(svc *corev1.Service) (*ipam.Request, error) {
+	if svc.Annotations == nil {
+		return nil, nil
 	}
 
-	args.Key = types.NamespacedName{
-		Name:      svc.Name,
-		Namespace: svc.Namespace,
-	}.String()
-
-	if svc.Annotations != nil {
-		if _, ok := svc.Annotations[constant.OpenELBAnnotationKey]; ok &&
-			svc.Spec.Type == corev1.ServiceTypeLoadBalancer &&
-			svc.DeletionTimestamp == nil {
-			args.Unalloc = false
-		}
-
-		if ip, ok := svc.Annotations[constant.OpenELBEIPAnnotationKey]; ok {
-			args.Addr = ip
-		}
-
-		if eip, ok := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]; ok {
-			args.Eip = eip
-		}
-
-		if protocol, ok := svc.Annotations[constant.OpenELBProtocolAnnotationKey]; ok {
-			args.Protocol = protocol
-		} else {
-			args.Protocol = constant.OpenELBProtocolBGP
-		}
+	request := &ipam.Request{
+		Key: types.NamespacedName{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
+		}.String(),
 	}
 
-	if svc.Spec.LoadBalancerIP != "" {
-		args.Addr = svc.Spec.LoadBalancerIP
+	err := request.ConstructAllocate(svc)
+	if err != nil {
+		return nil, err
 	}
 
-	return args
+	err = request.ConstructRelease(svc)
+	if err != nil {
+		return nil, err
+	}
+	return request, nil
 }
 
 // The caller should check if the slice is empty.
@@ -491,7 +396,7 @@ func IsOpenELBService(obj runtime.Object) bool {
 	return false
 }
 
-// +kubebuilder:webhook:path=/validate-network-kubesphere-io-v1alpha2-svc,mutating=true,sideEffects=NoneOnDryRun,failurePolicy=fail,groups="",resources=services,verbs=create,versions=v1,name=mutating.eip.network.kubesphere.io
+// +kubebuilder:webhook:admissionReviewVersions=v1,path=/validate-network-kubesphere-io-v1alpha2-svc,mutating=true,sideEffects=NoneOnDryRun,failurePolicy=fail,groups="",resources=services,verbs=create,versions=v1,name=mutating.eip.network.kubesphere.io
 
 type SvcAnnotator struct {
 	client.Client

@@ -12,12 +12,12 @@ import (
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
-	"github.com/openelb/openelb/pkg/speaker"
-	"github.com/openelb/openelb/pkg/speaker/layer2"
 	"github.com/openelb/openelb/pkg/util"
 	cnet "github.com/projectcalico/libcalico-go/lib/net"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,68 +31,227 @@ const (
 	EipAddOrUpdateReason = "add/update eip"
 )
 
-type IPAMArgs struct {
-	// Service.Namespace + Service.Name
-	// Required
-	Key string
+type Record struct {
 	// The IP address specified by the service
-	Addr string
+	IP string
 	// The Eip name specified by the service
-	// Not available right now.
 	Eip string
-	// The Protocol specified by the service
-	// Required
+	// The Protocol specified by the service, should be deprecated
 	Protocol string
-	Unalloc  bool
 }
 
-// Compare the parameters and results to determine if the IP address should be retrieved.
-func (i *IPAMArgs) ShouldUnAssignIP(result IPAMResult) bool {
-	if result.Addr == "" {
-		return false
-	}
-
-	if i.Unalloc {
-		return true
-	}
-
-	if i.Protocol != result.Protocol {
-		return true
-	}
-
-	if i.Addr != "" && i.Addr != result.Addr {
-		return true
-	}
-
-	if i.Eip != "" && i.Eip != result.Eip {
-		return true
-	}
-
-	return false
+type Result struct {
+	// The result of ip allocation
+	Record *Record
 }
 
-type IPAMResult struct {
-	Addr     string
-	Eip      string
-	Protocol string
-	Sp       speaker.Speaker
+type Request struct {
+	// Service.Namespace + Service.Name
+	Key string
+
+	// The Allocate records specifying allocation
+	Allocate *Record
+
+	// The Release records specifying release
+	Release *Record
 }
 
-// Called when the service is updated or created.
-func (i *IPAMResult) Assigned() bool {
-	if i.Addr != "" {
-		return true
+func (i *Request) assignIPFromEip(eip *networkv1alpha2.Eip) string {
+	if !eip.DeletionTimestamp.IsZero() {
+		return ""
 	}
 
-	return false
+	if i.Allocate == nil {
+		return ""
+	}
+
+	if i.Allocate.Protocol != eip.GetProtocol() {
+		return ""
+	}
+
+	if i.Allocate.Eip != eip.Name && i.Allocate.IP != "" {
+		return ""
+	}
+
+	if eip.Spec.Disable || (!eip.Status.Ready && eip.GetProtocol() == constant.OpenELBProtocolLayer2) {
+		return ""
+	}
+
+	for addr, svcs := range eip.Status.Used {
+		tmp := strings.Split(svcs, ";")
+		for _, svc := range tmp {
+			if svc == i.Key {
+				return addr
+			}
+		}
+	}
+
+	ip := net.ParseIP(i.Allocate.IP)
+	offset := 0
+	if ip != nil {
+		offset = eip.IPToOrdinal(ip)
+		if offset < 0 {
+			return ""
+		}
+	}
+
+	for ; offset < eip.Status.PoolSize; offset++ {
+		addr := cnet.IncrementIP(*cnet.ParseIP(eip.Status.FirstIP), big.NewInt(int64(offset))).String()
+		tmp, ok := eip.Status.Used[addr]
+		if !ok {
+			if eip.Status.Used == nil {
+				eip.Status.Used = make(map[string]string)
+			}
+			eip.Status.Used[addr] = i.Key
+			eip.Status.Usage = len(eip.Status.Used)
+			if eip.Status.Usage == eip.Status.PoolSize {
+				eip.Status.Occupied = true
+			}
+			return addr
+		} else {
+			if ip != nil {
+				eip.Status.Used[addr] = fmt.Sprintf("%s;%s", tmp, i.Key)
+				return addr
+			}
+		}
+	}
+
+	return ""
 }
 
-func (i *IPAMResult) Clean() {
-	i.Addr = ""
+// look up by key in IPAMRequest
+func (i *Request) releaseIPFromEip(eip *networkv1alpha2.Eip) {
+	if !eip.DeletionTimestamp.IsZero() {
+		return
+	}
+
+	for addr, svcs := range eip.Status.Used {
+		tmp := strings.Split(svcs, ";")
+		for _, svc := range tmp {
+			if svc != i.Key {
+				continue
+			}
+
+			if len(tmp) == 1 {
+				delete(eip.Status.Used, addr)
+				eip.Status.Usage = len(eip.Status.Used)
+				if eip.Status.Usage != eip.Status.PoolSize {
+					eip.Status.Occupied = false
+				}
+			} else {
+				eip.Status.Used[addr] = strings.Join(util.RemoveString(tmp, i.Key), ";")
+			}
+
+		}
+	}
+}
+
+func (i *Request) getAllocatedEIPInfo() (string, string, error) {
+	eips := &networkv1alpha2.EipList{}
+	err := Allocator.List(context.Background(), eips)
+	if err != nil {
+		return "", "", err
+	}
+
+	for _, eip := range eips.Items {
+		if !eip.DeletionTimestamp.IsZero() {
+			return "", "", nil
+		}
+
+		for addr, used := range eip.Status.Used {
+			svcs := strings.Split(used, ";")
+			for _, svc := range svcs {
+				if svc == i.Key {
+					return eip.Name, addr, nil
+				}
+			}
+		}
+	}
+
+	return "", "", nil
+}
+
+func (i *Request) ConstructAllocate(svc *v1.Service) error {
+	if svc == nil || svc.Annotations == nil {
+		return nil
+	}
+
+	if value, ok := svc.Annotations[constant.OpenELBAnnotationKey]; !ok || value != constant.OpenELBAnnotationValue {
+		return nil
+	}
+
+	if !svc.DeletionTimestamp.IsZero() || svc.Spec.Type != v1.ServiceTypeLoadBalancer {
+		return nil
+	}
+
+	eipName, addr, err := i.getAllocatedEIPInfo()
+	if err != nil {
+		return err
+	}
+
+	svcEIP := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	svcLBIP := svc.Spec.LoadBalancerIP
+	if value, ok := svc.Annotations[constant.OpenELBEIPAnnotationKey]; ok {
+		svcLBIP = value
+	}
+	if svcEIP == eipName && svcLBIP == addr {
+		return nil
+	}
+
+	i.Allocate = &Record{}
+	i.Allocate.Eip = svcEIP
+	i.Allocate.IP = svcLBIP
+	i.Allocate.Protocol = constant.OpenELBProtocolBGP
+	if protocol, ok := svc.Annotations[constant.OpenELBProtocolAnnotationKey]; ok {
+		i.Allocate.Protocol = protocol
+	}
+
+	return nil
+}
+
+func (i *Request) ConstructRelease(svc *v1.Service) error {
+	if svc == nil || svc.Annotations == nil {
+		return nil
+	}
+
+	if value, ok := svc.Annotations[constant.OpenELBAnnotationKey]; !ok || value != constant.OpenELBAnnotationValue {
+		return nil
+	}
+
+	if svc.Spec.Type != v1.ServiceTypeLoadBalancer {
+		return nil
+	}
+
+	eipName, addr, err := i.getAllocatedEIPInfo()
+	if err != nil {
+		return err
+	}
+
+	svcLBIP := ""
+	if len(svc.Status.LoadBalancer.Ingress) > 0 {
+		svcLBIP = svc.Status.LoadBalancer.Ingress[0].IP
+	}
+
+	svcEIP := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	if svcEIP == eipName && svcLBIP == addr && svc.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	// new allocation
+	if svcLBIP != addr && svcLBIP == "" && svc.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	if eipName == "" && addr == "" {
+		return nil
+	}
+
+	i.Release = &Record{Eip: eipName, IP: addr}
+	return nil
 }
 
 var (
-	IPAMAllocator *IPAM
+	Allocator *IPAM
 )
 
 type IPAM struct {
@@ -104,7 +263,7 @@ type IPAM struct {
 const name = "IPAM"
 
 func SetupIPAM(mgr ctrl.Manager) error {
-	IPAMAllocator = &IPAM{
+	Allocator = &IPAM{
 		log:           ctrl.Log.WithName(name),
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor(name),
@@ -112,17 +271,7 @@ func SetupIPAM(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).Named(name).
 		For(&networkv1alpha2.Eip{}).WithEventFilter(predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if util.DutyOfCNI(nil, e.Meta) {
-				return false
-			}
-			return true
-		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if util.DutyOfCNI(e.MetaOld, e.MetaNew) {
-				return false
-			}
-
 			oldEip := e.ObjectOld.(*networkv1alpha2.Eip)
 			newEip := e.ObjectNew.(*networkv1alpha2.Eip)
 
@@ -136,17 +285,20 @@ func SetupIPAM(mgr ctrl.Manager) error {
 
 			return false
 		},
-	}).Complete(IPAMAllocator)
+	}).Complete(Allocator)
 }
 
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=eips,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=eips/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
 
-func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (i *IPAM) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	i.log.Info("start setup openelb eip")
+	defer i.log.Info("finish reconcile openelb eip")
+
 	eip := &networkv1alpha2.Eip{}
 
-	err := i.Get(context.TODO(), req.NamespacedName, eip)
+	err := i.Get(ctx, req.NamespacedName, eip)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -155,28 +307,23 @@ func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	if util.IsDeletionCandidate(eip, constant.IPAMFinalizerName) {
-		err = i.removeEip(eip)
-		if err != nil {
+		if err := i.removeEip(eip); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		metrics.DeleteEipMetrics(eip.Name)
 		controllerutil.RemoveFinalizer(eip, constant.IPAMFinalizerName)
 		return ctrl.Result{}, i.Update(context.Background(), eip)
 	}
 
 	if util.NeedToAddFinalizer(eip, constant.IPAMFinalizerName) {
 		controllerutil.AddFinalizer(eip, constant.IPAMFinalizerName)
-		err := i.Update(context.Background(), eip)
-		if err != nil {
+		if err := i.Update(ctx, eip); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	clone := eip.DeepCopy()
-
 	if err = i.updateEip(clone); err != nil {
-		i.Client.Status().Update(context.Background(), clone)
 		i.Event(eip, v1.EventTypeWarning, EipAddOrUpdateReason, fmt.Sprintf("%s: %s", util.GetNodeName(), err.Error()))
 		return ctrl.Result{}, err
 	}
@@ -184,16 +331,43 @@ func (i *IPAM) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if reflect.DeepEqual(clone.Status, eip.Status) {
 		return ctrl.Result{}, nil
 	}
-	i.updateMetrics(eip)
+	//i.updateMetrics(eip)
 	return ctrl.Result{}, i.Client.Status().Update(context.Background(), clone)
 }
 
-func (i *IPAM) updateEip(e *networkv1alpha2.Eip) error {
-	var (
-		sp  speaker.Speaker
-		err error
-	)
+func (i *IPAM) AssignIP(request *Request) (result Result, err error) {
+	eip := &networkv1alpha2.Eip{}
+	err = i.Get(context.Background(), types.NamespacedName{Name: request.Allocate.Eip}, eip)
+	if err != nil {
+		return result, err
+	}
 
+	clone := eip.DeepCopy()
+	if !eip.Status.Ready && eip.GetProtocol() == constant.OpenELBProtocolLayer2 {
+		return result, fmt.Errorf("layer2 eip:%s speaker not ready", eip.Name)
+	}
+
+	addr := request.assignIPFromEip(clone)
+	if addr == "" {
+		return result, fmt.Errorf("no avliable eip")
+	}
+	// i.updateMetrics(clone)
+	if !reflect.DeepEqual(clone, eip) {
+		if err := i.Client.Status().Update(context.Background(), clone); err != nil {
+			return result, err
+		}
+	}
+
+	result.Record = request.Allocate
+	if result.Record.IP == "" {
+		result.Record.IP = addr
+	}
+	i.log.Info("assign ip", "request", request, "eip status", clone.Status)
+
+	return result, nil
+}
+
+func (i *IPAM) updateEip(e *networkv1alpha2.Eip) error {
 	if e.Status.FirstIP == "" {
 		base, size, _ := e.GetSize()
 		e.Status.PoolSize = int(size)
@@ -204,30 +378,10 @@ func (i *IPAM) updateEip(e *networkv1alpha2.Eip) error {
 		}
 	}
 
-	err = i.syncEip(e)
-	if err != nil {
-		return err
-	}
-
-	sp = speaker.GetSpeaker(e.GetSpeakerName())
-	if sp == nil {
-		sp, err = layer2.NewSpeaker(e.Spec.Interface, e.Status.V4)
-		if err == nil {
-			err = speaker.RegisterSpeaker(e.GetSpeakerName(), sp)
-		}
-	}
-	if err != nil {
-		e.Status.Ready = false
-	} else {
-		e.Status.Ready = true
-	}
-
-	return err
+	return i.syncEip(e)
 }
 
 func (i *IPAM) syncEip(e *networkv1alpha2.Eip) error {
-	var err error
-
 	tmp := make(map[string]string)
 	for k, v := range e.Status.Used {
 		svcs := strings.Split(v, ";")
@@ -235,7 +389,7 @@ func (i *IPAM) syncEip(e *networkv1alpha2.Eip) error {
 		for _, svc := range svcs {
 			strs := strings.Split(svc, "/")
 			obj := v1.Service{}
-			err = i.Get(context.Background(), client.ObjectKey{Namespace: strs[0], Name: strs[1]}, &obj)
+			err := i.Get(context.Background(), client.ObjectKey{Namespace: strs[0], Name: strs[1]}, &obj)
 			if err != nil && !k8serrors.IsNotFound(err) {
 				return err
 			}
@@ -265,219 +419,41 @@ func (i *IPAM) syncEip(e *networkv1alpha2.Eip) error {
 }
 
 func (i *IPAM) removeEip(e *networkv1alpha2.Eip) error {
-	if e.Status.Usage != 0 {
-		for ip, _ := range e.Status.Used {
-			s := speaker.GetSpeaker(e.GetSpeakerName())
-			if s == nil {
-				i.log.Info("remove eip, but there is no speaker")
-				break
-			}
-
-			err := s.DelBalancer(ip)
-			if err != nil {
-				i.log.Error(err, fmt.Sprintf("delete balancer [%s:%s] error", e.GetSpeakerName(), ip))
-			}
-		}
-	}
-
-	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
-		speaker.UnRegisterSpeaker(e.Spec.Interface)
-	}
-
 	svcs := v1.ServiceList{}
-	opts := &client.ListOptions{}
-	client.MatchingLabels{
-		constant.OpenELBEIPAnnotationKeyV1Alpha2: e.Name,
-	}.ApplyToList(opts)
-	err := i.List(context.Background(), &svcs, opts)
+	opts := labels.SelectorFromSet(labels.Set(map[string]string{constant.OpenELBEIPAnnotationKeyV1Alpha2: e.Name}))
+	err := i.List(context.Background(), &svcs, &client.ListOptions{LabelSelector: opts})
 	if err != nil {
 		return err
 	}
 
 	for _, svc := range svcs.Items {
-		clone := svc.DeepCopy()
-		if clone.Labels != nil {
-			delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
-		}
-		if !reflect.DeepEqual(clone, &svc) {
-			err = i.Update(context.Background(), clone)
-			if err != nil {
-				return err
-			}
+		delete(svc.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
+		if err := i.Update(context.Background(), &svc); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func (i *IPAM) AssignIP(args IPAMArgs) (IPAMResult, error) {
-	eips := &networkv1alpha2.EipList{}
-	err := i.List(context.Background(), eips)
+func (i *IPAM) ReleaseIP(request *Request) error {
+	eip := &networkv1alpha2.Eip{}
+	err := i.Get(context.Background(), types.NamespacedName{Name: request.Release.Eip}, eip)
 	if err != nil {
-		return IPAMResult{}, err
+		return err
 	}
 
-	err = fmt.Errorf("no avliable eip")
-	var result IPAMResult
-
-	for _, eip := range eips.Items {
-		clone := eip.DeepCopy()
-		addr := args.assignIPFromEip(clone)
-		i.updateMetrics(clone)
-		if addr != "" {
-			if !reflect.DeepEqual(clone, eip) {
-				err = i.Client.Status().Update(context.Background(), clone)
-				ctrl.Log.Info("assignIP update eip", "eip", clone.Status)
-			}
-
-			result.Addr = addr
-			result.Eip = eip.Name
-			result.Protocol = eip.GetProtocol()
-			result.Sp = speaker.GetSpeaker(eip.GetSpeakerName())
-
-			if result.Sp == nil {
-				err = fmt.Errorf("layer2 eip speaker not ready")
-			}
-
-			break
+	clone := eip.DeepCopy()
+	request.releaseIPFromEip(clone)
+	//i.updateMetrics(clone)
+	if !reflect.DeepEqual(clone, eip) {
+		if err := i.Client.Status().Update(context.Background(), clone); err != nil {
+			return err
 		}
 	}
 
-	i.log.Info("assignIP",
-		"args", args,
-		"result", result,
-		"err", err)
-
-	return result, err
-}
-
-func (a IPAMArgs) assignIPFromEip(eip *networkv1alpha2.Eip) string {
-	if eip.DeletionTimestamp != nil {
-		return ""
-	}
-
-	for addr, svcs := range eip.Status.Used {
-		tmp := strings.Split(svcs, ";")
-		for _, svc := range tmp {
-			if svc == a.Key {
-				return addr
-			}
-		}
-	}
-
-	if a.Protocol != eip.GetProtocol() {
-		return ""
-	}
-
-	if eip.Name != a.Eip && a.Eip != "" {
-		return ""
-	}
-
-	if eip.Spec.Disable || !eip.Status.Ready {
-		return ""
-	}
-
-	ip := net.ParseIP(a.Addr)
-	offset := 0
-	if ip != nil {
-		offset = eip.IPToOrdinal(ip)
-		if offset < 0 {
-			return ""
-		}
-	}
-
-	for ; offset < eip.Status.PoolSize; offset++ {
-		addr := cnet.IncrementIP(*cnet.ParseIP(eip.Status.FirstIP), big.NewInt(int64(offset))).String()
-		tmp, ok := eip.Status.Used[addr]
-		if !ok {
-			if eip.Status.Used == nil {
-				eip.Status.Used = make(map[string]string)
-			}
-			eip.Status.Used[addr] = a.Key
-			eip.Status.Usage = len(eip.Status.Used)
-			if eip.Status.Usage == eip.Status.PoolSize {
-				eip.Status.Occupied = true
-			}
-			return addr
-		} else {
-			if ip != nil {
-				eip.Status.Used[addr] = fmt.Sprintf("%s;%s", tmp, a.Key)
-				return addr
-			}
-		}
-	}
-
-	return ""
-}
-
-// look up by key in IPAMArgs
-func (a IPAMArgs) unAssignIPFromEip(eip *networkv1alpha2.Eip, peek bool) string {
-	if eip.DeletionTimestamp != nil {
-		return ""
-	}
-
-	for addr, svcs := range eip.Status.Used {
-		tmp := strings.Split(svcs, ";")
-		for _, svc := range tmp {
-			if svc == a.Key {
-				if !peek {
-					if len(tmp) == 1 {
-						delete(eip.Status.Used, addr)
-						eip.Status.Usage = len(eip.Status.Used)
-						if eip.Status.Usage != eip.Status.PoolSize {
-							eip.Status.Occupied = false
-						}
-					} else {
-						eip.Status.Used[addr] = strings.Join(util.RemoveString(tmp, a.Key), ";")
-					}
-				}
-
-				return addr
-			}
-		}
-	}
-
-	return ""
-}
-
-func (i *IPAM) UnAssignIP(args IPAMArgs, peek bool) (IPAMResult, error) {
-	var result IPAMResult
-
-	eips := &networkv1alpha2.EipList{}
-	err := i.List(context.Background(), eips)
-	if err != nil {
-		return result, err
-	}
-
-	for _, eip := range eips.Items {
-		clone := eip.DeepCopy()
-		addr := args.unAssignIPFromEip(clone, peek)
-		i.updateMetrics(clone)
-		if addr != "" {
-			if !reflect.DeepEqual(clone, eip) && !peek {
-				err = i.Client.Status().Update(context.Background(), clone)
-				ctrl.Log.Info("unAssignIP update eip", "eip", clone.Status)
-			}
-
-			result.Addr = addr
-			result.Eip = eip.Name
-			result.Protocol = eip.GetProtocol()
-			result.Sp = speaker.GetSpeaker(eip.GetSpeakerName())
-
-			if result.Sp == nil {
-				err = fmt.Errorf("layer2 eip speaker not ready")
-			}
-			break
-		}
-	}
-
-	i.log.Info("unAssignIP",
-		"args", args,
-		"peek", peek,
-		"result", result,
-		"err", err)
-
-	return result, err
+	i.log.Info("release ip", "request", request, "eip status", clone.Status)
+	return nil
 }
 
 func (i *IPAM) updateMetrics(eip *networkv1alpha2.Eip) {
