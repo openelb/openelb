@@ -65,6 +65,7 @@ spec:
     spec:
       containers:
         - name: create
+        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubespheredev/kube-webhook-certgen"
           image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
           imagePullPolicy: IfNotPresent
           args:
@@ -94,6 +95,7 @@ spec:
     spec:
       containers:
         - name: patch
+        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubespheredev/kube-webhook-certgen"
           image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
           imagePullPolicy: IfNotPresent
           args:

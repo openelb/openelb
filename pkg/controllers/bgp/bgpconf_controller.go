@@ -52,7 +52,6 @@ type BgpConfReconciler struct {
 	client.Client
 	BgpServer *bgp.Bgp
 	record.EventRecorder
-	cleaned bool
 }
 
 //+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs,verbs=get;list;watch;create;update;patch;delete
@@ -64,8 +63,7 @@ type BgpConfReconciler struct {
 // move the current state of the cluster BgpConf CRD closer to the desired state.
 func (r *BgpConfReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	instance := &v1alpha2.BgpConf{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return. Created objects are automatically garbage collected.
 			return ctrl.Result{}, nil
@@ -75,15 +73,8 @@ func (r *BgpConfReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	clone := instance.DeepCopy()
-
-	cm, err := r.getPolicyConfigMap(ctx, clone)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
-		err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, nil)
-		if err != nil {
+		if err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, nil); err != nil {
 			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
 		}
 
@@ -93,18 +84,17 @@ func (r *BgpConfReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if util.NeedToAddFinalizer(clone, constant.FinalizerName) {
 		controllerutil.AddFinalizer(clone, constant.FinalizerName)
-		err := r.Update(context.Background(), clone)
-		if err != nil {
+		if err := r.Update(context.Background(), clone); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	node := &corev1.Node{}
-	rack := ""
-	err = r.Get(context.Background(), types.NamespacedName{Name: util.GetNodeName()}, node)
-	if err != nil {
+	if err := r.Get(context.Background(), types.NamespacedName{Name: util.GetNodeName()}, node); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	rack := ""
 	if node.Labels != nil && node.Labels[constant.OpenELBNodeRack] != "" && clone.Spec.AsPerRack != nil {
 		rack = node.Labels[constant.OpenELBNodeRack]
 		as := clone.Spec.AsPerRack[rack]
@@ -117,6 +107,10 @@ func (r *BgpConfReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		clone.Spec.RouterId = util.GetNodeIP(*node).String()
 	}
 
+	cm, err := r.getPolicyConfigMap(ctx, clone)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	err = r.BgpServer.HandleBgpGlobalConfig(clone, rack, false, cm)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -312,33 +306,34 @@ func SetupBgpConfReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {
 
 func (r *BgpConfReconciler) CleanBgpConfStatus() error {
 	instance := &v1alpha2.BgpConf{}
-	err := r.Client.Get(context.Background(), client.ObjectKey{Name: "default"}, instance)
-	if err != nil {
+	if err := r.Client.Get(context.Background(), client.ObjectKey{Name: "default"}, instance); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
+
 	clone := instance.DeepCopy()
 	clone.Status = v1alpha2.BgpConfStatus{}
 	if reflect.DeepEqual(clone.Status, instance.Status) {
 		return nil
 	}
+
 	return r.Client.Status().Update(context.Background(), clone)
 }
 
 func (r BgpConfReconciler) updateConfStatus() {
 	instance := &v1alpha2.BgpConf{}
-	err := r.Client.Get(context.Background(), client.ObjectKey{Name: "default"}, instance)
-	if err != nil {
+	if err := r.Client.Get(context.Background(), client.ObjectKey{Name: "default"}, instance); err != nil {
 		return
 	}
+
 	clone := instance.DeepCopy()
+	result := r.BgpServer.GetBgpConfStatus()
+	nodeName := util.GetNodeName()
 	if clone.Status.NodesConfStatus == nil {
 		clone.Status.NodesConfStatus = make(map[string]v1alpha2.NodeConfStatus)
 	}
-	result := r.BgpServer.GetBgpConfStatus()
-	nodeName := util.GetNodeName()
 	clone.Status.NodesConfStatus[nodeName] = result.Status.NodesConfStatus[nodeName]
 
 	if reflect.DeepEqual(clone.Status, instance.Status) {
@@ -362,8 +357,7 @@ func (r BgpConfReconciler) run(ctx context.Context) {
 }
 
 func (r BgpConfReconciler) Start(ctx context.Context) error {
-	err := r.CleanBgpConfStatus()
-	if err != nil {
+	if err := r.CleanBgpConfStatus(); err != nil {
 		return err
 	}
 

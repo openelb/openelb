@@ -1,55 +1,40 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: openelb-controller
+  name: openelb-speaker
   labels:
-    control-plane: openelb-manager
-    app: openelb-manager
+    app: openelb
+    component: speaker
 spec:
   selector:
     matchLabels:
-      control-plane: openelb-manager
-      app: openelb-manager
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 1
-    type: RollingUpdate
+      app: openelb
+      component: speaker
   template:
     metadata:
       labels:
-        control-plane: openelb-manager
-        app: openelb-manager
+        app: openelb
+        component: speaker
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - openelb-manager
-              topologyKey: "kubernetes.io/hostname"
       tolerations:
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
-        # cloud controller manages should be able to run on masters
         - key: "node-role.kubernetes.io/master"
+          operator: Exists
           effect: NoSchedule
         - key: "node-role.kubernetes.io/control-plane"
+          operator: Exists
           effect: NoSchedule
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: openelb-admission
       containers:
         - command:
-            - openelb-controller
+            - openelb-speaker
           args:
-            - --metrics-addr=:50052
-            - --webhook-port=443
-          image: controller:latest
+            - --api-hosts=:50051
+            - --zap-log-level=info
+          image: speaker:latest
           imagePullPolicy: IfNotPresent
-          name: openelb-controller
+          name: openelb-speaker
           securityContext:
             capabilities:
               add: [ "NET_ADMIN", "SYS_TIME", "NET_RAW", "NET_BIND_SERVICE" ]
@@ -62,23 +47,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          ports:
-            - containerPort: 443
-              name: webhook
-              protocol: TCP
-          volumeMounts:
-            - name: webhook-cert
-              mountPath: /tmp/k8s-webhook-server/serving-certs/
-              readOnly: true
       terminationGracePeriodSeconds: 10
       hostNetwork: true
-      volumes:
-        - name: webhook-cert
-          secret:
-            secretName: openelb-admission
-            items:
-              - key: key
-                path: tls.key
-              - key: cert
-                path: tls.crt
 
