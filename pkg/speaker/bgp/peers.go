@@ -87,10 +87,7 @@ func (b *Bgp) GetBgpConfStatus() bgpapi.BgpConf {
 		return bgpapi.BgpConf{
 			Status: bgpapi.BgpConfStatus{
 				NodesConfStatus: map[string]bgpapi.NodeConfStatus{
-					util.GetNodeName(): bgpapi.NodeConfStatus{
-						RouterId: "",
-						As:       0,
-					},
+					util.GetNodeName(): {RouterId: "", As: 0},
 				},
 			},
 		}
@@ -98,7 +95,7 @@ func (b *Bgp) GetBgpConfStatus() bgpapi.BgpConf {
 	return bgpapi.BgpConf{
 		Status: bgpapi.BgpConfStatus{
 			NodesConfStatus: map[string]bgpapi.NodeConfStatus{
-				util.GetNodeName(): bgpapi.NodeConfStatus{
+				util.GetNodeName(): {
 					RouterId: result.Global.RouterId,
 					As:       result.Global.As,
 				},

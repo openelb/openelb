@@ -159,7 +159,7 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	np := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if nodeReady(e.ObjectOld) != nodeReady(e.ObjectNew) {
+			if util.NodeReady(e.ObjectOld) != util.NodeReady(e.ObjectNew) {
 				return true
 			}
 			if nodeAddrChange(e.ObjectOld, e.ObjectNew) {
@@ -365,7 +365,7 @@ func (r *ServiceReconciler) getServiceNodes(svc *corev1.Service) ([]corev1.Node,
 	}
 
 	for _, node := range nodeList.Items {
-		if nodeReady(&node) {
+		if util.NodeReady(&node) {
 			resultNodes = append(resultNodes, node)
 		}
 	}
@@ -379,8 +379,7 @@ func SetupServiceReconciler(mgr ctrl.Manager) error {
 		log:           ctrl.Log.WithName("Manager"),
 		EventRecorder: mgr.GetEventRecorderFor("Manager"),
 	}
-	err := lb.SetupWithManager(mgr)
-	return err
+	return lb.SetupWithManager(mgr)
 }
 
 func IsOpenELBService(obj runtime.Object) bool {

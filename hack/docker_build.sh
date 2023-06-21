@@ -29,28 +29,31 @@ ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
   -t "${REPO}"/openelb-controller:"${TAG}" .
 
 
-# ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
-#   --build-arg "TARGETARCH=${TARGETARCH}" \
-#   --build-arg "TARGETOS=${TARGETOS}" \
-#   -f build/speaker/Dockerfile \
-#   -t "${REPO}"/openelb-speaker:"${TAG}" .
+${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
+  --build-arg "TARGETARCH=${TARGETARCH}" \
+  --build-arg "TARGETOS=${TARGETOS}" \
+  --output type=docker \
+  -f build/speaker/Dockerfile \
+  -t "${REPO}"/openelb-speaker:"${TAG}" .
 
 # ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
 #   --build-arg "TARGETARCH=${TARGETARCH}" \
 #   --build-arg "TARGETOS=${TARGETOS}" \
+#   --output type=docker \
 #   -f build/proxy/Dockerfile \
 #   -t "${REPO}"/openelb-proxy:"${TAG}" .
 
 # ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
 #   --build-arg "TARGETARCH=${TARGETARCH}" \
 #   --build-arg "TARGETOS=${TARGETOS}" \
+#   --output type=docker \
 #   -f build/forward/Dockerfile \
 #   -t "${REPO}"/openelb-forward:"${TAG}" .
 
 
 if [[ -z "${DRY_RUN:-}" ]]; then
   ${CONTAINER_CLI} push "${REPO}"/openelb-controller:"${TAG}"
-#   ${CONTAINER_CLI} push "${REPO}"/openelb-speaker:"${TAG}"
+  ${CONTAINER_CLI} push "${REPO}"/openelb-speaker:"${TAG}"
 #   ${CONTAINER_CLI} push "${REPO}"/openelb-proxy:"${TAG}"
 #   ${CONTAINER_CLI} push "${REPO}"/openelb-forward:"${TAG}"
 fi

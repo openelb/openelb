@@ -52,24 +52,6 @@ func (e *EnqueueRequestForNode) Create(evt event.CreateEvent, q workqueue.RateLi
 	}
 }
 
-func nodeReady(obj runtime.Object) bool {
-	node := obj.(*corev1.Node)
-
-	ready := true
-	for _, con := range node.Status.Conditions {
-		if con.Type == corev1.NodeReady && con.Status != corev1.ConditionTrue {
-			ready = false
-			break
-		}
-		if con.Type == corev1.NodeNetworkUnavailable && con.Status != corev1.ConditionFalse {
-			ready = false
-			break
-		}
-	}
-
-	return ready
-}
-
 // When Node addr changed, system should update all OpenELB services
 func nodeAddrChange(oldObj runtime.Object, newObj runtime.Object) bool {
 	addrChange := false

@@ -79,7 +79,7 @@ func (b *Bgp) retriveRoutes(ip string, prefix uint32, nexthops []string) (err er
 		TableType: api.TableType_GLOBAL,
 		Family:    getFamily(ip),
 		Prefixes: []*api.TableLookupPrefix{
-			&api.TableLookupPrefix{
+			{
 				Prefix: ip,
 			},
 		},
@@ -195,7 +195,7 @@ func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 		}
 	}
 
-	ctrl.Log.Info("bgp setBalancer", "nexthops", nexthops)
+	ctrl.Log.Info("bgp setBalancer", "ip", ip, "nexthops", nexthops)
 
 	return b.setBalancer(ip, nexthops)
 }
@@ -272,11 +272,22 @@ func (b *Bgp) DelBalancer(ip string) error {
 	if errDelete != nil {
 		return errDelete
 	}
+
+	ctrl.Log.Info("bgp delBalancer", "ip address", ip)
 	peerList := b.getPeers()
 	if peerList != nil && existPath {
 		for _, peer := range peerList {
 			metrics.UpdateBGPPathMetrics(peer.Conf.NeighborAddress, util.GetNodeName(), 0, 1)
 		}
 	}
+	return nil
+}
+
+func (b *Bgp) MonitorPeers(ctx context.Context, ip string) error {
+	b.bgpServer.MonitorPeer(ctx, &api.MonitorPeerRequest{
+		Address: "xxx",
+	}, func(p *api.Peer) {
+
+	})
 	return nil
 }

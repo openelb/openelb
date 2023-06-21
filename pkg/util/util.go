@@ -8,6 +8,7 @@ import (
 	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -102,4 +103,22 @@ func EnvNamespace() string {
 		return constant.OpenELBNamespace
 	}
 	return ns
+}
+
+func NodeReady(obj runtime.Object) bool {
+	node := obj.(*corev1.Node)
+
+	ready := true
+	for _, con := range node.Status.Conditions {
+		if con.Type == corev1.NodeReady && con.Status != corev1.ConditionTrue {
+			ready = false
+			break
+		}
+		if con.Type == corev1.NodeNetworkUnavailable && con.Status != corev1.ConditionFalse {
+			ready = false
+			break
+		}
+	}
+
+	return ready
 }

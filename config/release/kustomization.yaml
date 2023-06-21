@@ -5,3 +5,4 @@ resources:
 
 patchesStrategicMerge:
  - manager_image_patch.yaml
+ - speaker_image_patch.yaml

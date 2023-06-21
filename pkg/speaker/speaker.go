@@ -1,9 +1,10 @@
 package speaker
 
 import (
+	"sync"
+
 	"github.com/projectcalico/libcalico-go/lib/set"
 	corev1 "k8s.io/api/core/v1"
-	"sync"
 )
 
 type Speaker interface {
@@ -75,59 +76,4 @@ func (f *Fake) DelBalancer(ip string) error {
 
 func (f *Fake) Start(stopCh <-chan struct{}) error {
 	return nil
-}
-
-type speaker struct {
-	s  Speaker
-	ch chan struct{}
-}
-
-var (
-	speakers map[string]speaker
-	lock     sync.Mutex
-)
-
-func RegisterSpeaker(name string, s Speaker) error {
-	lock.Lock()
-	defer lock.Unlock()
-
-	t := speaker{
-		s:  s,
-		ch: make(chan struct{}),
-	}
-
-	err := s.Start(t.ch)
-	if err == nil {
-		speakers[name] = t
-		return nil
-	}
-
-	return err
-}
-
-func UnRegisterSpeaker(name string) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	t, ok := speakers[name]
-	if ok {
-		close(t.ch)
-	}
-	delete(speakers, name)
-}
-
-func GetSpeaker(name string) Speaker {
-	lock.Lock()
-	defer lock.Unlock()
-
-	t, ok := speakers[name]
-	if ok {
-		return t.s
-	}
-
-	return nil
-}
-
-func init() {
-	speakers = make(map[string]speaker, 0)
 }
