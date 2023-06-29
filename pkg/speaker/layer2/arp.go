@@ -14,7 +14,6 @@ import (
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/leader-elector"
 	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/vishvananda/netlink"
@@ -155,10 +154,6 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 	}
 	a.setMac(ip.String(), hwAddr)
 	a.logger.Info("map ingress ip", "ingress", ip.String(), "nodeIP", nodeIP.String(), "nodeMac", hwAddr.String())
-
-	if !leader.Leader {
-		return nil
-	}
 
 	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
 		a.logger.Info("send gratuitous arp packet",
@@ -302,10 +297,6 @@ func (a *arpSpeaker) processRequest() dropReason {
 
 		a.logger.Error(err, "arp speaker read error", "interface", a.intf.Name)
 		return dropReasonError
-	}
-
-	if !leader.Leader {
-		return dropReasonLeader
 	}
 
 	// Ignore ARP replies.
