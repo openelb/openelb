@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
@@ -103,6 +104,16 @@ func EnvNamespace() string {
 		return constant.OpenELBNamespace
 	}
 	return ns
+}
+
+func EnvDaemonsetName() string {
+	name := os.Getenv(constant.EnvDaemonsetName)
+	if name == "" {
+		return constant.OpenELBSpeakerName
+	}
+
+	strs := strings.Split(name, "-")
+	return strings.Join(strs[:len(strs)-1], "-")
 }
 
 func NodeReady(obj runtime.Object) bool {

@@ -104,6 +104,11 @@ func (m *Manager) HandleEIP(eip *v1alpha2.Eip) error {
 		return nil
 	}
 
+	if eip.GetProtocol() == constant.OpenELBProtocolVip && m.GetSpeaker(eip.GetProtocol()) == nil {
+		m.Info(fmt.Sprintf("no registered speaker:[%s] eip:[%s]", eip.GetProtocol(), eip.GetName()))
+		return nil
+	}
+
 	m.Lock()
 	defer m.Unlock()
 	_, exist := m.eips[eip.GetName()]

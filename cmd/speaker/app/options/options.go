@@ -3,18 +3,23 @@ package options
 import (
 	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/speaker/vip"
 	cliflag "k8s.io/component-base/cli/flag"
 )
 
 type OpenELBSpeakerOptions struct {
-	Bgp        *bgp.BgpOptions
-	LogOptions *log.Options
+	MetricsAddr string
+	Bgp         *bgp.BgpOptions
+	Vip         *vip.VipOptions
+	LogOptions  *log.Options
 }
 
 func NewOpenELBSpeakerOptions() *OpenELBSpeakerOptions {
 	return &OpenELBSpeakerOptions{
-		Bgp:        bgp.NewBgpOptions(),
-		LogOptions: log.NewOptions(),
+		MetricsAddr: ":50053",
+		Bgp:         bgp.NewBgpOptions(),
+		Vip:         vip.NewVipOptions(),
+		LogOptions:  log.NewOptions(),
 	}
 }
 
@@ -27,7 +32,11 @@ func (s *OpenELBSpeakerOptions) Flags() cliflag.NamedFlagSets {
 	fss := cliflag.NamedFlagSets{}
 
 	s.Bgp.AddFlags(fss.FlagSet("bgp"))
+	s.Vip.AddFlags(fss.FlagSet("vip"))
 	s.LogOptions.AddFlags(fss.FlagSet("log"))
+
+	fs := fss.FlagSet("generic")
+	fs.StringVar(&s.MetricsAddr, "metrics-addr", s.MetricsAddr, "The address the metric endpoint binds to.")
 
 	return fss
 }

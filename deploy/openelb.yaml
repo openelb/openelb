@@ -1248,6 +1248,7 @@ spec:
       - args:
         - --api-hosts=:50051
         - --zap-log-level=info
+        - --enable-keepalived-vip=false
         command:
         - openelb-speaker
         env:
@@ -1259,6 +1260,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: OPENELB_DSNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         image: kubesphere/openelb-speaker:v0.6.0
         imagePullPolicy: IfNotPresent
         name: openelb-speaker

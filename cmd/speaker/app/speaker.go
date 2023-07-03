@@ -11,6 +11,8 @@ import (
 	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/speaker/vip"
+	"github.com/openelb/openelb/pkg/util"
 	"github.com/openelb/openelb/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -18,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/term"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -78,20 +81,21 @@ func NewOpenELBSpeakerCommand() *cobra.Command {
 	return cmd
 }
 
-func Run(c *options.OpenELBSpeakerOptions) error {
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&c.LogOptions.Options)))
+func Run(opt *options.OpenELBSpeakerOptions) error {
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opt.LogOptions.Options)))
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		// MetricsBindAddress: c.MetricsAddr,
-		Scheme: scheme,
+		MetricsBindAddress: opt.MetricsAddr,
+		Scheme:             scheme,
 	})
-
 	if err != nil {
 		setupLog.Error(err, "unable to new manager")
 		return err
 	}
 
+	spmanager := speaker.NewSpeakerManager(mgr.GetClient(), ctrl.Log.WithName("speakerManger"))
+
 	//For gobgp
-	bgpServer := bgpd.NewGoBgpd(c.Bgp)
+	bgpServer := bgpd.NewGoBgpd(opt.Bgp)
 	if err := bgp.SetupBgpConfReconciler(bgpServer, mgr); err != nil {
 		setupLog.Error(err, "unable to setup bgpconf")
 		return err
@@ -102,12 +106,37 @@ func Run(c *options.OpenELBSpeakerOptions) error {
 		return err
 	}
 
-	// TODO: for layer2 + vip mode
-	spmanager := speaker.NewSpeakerManager(mgr.GetClient(), ctrl.Log.WithName("speakerManger"))
 	if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer); err != nil {
 		setupLog.Error(err, "unable to register bgp speaker")
 		return err
 	}
+
+	//For keepalive
+	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	if opt.Vip.EnableVIP {
+		ns := util.EnvNamespace()
+		config := constant.OpenELBVipConfigMap
+		if opt.Vip.ConfigNamespace != "" {
+			ns = opt.Vip.ConfigNamespace
+		}
+		if opt.Vip.ConfigName != "" {
+			config = opt.Vip.ConfigName
+		}
+		keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
+			Args: []string{
+				fmt.Sprintf("--services-configmap=%s/%s", ns, config),
+				fmt.Sprintf("--http-port=%d", opt.Vip.HealthPort)},
+		})
+
+		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolVip, keepalive); err != nil {
+			setupLog.Error(err, "unable to register keepalive speaker")
+			return err
+		}
+	} else {
+		vip.Clean(k8sClient)
+	}
+
+	// TODO: for layer2 mode
 
 	if err := (&speaker.LBReconciler{
 		Handler:       spmanager.HandleService,

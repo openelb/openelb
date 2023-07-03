@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -80,71 +81,55 @@ func (k *KeepAlived) DelBalancer(vip string) error {
 func (k *KeepAlived) updateConfigMap() error {
 	ctx := context.Background()
 	cm, err := k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Get(ctx, constant.OpenELBVipConfigMap, metav1.GetOptions{})
-	if err == nil {
-		if reflect.DeepEqual(cm.Data, k.data) {
-			return nil
+	if err != nil {
+		if errors.IsNotFound(err) {
+			k.log.Info(fmt.Sprintf("not found configmap:%s, so create it", cm.Name))
+			_, err := k.createVIPConfigMap()
+			return err
 		}
 
-		cm.Data = k.data
-		_, err = k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Update(ctx, cm, metav1.UpdateOptions{})
+		k.log.Error(err, fmt.Sprintf("get configmap:%s error", cm.Name))
 		return err
 	}
 
-	if errors.IsNotFound(err) {
-		cm = &corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ConfigMap",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      constant.OpenELBVipConfigMap,
-				Namespace: util.EnvNamespace(),
-			},
-			Data: k.data,
-		}
-
-		k.log.Info(fmt.Sprintf("not found configmap:%s, so create it", cm.Name))
-		_, err = k.client.CoreV1().ConfigMaps(cm.Namespace).Create(ctx, cm, metav1.CreateOptions{})
-		return err
+	if reflect.DeepEqual(cm.Data, k.data) {
+		return nil
 	}
 
-	k.log.Error(err, fmt.Sprintf("get configmap:%s error", cm.Name))
+	cm.Data = k.data
+	_, err = k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Update(ctx, cm, metav1.UpdateOptions{})
 	return err
 }
 
 func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
-	dsClient := k.client.AppsV1().DaemonSets(util.EnvNamespace())
-	ds, err := dsClient.Get(context.TODO(), constant.OpenELBVipName, metav1.GetOptions{})
+	cm, err := k.getAndCreateConfig()
 	if err != nil {
-		if errors.IsNotFound(err) {
-			ds, err = dsClient.Create(context.TODO(), k.generateVIPDaemonSet(), metav1.CreateOptions{})
-			if err != nil {
-				k.log.Error(err, "keepalived daemonSet create error")
-				return err
-			}
-			k.log.Info(fmt.Sprintf("keepalived daemonSet %s created successfully", ds.Name))
-		} else {
+		k.log.Error(err, fmt.Sprintf("get or create cm:%s error", cm.Name))
+		return err
+	}
+
+	dsClient := k.client.AppsV1().DaemonSets(util.EnvNamespace())
+	vipds, err := dsClient.Get(context.TODO(), constant.OpenELBVipName, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
 			k.log.Error(err, "keepalived daemonSet get error")
 			return err
 		}
-	}
 
-	cmClient := k.client.CoreV1().ConfigMaps(util.EnvNamespace())
-	cm := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      constant.OpenELBVipConfigMap,
-			Namespace: util.EnvNamespace(),
-		},
-	}
-	k.log.Info(fmt.Sprintf("create ConfigMap %s", cm.Name))
-	_, err = cmClient.Create(context.TODO(), cm, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
-		k.log.Error(err, fmt.Sprintf("create cm:%s error", cm.Name))
-		return err
+		// not found daemonset
+		vipds, err = dsClient.Create(context.TODO(), k.generateVIPDaemonSet(metav1.OwnerReference{
+			Kind:               "ConfigMap",
+			APIVersion:         "v1",
+			Name:               cm.GetName(),
+			UID:                cm.GetUID(),
+			BlockOwnerDeletion: pointer.Bool(true),
+			Controller:         pointer.Bool(true),
+		}), metav1.CreateOptions{})
+		if err != nil {
+			k.log.Error(err, "keepalived daemonSet create error")
+			return err
+		}
+		k.log.Info(fmt.Sprintf("keepalived daemonSet %s created successfully", vipds.Name))
 	}
 
 	go func() {
@@ -154,11 +139,8 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 			deleteOpt := metav1.DeleteOptions{
 				PropagationPolicy: &deletePolicy,
 			}
-			if err = dsClient.Delete(context.TODO(), ds.Name, deleteOpt); err != nil {
-				k.log.Error(err, "keepalived daemonSet delete error")
-			}
 
-			if err = cmClient.Delete(context.TODO(), cm.Name, deleteOpt); err != nil {
+			if err = k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Delete(context.TODO(), cm.Name, deleteOpt); err != nil {
 				k.log.Error(err, "keepalived configMap delete error")
 			}
 
@@ -173,13 +155,9 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 // If the ConfigMap exists and the configuration is set, use it,
 //
 //	otherwise, use the default image got from constants.
-func (k *KeepAlived) getConfig() (*corev1.ConfigMap, error) {
-	return k.client.CoreV1().ConfigMaps(util.EnvNamespace()).
-		Get(context.Background(), constant.OpenELBImagesConfigMap, metav1.GetOptions{})
-}
-
 func (k *KeepAlived) getImage() string {
-	cm, err := k.getConfig()
+	cm, err := k.client.CoreV1().ConfigMaps(util.EnvNamespace()).
+		Get(context.Background(), constant.OpenELBImagesConfigMap, metav1.GetOptions{})
 	if err != nil {
 		return constant.OpenELBDefaultKeepAliveImage
 	}
@@ -191,7 +169,56 @@ func (k *KeepAlived) getImage() string {
 	return image
 }
 
-func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
+func (k *KeepAlived) getAndCreateConfig() (*corev1.ConfigMap, error) {
+	cm, err := k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Get(context.TODO(), constant.OpenELBVipConfigMap, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return k.createVIPConfigMap()
+		}
+		return nil, err
+	}
+
+	return cm, nil
+}
+
+func (k *KeepAlived) createVIPConfigMap() (*corev1.ConfigMap, error) {
+	ds, err := k.client.AppsV1().DaemonSets(util.EnvNamespace()).Get(context.TODO(), util.EnvDaemonsetName(), metav1.GetOptions{})
+	if err != nil {
+		k.log.Error(err, fmt.Sprintf("get daemonset:%s error", util.EnvDaemonsetName()))
+		return nil, err
+	}
+
+	k.log.Info(fmt.Sprintf("create ConfigMap %s", constant.OpenELBVipConfigMap))
+	cm, err := k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Create(context.TODO(), k.generateVIPConfigMap(metav1.OwnerReference{
+		APIVersion:         "apps/v1",
+		Kind:               "DaemonSet",
+		Name:               ds.GetName(),
+		UID:                ds.GetUID(),
+		BlockOwnerDeletion: pointer.Bool(true),
+		Controller:         pointer.Bool(true),
+	}), metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return nil, err
+	}
+	return cm, nil
+}
+
+func (k *KeepAlived) generateVIPConfigMap(ref metav1.OwnerReference) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            constant.OpenELBVipConfigMap,
+			Namespace:       util.EnvNamespace(),
+			OwnerReferences: []metav1.OwnerReference{ref},
+		},
+		Data: k.data,
+	}
+}
+
+func (k *KeepAlived) generateVIPDaemonSet(ref metav1.OwnerReference) *appv1.DaemonSet {
 	var privileged = true
 	return &appv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -200,6 +227,7 @@ func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
 			Labels: map[string]string{
 				"app": constant.OpenELBVipName,
 			},
+			OwnerReferences: []metav1.OwnerReference{ref},
 		},
 		Spec: appv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
@@ -287,4 +315,14 @@ func NewKeepAlived(client *clientset.Clientset, conf *KeepAlivedConfig) *KeepAli
 		conf:   conf,
 		data:   map[string]string{},
 	}
+}
+
+// delete configmap, automatically delete kube-keepalived-vip daemonset
+func Clean(client *clientset.Clientset) {
+	if client == nil {
+		return
+	}
+
+	client.CoreV1().ConfigMaps(util.EnvNamespace()).Delete(
+		context.Background(), constant.OpenELBVipConfigMap, metav1.DeleteOptions{})
 }

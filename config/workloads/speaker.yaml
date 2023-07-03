@@ -32,6 +32,7 @@ spec:
           args:
             - --api-hosts=:50051
             - --zap-log-level=info
+            - --enable-keepalived-vip=false
           image: speaker:latest
           imagePullPolicy: IfNotPresent
           name: openelb-speaker
@@ -47,6 +48,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: OPENELB_DSNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
       terminationGracePeriodSeconds: 10
       hostNetwork: true
 
