@@ -44,12 +44,14 @@ const (
 	EipRangeSeparator     string = "-"
 
 	OpenELBControllerLocker   = "openelb-controller"
+	OpenELBSpeakerName        = "openelb-speaker"
 	OpenELBNamespace          = "openelb-system"
 	OpenELBVipConfigMap       = "openelb-vip-configmap"
 	OpenELBVipName            = "openelb-keepalive-vip"
 	OpenELBBgpName            = "gobgp.conf"
 	OpenELBServiceAccountName = "kube-keepalived-vip"
 	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
+	EnvDaemonsetName          = "OPENELB_DSNAME"
 	EnvNodeName               = "NODE_NAME"
 
 	// default images and specify images
