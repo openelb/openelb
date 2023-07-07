@@ -18,7 +18,6 @@ package lb
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"reflect"
 
@@ -38,7 +37,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -72,7 +70,8 @@ const (
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
 	client.Client
-	log logr.Logger
+	ipmanager *ipam.Manager
+	log       logr.Logger
 	record.EventRecorder
 }
 
@@ -221,12 +220,13 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	clone := svc.DeepCopy()
 	// Reconcile by OpenELB NodeProxy if this service is specified to be exported by it
-	if validate.HasOpenELBNPAnnotation(svc.Annotations) {
-		return r.reconcileNP(svc)
+	if validate.HasOpenELBNPAnnotation(clone.Annotations) {
+		return r.reconcileNP(clone)
 	}
 
-	request, err := r.constructIPAMRequest(svc)
+	request, err := r.ipmanager.ConstructRequest(ctx, clone)
 	if err != nil || request == nil {
 		return ctrl.Result{}, err
 	}
@@ -236,145 +236,58 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if request.Release != nil {
-		err = ipam.Allocator.ReleaseIP(request)
+		err = r.ipmanager.ReleaseIP(ctx, request.Release, clone)
 		if err != nil {
 			log.Error(err, "release ip", "request", request)
 			return ctrl.Result{}, err
 		}
 	}
 
-	result := ipam.Result{}
 	if request.Allocate != nil {
-		result, err = ipam.Allocator.AssignIP(request)
+		err = r.ipmanager.AssignIP(ctx, request.Allocate, clone)
 		if err != nil {
 			log.Error(err, "assign ip", "request", request)
 			return ctrl.Result{}, err
 		}
 	}
 
-	return ctrl.Result{}, r.updateServiceEipInfo(result, svc)
+	return ctrl.Result{}, r.updateService(ctx, svc, clone)
 }
 
-func (r *ServiceReconciler) updateServiceEipInfo(result ipam.Result, svc *corev1.Service) error {
-	clone := svc.DeepCopy()
-
-	//update eip labels and annotations
-	if clone.Labels == nil {
-		clone.Labels = make(map[string]string)
-	}
-	if result.Record != nil {
-		if !util.ContainsString(clone.Finalizers, constant.FinalizerName) {
-			controllerutil.AddFinalizer(clone, constant.FinalizerName)
-		}
-		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = result.Record.Eip
-	} else {
-		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
-		delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
-	}
+func (r *ServiceReconciler) updateService(ctx context.Context, svc, clone *corev1.Service) error {
+	update := false
 	if !reflect.DeepEqual(svc.Labels, clone.Labels) {
-		err := r.Update(context.Background(), clone)
+		err := r.Update(ctx, clone)
+		update = true
 		if err != nil {
 			return err
 		}
-	}
-
-	//update ingress status
-	clone.Status.LoadBalancer.Ingress = nil
-	if result.Record != nil {
-		clone.Status.LoadBalancer.Ingress = append(clone.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{
-			IP: result.Record.IP,
-		})
 	}
 
 	if !reflect.DeepEqual(svc.Status, clone.Status) {
-		err := r.Status().Update(context.Background(), clone)
-		if err != nil {
-			return err
+		if update {
+			err := r.Get(ctx, types.NamespacedName{
+				Namespace: svc.Namespace,
+				Name:      svc.Name,
+			}, svc)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return nil
+				}
+				return err
+			}
+
+			clone.ObjectMeta = svc.ObjectMeta
 		}
 
+		return r.Status().Update(ctx, clone)
 	}
 	return nil
 }
 
-func (r *ServiceReconciler) constructIPAMRequest(svc *corev1.Service) (*ipam.Request, error) {
-	if svc.Annotations == nil {
-		return nil, nil
-	}
-
-	request := &ipam.Request{
-		Key: types.NamespacedName{
-			Name:      svc.Name,
-			Namespace: svc.Namespace,
-		}.String(),
-	}
-
-	err := request.ConstructAllocate(svc)
-	if err != nil {
-		return nil, err
-	}
-
-	err = request.ConstructRelease(svc)
-	if err != nil {
-		return nil, err
-	}
-	return request, nil
-}
-
-// The caller should check if the slice is empty.
-func (r *ServiceReconciler) getServiceNodes(svc *corev1.Service) ([]corev1.Node, error) {
-	//1. filter endpoints
-	endpoints := &corev1.Endpoints{}
-	err := r.Get(context.TODO(), types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}, endpoints)
-	if err != nil {
-		return nil, err
-	}
-
-	active := make(map[string]bool)
-	for _, subnet := range endpoints.Subsets {
-		for _, addr := range subnet.Addresses {
-			if addr.NodeName == nil {
-				continue
-			}
-			active[*addr.NodeName] = true
-		}
-	}
-
-	//2. get next hops
-	nodeList := &corev1.NodeList{}
-	err = r.List(context.TODO(), nodeList)
-	if err != nil {
-		return nil, err
-	}
-
-	resultNodes := make([]corev1.Node, 0)
-	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) > 0 {
-		for _, node := range nodeList.Items {
-			if active[node.Name] {
-				resultNodes = append(resultNodes, node)
-			}
-		}
-
-		return resultNodes, nil
-	}
-
-	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) == 0 {
-		clone := svc.DeepCopy()
-		clone.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
-		_ = r.Update(context.Background(), clone)
-		r.log.Info(fmt.Sprintf("endpoint don't have nodeName, so cannot set externalTrafficPolicy to Local"))
-	}
-
-	for _, node := range nodeList.Items {
-		if util.NodeReady(&node) {
-			resultNodes = append(resultNodes, node)
-		}
-	}
-
-	return resultNodes, nil
-}
-
 func SetupServiceReconciler(mgr ctrl.Manager) error {
 	lb := &ServiceReconciler{
+		ipmanager:     ipam.NewManager(mgr.GetClient()),
 		Client:        mgr.GetClient(),
 		log:           ctrl.Log.WithName("Manager"),
 		EventRecorder: mgr.GetEventRecorderFor("Manager"),
