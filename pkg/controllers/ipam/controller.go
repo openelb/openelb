@@ -11,7 +11,7 @@ import (
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/util"
-	cnet "github.com/projectcalico/libcalico-go/lib/net"
+	cnet "github.com/openelb/openelb/pkg/util/net"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"

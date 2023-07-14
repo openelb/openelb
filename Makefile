@@ -21,7 +21,10 @@ vet:
 
 # Run tests
 test: fmt vet
-	KUBEBUILDER_ASSETS="$(shell $(GOBIN)/setup-envtest use -p path 1.19.x)" go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(GOBIN)/setup-envtest use -p path 1.26.x)" go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
+
+e2e: ;$(info $(M)...Run e2e test.) @ ## Run e2e test in kind.
+	hack/kind_e2e.sh
 
 .PHONY: binary
 # Build all of binary

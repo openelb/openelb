@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gobgp
+  labels:
+    app: gobgp-openelb
+spec:
+  containers:
+    - name: gobgp
+      image: kubesphere/gobgp:latest
+      ports:
+        - containerPort: 17900
+      command:
+        - /usr/local/bin/gobgpd
+      args:
+          - --api-hosts=:50052
+  hostNetwork: true
+
+
+

@@ -3,7 +3,7 @@ package bgp
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	bgpapi "github.com/openelb/openelb/api/v1alpha2"
 	ctrl "sigs.k8s.io/controller-runtime"
