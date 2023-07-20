@@ -86,7 +86,7 @@ func Run(c *options.OpenELBManagerOptions) error {
 	}
 
 	// Setup all Controllers
-	err = ipam.SetupIPAM(mgr)
+	err = ipam.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to setup ipam")
 		return err
