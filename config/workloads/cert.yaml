@@ -12,7 +12,6 @@ rules:
       - admissionregistration.k8s.io
     resources:
       - validatingwebhookconfigurations
-      - mutatingwebhookconfigurations
     verbs:
       - get
       - update
@@ -102,7 +101,7 @@ spec:
             - patch
             - --webhook-name=openelb-admission
             - --namespace=$(POD_NAMESPACE)
-            - --patch-mutating=true
+            - --patch-mutating=false
             - --secret-name=openelb-admission
             - --patch-failure-policy=Fail
           env:

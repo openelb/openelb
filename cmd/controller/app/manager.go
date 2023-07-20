@@ -19,7 +19,6 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/term"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 func NewOpenELBManagerCommand() *cobra.Command {
@@ -99,9 +98,6 @@ func Run(c *options.OpenELBManagerOptions) error {
 	}
 
 	stopCh := ctrl.SetupSignalHandler()
-	hookServer := mgr.GetWebhookServer()
-	setupLog.Info("registering webhooks to the webhook server")
-	hookServer.Register("/validate-network-kubesphere-io-v1alpha2-svc", &webhook.Admission{Handler: &lb.SvcAnnotator{Client: mgr.GetClient()}})
 	if err = mgr.Start(stopCh); err != nil {
 		setupLog.Error(err, "unable to run the manager")
 		return err

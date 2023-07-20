@@ -847,7 +847,6 @@ rules:
   - admissionregistration.k8s.io
   resources:
   - validatingwebhookconfigurations
-  - mutatingwebhookconfigurations
   verbs:
   - get
   - update
@@ -1340,7 +1339,7 @@ spec:
         - patch
         - --webhook-name=openelb-admission
         - --namespace=$(POD_NAMESPACE)
-        - --patch-mutating=true
+        - --patch-mutating=false
         - --secret-name=openelb-admission
         - --patch-failure-policy=Fail
         env:
@@ -1357,34 +1356,6 @@ spec:
         runAsNonRoot: true
         runAsUser: 2000
       serviceAccountName: openelb-admission
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  creationTimestamp: null
-  name: openelb-admission
-webhooks:
-- admissionReviewVersions:
-  - v1beta1
-  - v1
-  clientConfig:
-    service:
-      name: openelb-admission
-      namespace: openelb-system
-      path: /validate-network-kubesphere-io-v1alpha2-svc
-  failurePolicy: Fail
-  name: mutating.eip.network.kubesphere.io
-  rules:
-  - apiGroups:
-    - ""
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - services
-  sideEffects: NoneOnDryRun
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
