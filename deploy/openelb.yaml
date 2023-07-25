@@ -7,8 +7,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: bgpconfs.network.kubesphere.io
 spec:
   group: network.kubesphere.io
@@ -164,19 +163,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: bgppeers.network.kubesphere.io
 spec:
   group: network.kubesphere.io
@@ -437,6 +429,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               timers:
                 properties:
                   config:
@@ -596,19 +589,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: eips.network.kubesphere.io
 spec:
   group: network.kubesphere.io
@@ -716,6 +702,19 @@ spec:
                 type: boolean
               interface:
                 type: string
+              namespaceSelector:
+                additionalProperties:
+                  type: string
+                description: specify the namespace for allocation by selector
+                type: object
+              namespaces:
+                description: specify the namespace for the allocation by name
+                items:
+                  type: string
+                type: array
+              priority:
+                description: priority for automatically assigning addresses
+                type: integer
               protocol:
                 enum:
                 - bgp
@@ -754,12 +753,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -929,6 +922,14 @@ rules:
   - create
   - patch
   - update
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - ""
   resources:
