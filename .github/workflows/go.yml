@@ -6,14 +6,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.19
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: 1.19
-        id: go
-
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
       - name: Install CI tools
         run: make install-tools
-      - name: Test
-        run: make test
+      - name: build and test
+        run: make all
+  e2e:
+    name: e2e test
+    needs: build
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        # Here support the latest three minor releases of Kubernetes, this can be considered to be roughly
+        # the same as the End of Life of the Kubernetes release: https://kubernetes.io/releases/
+        # Please remember to update the CI Schedule Workflow when we add a new version.
+        k8s: [ v1.25.0, v1.26.0, v1.27.3 ]
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v3
+        with:
+          # Number of commits to fetch. 0 indicates all history for all branches and tags.
+          # We need to guess version via git tags.
+          fetch-depth: 0
+      - name: install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - name: setup e2e test environment and run e2e
+        run: |
+          export K8S_VERSION=${{ matrix.k8s }}
+          hack/kind_e2e.sh

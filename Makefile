@@ -9,7 +9,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 .PHONY: all
-all: test controller speaker server
+all: test controller speaker
 
 # Run go fmt against code
 fmt:
@@ -28,7 +28,7 @@ e2e: ;$(info $(M)...Run e2e test.) @ ## Run e2e test in kind.
 
 .PHONY: binary
 # Build all of binary
-binary: | controller speaker server; $(info $(M)...Build all of binary.) @ ## Build all of binary.
+binary: | controller speaker; $(info $(M)...Build all of binary.) @ ## Build all of binary.
 
 # Build controller binary
 controller: ; $(info $(M)...Begin to build openelb-controller binary.)  @ ## Build controller.
