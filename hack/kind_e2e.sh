@@ -14,6 +14,9 @@ set -o pipefail
 OPENELB_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source "${OPENELB_ROOT}"/hack/lib/init.sh
 
+BUILD_IMAGE=${BUILD_IMAGE:-y}
+KIND_LOAD_IMAGE=${KIND_LOAD_IMAGE:-y}
+
 cleanup() {
   kind delete cluster \
     --verbosity="${KIND_LOG_LEVEL}" \
@@ -45,8 +48,7 @@ kubectl get nodes -o wide
 
 echo ""
 echo "Deploy OpenELB"
-"${OPENELB_ROOT}"/hack/deploy_openelb.sh
-
+BUILD_IMAGE=${BUILD_IMAGE} KIND_LOAD_IMAGE=${KIND_LOAD_IMAGE} "${OPENELB_ROOT}"/hack/deploy_openelb.sh
 
 
 # Install ginkgo
