@@ -1,5 +1,5 @@
 
-#CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd:crdVersions=v1,allowDangerousTypes=true"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -59,11 +59,13 @@ deploy: generate
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=openelb-manager-role webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./api/..." output:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/webhook
+	$(CONTROLLER_GEN) rbac:roleName=openelb-manager-role paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/rbac
 
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.12.1
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
