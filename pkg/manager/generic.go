@@ -15,9 +15,10 @@ import (
 )
 
 type GenericOptions struct {
-	WebhookPort   int
-	MetricsAddr   string
-	ReadinessAddr string
+	WebhookPort    int
+	MetricsAddr    string
+	ReadinessAddr  string
+	KeepalivedPort int
 }
 
 func NewGenericOptions() *GenericOptions {
@@ -25,6 +26,7 @@ func NewGenericOptions() *GenericOptions {
 		WebhookPort:   443,
 		MetricsAddr:   ":50052",
 		ReadinessAddr: "0",
+		KeepalivedPort: 8080,
 	}
 }
 
@@ -32,6 +34,7 @@ func (options *GenericOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&options.WebhookPort, "webhook-port", options.WebhookPort, "The port that the webhook server serves at")
 	fs.StringVar(&options.MetricsAddr, "metrics-addr", options.MetricsAddr, "The address the metric endpoint binds to.")
 	fs.StringVar(&options.ReadinessAddr, "readiness-addr", options.ReadinessAddr, "The address readinessProbe used")
+	fs.IntVar(&options.KeepalivedPort, "keepalived-http-port", options.KeepalivedPort, "The port number used by keepalived for the http-port")
 }
 
 func NewManager(cfg *rest.Config, options *GenericOptions) (ctrl.Manager, error) {

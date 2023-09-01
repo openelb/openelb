@@ -134,7 +134,10 @@ func Run(c *options.OpenELBManagerOptions) error {
 		return err
 	}
 	keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
-		Args: []string{fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBVipConfigMap)},
+		Args: []string{
+			fmt.Sprintf("--services-configmap=%s/%s", util.EnvNamespace(), constant.OpenELBVipConfigMap),
+			fmt.Sprintf("--http-port=%d", c.KeepalivedPort),
+		},
 	})
 
 	//For keepalive
