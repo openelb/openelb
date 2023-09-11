@@ -6,3 +6,5 @@ OpenELB has been adopted by many companies. If you are using OpenELB in your org
 
 <img alt="QingCloud" width="150px" src="./docs/img/adopters/qingcloud.png"><img alt="SBS" width="150px" src="./docs/img/adopters/sbs.png">
 <img alt="Wisdom World" width="150px" src="./docs/img/adopters/wisdomworld.png"><img alt="Yicheng Health" width="150px" src="./docs/img/adopters/yicheng-health.png">
+
+<img alt="PITS Global Data Recovery Services" width="150px" src="./docs/img/adopters/pits-logo-274-135.png">
