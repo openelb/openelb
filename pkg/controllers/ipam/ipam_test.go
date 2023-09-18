@@ -752,7 +752,7 @@ func TestManager_ConstructAllocate(t *testing.T) {
 		},
 
 		{
-			name: "eip bind default namespace",
+			name: "eip bind default namespace by spec.namespace",
 			eip: []*networkv1alpha2.Eip{{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
@@ -760,7 +760,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 				Spec: networkv1alpha2.EipSpec{
 					Address:    "192.168.1.0/24",
-					Protocol:   constant.OpenELBProtocolLayer2,
 					Namespaces: []string{"default"},
 				},
 				Status: networkv1alpha2.EipStatus{},
@@ -790,6 +789,107 @@ func TestManager_ConstructAllocate(t *testing.T) {
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
+				IP:  "",
+			},
+			wantRelease: nil,
+		},
+		{
+			name: "eip bind default namespace by spec.namespaceSelector",
+			eip: []*networkv1alpha2.Eip{{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eip",
+				},
+				Spec: networkv1alpha2.EipSpec{
+					Address: "192.168.1.0/24",
+					NamespaceSelector: map[string]string{
+						"label": "test",
+					},
+				},
+				Status: networkv1alpha2.EipStatus{},
+			}},
+			svc: &v1.Service{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testsvc",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constant.OpenELBAnnotationKey: constant.OpenELBAnnotationValue,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					Type: v1.ServiceTypeLoadBalancer,
+					Ports: []v1.ServicePort{
+						{
+							Port:       80,
+							TargetPort: intstr.FromInt(80),
+						},
+					},
+				},
+				Status: v1.ServiceStatus{},
+			},
+			wantErr: false,
+			wantNil: false,
+			wantAllocate: &svcRecord{
+				Key: "default/testsvc",
+				Eip: "eip",
+				IP:  "",
+			},
+			wantRelease: nil,
+		},
+		{
+			name: "multi-eip bind default namespace with different priority",
+			eip: []*networkv1alpha2.Eip{{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eip-1",
+				},
+				Spec: networkv1alpha2.EipSpec{
+					Address:    "192.168.1.0/24",
+					Namespaces: []string{"default"},
+					Priority:   20,
+				},
+				Status: networkv1alpha2.EipStatus{},
+			},
+				{
+					TypeMeta: metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eip-2",
+					},
+					Spec: networkv1alpha2.EipSpec{
+						Address: "192.168.2.0/24",
+						NamespaceSelector: map[string]string{
+							"label": "test",
+						},
+						Priority: 10,
+					},
+					Status: networkv1alpha2.EipStatus{},
+				}},
+			svc: &v1.Service{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testsvc",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constant.OpenELBAnnotationKey: constant.OpenELBAnnotationValue,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					Type: v1.ServiceTypeLoadBalancer,
+					Ports: []v1.ServicePort{
+						{
+							Port:       80,
+							TargetPort: intstr.FromInt(80),
+						},
+					},
+				},
+				Status: v1.ServiceStatus{},
+			},
+			wantErr: false,
+			wantNil: false,
+			wantAllocate: &svcRecord{
+				Key: "default/testsvc",
+				Eip: "eip-2",
 				IP:  "",
 			},
 			wantRelease: nil,
@@ -847,6 +947,9 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "default",
+					Labels: map[string]string{
+						"label": "test",
+					},
 				},
 			}
 			objs := []client.Object{ns}
