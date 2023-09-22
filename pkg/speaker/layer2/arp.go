@@ -336,6 +336,24 @@ func (a *arpSpeaker) processRequest() dropReason {
 	}
 
 	metrics.UpdateResponsesSentMetrics(pkt.TargetIP.String())
+
+	ip := pkt.TargetIP
+	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
+		a.logger.Info("send gratuitous arp packet in processRequest",
+			"eip", ip, "hwAddr", hwAddr)
+
+		fb, err := generateArp(a.intf.HardwareAddr, op, *hwAddr, ip, ethernet.Broadcast, ip)
+		if err != nil {
+			a.logger.Error(err, "generate gratuitous arp packet")
+			return dropReasonError
+		}
+
+		if _, err = a.p.WriteTo(fb, &raw.Addr{HardwareAddr: ethernet.Broadcast}); err != nil {
+			a.logger.Error(err, "send gratuitous arp packet")
+			return dropReasonError
+		}
+	}
+
 	return dropReasonNone
 }
 
