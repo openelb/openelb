@@ -340,9 +340,9 @@ func (a *arpSpeaker) processRequest() dropReason {
 	ip := pkt.TargetIP
 	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
 		a.logger.Info("send gratuitous arp packet in processRequest",
-			"eip", ip, "hwAddr", hwAddr)
+			"eip", ip, "hwAddr", a.intf.HardwareAddr)
 
-		fb, err = generateArp(a.intf.HardwareAddr, op, *hwAddr, ip, ethernet.Broadcast, ip)
+		fb, err = generateArp(a.intf.HardwareAddr, op, a.intf.HardwareAddr, ip, ethernet.Broadcast, ip)
 		if err != nil {
 			a.logger.Error(err, "generate gratuitous arp packet")
 			return dropReasonError
