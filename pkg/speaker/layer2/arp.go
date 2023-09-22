@@ -342,7 +342,7 @@ func (a *arpSpeaker) processRequest() dropReason {
 		a.logger.Info("send gratuitous arp packet in processRequest",
 			"eip", ip, "hwAddr", hwAddr)
 
-		fb, err := generateArp(a.intf.HardwareAddr, op, *hwAddr, ip, ethernet.Broadcast, ip)
+		fb, err = generateArp(a.intf.HardwareAddr, op, *hwAddr, ip, ethernet.Broadcast, ip)
 		if err != nil {
 			a.logger.Error(err, "generate gratuitous arp packet")
 			return dropReasonError
