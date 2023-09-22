@@ -317,6 +317,9 @@ func (a *arpSpeaker) processRequest() dropReason {
 	if hwAddr == nil {
 		return dropReasonUnknowTargetIP
 	}
+	// alter ip mac to openelb node send mac address
+	a.setMac(pkt.TargetIP.String(), a.intf.HardwareAddr)
+	hwAddr = a.getMac(pkt.TargetIP.String())
 
 	metrics.UpdateRequestsReceivedMetrics(pkt.TargetIP.String())
 	a.logger.Info("got ARP request, sending response",
@@ -336,23 +339,6 @@ func (a *arpSpeaker) processRequest() dropReason {
 	}
 
 	metrics.UpdateResponsesSentMetrics(pkt.TargetIP.String())
-
-	ip := pkt.TargetIP
-	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
-		a.logger.Info("send gratuitous arp packet in processRequest",
-			"eip", ip, "hwAddr", a.intf.HardwareAddr)
-
-		fb, err = generateArp(a.intf.HardwareAddr, op, a.intf.HardwareAddr, ip, ethernet.Broadcast, ip)
-		if err != nil {
-			a.logger.Error(err, "generate gratuitous arp packet")
-			return dropReasonError
-		}
-
-		if _, err = a.p.WriteTo(fb, &raw.Addr{HardwareAddr: ethernet.Broadcast}); err != nil {
-			a.logger.Error(err, "send gratuitous arp packet")
-			return dropReasonError
-		}
-	}
 
 	return dropReasonNone
 }
