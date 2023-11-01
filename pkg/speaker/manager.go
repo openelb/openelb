@@ -305,8 +305,6 @@ func (m *Manager) delLoadBalancer(svc *corev1.Service, record *recordInfo) error
 		return nil
 	}
 
-	delete(m.ips, svc.GetNamespace()+"/"+svc.GetName())
-
 	sp, ok := m.speakers[record.speaker]
 	if !ok {
 		return fmt.Errorf("there is no speaker:%s\n", record.speaker)
@@ -322,6 +320,7 @@ func (m *Manager) delLoadBalancer(svc *corev1.Service, record *recordInfo) error
 		}
 	}
 
+	delete(m.ips, svc.GetNamespace()+"/"+svc.GetName())
 	return nil
 }
 
@@ -337,8 +336,6 @@ func (m *Manager) setLoadBalancer(svc *corev1.Service, record *recordInfo) error
 	if svc == nil {
 		return nil
 	}
-
-	m.ips[svc.GetNamespace()+"/"+svc.GetName()] = record
 
 	nodes, err := m.getServiceNodes(svc)
 	if err != nil {
@@ -364,6 +361,7 @@ func (m *Manager) setLoadBalancer(svc *corev1.Service, record *recordInfo) error
 		}
 	}
 
+	m.ips[svc.GetNamespace()+"/"+svc.GetName()] = record
 	return nil
 }
 

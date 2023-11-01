@@ -146,8 +146,11 @@ func (l *LBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			log.Info("NotFound", " req.NamespacedName", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
-	return ctrl.Result{}, l.Handler(svc)
+	if err := l.Handler(svc); err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+	return ctrl.Result{}, nil
 }

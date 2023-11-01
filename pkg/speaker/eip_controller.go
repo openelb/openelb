@@ -59,8 +59,11 @@ func (l *EIPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			log.Info("NotFound", " req.NamespacedName", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
-	return ctrl.Result{}, l.Handler(eip)
+	if err := l.Handler(eip); err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+	return ctrl.Result{}, nil
 }
