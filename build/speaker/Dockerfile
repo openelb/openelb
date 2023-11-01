@@ -8,9 +8,11 @@ WORKDIR /workspace
 ADD . /workspace/
 
 RUN make speaker
-RUN go build -o bin/cmd/gobgp github.com/osrg/gobgp/cmd/gobgp
 RUN mv /workspace/bin/cmd/speaker ${OUTDIR}/usr/local/bin/openelb-speaker
-RUN mv /workspace/bin/cmd/gobgp ${OUTDIR}/usr/local/bin/gobgp
+
+RUN GO111MODULE=on CGO_ENABLED=0 go install -ldflags '-w -s' github.com/osrg/gobgp/cmd/gobgp
+RUN mv /go/bin/gobgp ${OUTDIR}/usr/local/bin/gobgp
+
 
 
 ##############

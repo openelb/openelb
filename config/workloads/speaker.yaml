@@ -35,6 +35,17 @@ spec:
             - --enable-keepalived-vip=false
           image: speaker:latest
           imagePullPolicy: IfNotPresent
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - |
+                gobgp -p 50051 global
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: openelb-speaker
           securityContext:
             capabilities:
