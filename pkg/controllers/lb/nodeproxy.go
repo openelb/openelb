@@ -2,13 +2,13 @@ package lb
 
 import (
 	"context"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/util"
 	"github.com/openelb/openelb/pkg/validate"
+	"github.com/ugurcsen/gods-generic/sets/treeset"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -148,7 +148,8 @@ func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTempl
 
 // User can config NodeProxy by ConfigMap to specify the proxy and forward images
 // If the ConfigMap exists and the configuration is set, use it,
-// 	otherwise, use the default image got from constants.
+//
+//	otherwise, use the default image got from constants.
 func (r *ServiceReconciler) getNPConfig() (*corev1.ConfigMap, error) {
 	NPCfgName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: constant.OpenELBImagesConfigMap}
 	cm := &corev1.ConfigMap{}
@@ -342,27 +343,34 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 			return ctrl.Result{}, err
 		}
 		// Find suitable proxy pods which in nodes with external-ip or internal-ip
-		podInExternalIPNode := []string{}
-		podInInternalIPNode := []string{}
+		podInExternalIPNode := treeset.NewWithStringComparator()
+		podInInternalIPNode := treeset.NewWithStringComparator()
 		for _, pod := range podList.Items {
 			if _, ok := nodeWithExternalIP[pod.Status.HostIP]; ok {
-				podInExternalIPNode = append(podInExternalIPNode, pod.Status.HostIP)
+				podInExternalIPNode.Add(pod.Status.HostIP)
 			}
 			if _, ok := nodeWithInternalIP[pod.Status.HostIP]; ok {
-				podInInternalIPNode = append(podInInternalIPNode, pod.Status.HostIP)
+				podInInternalIPNode.Add(pod.Status.HostIP)
 			}
 		}
 		// If there's some proxy pods in nodes with external-ip, use these nodes' external-ips as svc external-ip
 		// Otherwize svc external-ip was specified by node internal-ips which there's a proxy pod in
-		if len(podInExternalIPNode) != 0 {
-			sort.Strings(podInExternalIPNode) // Use sorting to guarantee update idempotency
-			svc.ObjectMeta.Annotations[constant.NodeProxyExternalIPAnnotationKey] = strings.Join(podInExternalIPNode, constant.IPSeparator)
+		if podInExternalIPNode.Size() > 0 {
+			values := podInExternalIPNode.Values()
+			svc.ObjectMeta.Annotations[constant.NodeProxyExternalIPAnnotationKey] = strings.Join(values, constant.IPSeparator)
+			if _, ok := svc.ObjectMeta.Annotations[constant.NodeProxyAdditionalExternalIPAnnotationKey]; ok {
+				svc.Spec.ExternalIPs = values
+			}
 		} else {
 			delete(svc.ObjectMeta.Annotations, constant.NodeProxyExternalIPAnnotationKey)
+
+			if _, ok := svc.ObjectMeta.Annotations[constant.NodeProxyAdditionalExternalIPAnnotationKey]; ok {
+				clear(svc.Spec.ExternalIPs)
+			}
 		}
-		if len(podInInternalIPNode) != 0 {
-			sort.Strings(podInInternalIPNode) // Use sorting to guarantee update idempotency
-			svc.ObjectMeta.Annotations[constant.NodeProxyInternalIPAnnotationKey] = strings.Join(podInInternalIPNode, constant.IPSeparator)
+		if podInInternalIPNode.Size() > 0 {
+			values := podInInternalIPNode.Values()
+			svc.ObjectMeta.Annotations[constant.NodeProxyInternalIPAnnotationKey] = strings.Join(values, constant.IPSeparator)
 		} else {
 			delete(svc.ObjectMeta.Annotations, constant.NodeProxyInternalIPAnnotationKey)
 		}
