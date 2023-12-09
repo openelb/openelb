@@ -127,7 +127,7 @@ func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTempl
 							Weight: 10,
 							Preference: corev1.NodeSelectorTerm{
 								MatchExpressions: []corev1.NodeSelectorRequirement{{
-									Key:      constant.LabelNodeProxyExternalIPPreffered,
+									Key:      constant.LabelNodeProxyExternalIPPreferred,
 									Operator: corev1.NodeSelectorOpExists,
 								}},
 							},
@@ -270,8 +270,8 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 		for _, nodeAddr := range node.Status.Addresses {
 			if nodeAddr.Type == corev1.NodeExternalIP {
 				nodeWithExternalIP[nodeAddr.Address] = &node
-				if _, ok := node.Labels[constant.LabelNodeProxyExternalIPPreffered]; !ok {
-					node.Labels[constant.LabelNodeProxyExternalIPPreffered] = ""
+				if _, ok := node.Labels[constant.LabelNodeProxyExternalIPPreferred]; !ok {
+					node.Labels[constant.LabelNodeProxyExternalIPPreferred] = ""
 					if err = r.Update(context.Background(), &node); err != nil {
 						log.Error(err, "can't label node")
 						return ctrl.Result{}, err

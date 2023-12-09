@@ -15,7 +15,7 @@ const (
 	NodeProxyTypeAnnotationKey                 string = "node-proxy.openelb.kubesphere.io/type"
 	NodeProxyTypeDeployment                    string = "deployment"
 	NodeProxyTypeDaemonSet                     string = "daemonset"
-	LabelNodeProxyExternalIPPreffered          string = "node-proxy.openelb.kubesphere.io/external-ip-preffered"
+	LabelNodeProxyExternalIPPreferred          string = "node-proxy.openelb.kubesphere.io/external-ip-preferred"
 	LabelNodeProxyExcludeNode                  string = "node-proxy.openelb.kubesphere.io/exclude-node"
 	NodeProxyExternalIPAnnotationKey           string = "node-proxy.openelb.kubesphere.io/external-ip"
 	NodeProxyInternalIPAnnotationKey           string = "node-proxy.openelb.kubesphere.io/internal-ip"
