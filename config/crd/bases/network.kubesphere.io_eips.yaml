@@ -111,6 +111,19 @@ spec:
                 type: boolean
               interface:
                 type: string
+              namespaceSelector:
+                additionalProperties:
+                  type: string
+                description: specify the namespace for allocation by selector
+                type: object
+              namespaces:
+                description: specify the namespace for the allocation by name
+                items:
+                  type: string
+                type: array
+              priority:
+                description: priority for automatically assigning addresses
+                type: integer
               protocol:
                 enum:
                 - bgp

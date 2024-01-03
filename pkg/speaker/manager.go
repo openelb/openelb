@@ -26,15 +26,13 @@ const (
 )
 
 type recordInfo struct {
-	ips       []string
-	eip       string
-	protocols string
-	speaker   string
+	ips     []string
+	eip     string
+	speaker string
 }
 
 func (r *recordInfo) String() string {
-	return fmt.Sprintf("{eip:%s, protocol:%s, speaker:%s, ips:%s}",
-		r.eip, r.protocols, r.speaker, strings.Join(r.ips, ";"))
+	return fmt.Sprintf("{eip:%s, speaker:%s, ips:%s}", r.eip, r.speaker, strings.Join(r.ips, ";"))
 }
 
 type speaker struct {
@@ -237,23 +235,11 @@ func (m *Manager) getHandleResult(localRecord, svcRecord *recordInfo) handleResu
 		return wantReset
 	}
 
-	if svcRecord.protocols != localRecord.protocols {
-		if svcRecord.protocols == "" {
-			return wantDelete
-		}
-
-		if localRecord.protocols == "" {
-			return wantStore
-		}
-
-		return wantReset
-	}
-
 	return none
 }
 
 func (m *Manager) getSvcRecordInfo(svc *corev1.Service) *recordInfo {
-	if svc == nil || svc.Annotations == nil {
+	if svc == nil || svc.Annotations == nil || svc.Labels == nil {
 		return nil
 	}
 
@@ -262,16 +248,12 @@ func (m *Manager) getSvcRecordInfo(svc *corev1.Service) *recordInfo {
 		return r
 	}
 
-	if protocol, ok := svc.Annotations[constant.OpenELBProtocolAnnotationKey]; ok {
-		r.protocols = protocol
-	}
-
-	if eipname, ok := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]; ok {
-		r.eip = eipname
-	}
-
 	for _, v := range svc.Status.LoadBalancer.Ingress {
 		r.ips = append(r.ips, v.IP)
+	}
+
+	if eipname, ok := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]; ok {
+		r.eip = eipname
 	}
 
 	eip, exist := m.eips[r.eip]
@@ -280,12 +262,7 @@ func (m *Manager) getSvcRecordInfo(svc *corev1.Service) *recordInfo {
 	}
 
 	r.speaker = eip.GetSpeakerName()
-	r.protocols = eip.GetProtocol()
 	return r
-}
-
-func getRecordValue(record *recordInfo) string {
-	return record.eip + "/" + strings.Join(record.ips, ";")
 }
 
 func (m *Manager) resetLoadBalancer(svc *corev1.Service, localRecord, svcRecord *recordInfo) error {
@@ -309,11 +286,11 @@ func (m *Manager) delLoadBalancer(svc *corev1.Service, record *recordInfo) error
 
 	sp, ok := m.speakers[record.speaker]
 	if !ok {
-		return fmt.Errorf("there is no speaker:%s\n", record.speaker)
+		return fmt.Errorf("there is no speaker:%s", record.speaker)
 	}
 
 	for _, addr := range record.ips {
-		if record.protocols == constant.OpenELBProtocolVip {
+		if record.speaker == constant.OpenELBProtocolVip {
 			addr = fmt.Sprintf("%s:%s", addr, svc.Namespace+"/"+svc.Name)
 		}
 
@@ -351,11 +328,11 @@ func (m *Manager) setLoadBalancer(svc *corev1.Service, record *recordInfo) error
 
 	sp, ok := m.speakers[record.speaker]
 	if !ok {
-		return fmt.Errorf("there is no speaker:%s\n", record.speaker)
+		return fmt.Errorf("there is no speaker:%s", record.speaker)
 	}
 
 	for _, addr := range record.ips {
-		if record.protocols == constant.OpenELBProtocolVip {
+		if record.speaker == constant.OpenELBProtocolVip {
 			addr = fmt.Sprintf("%s:%s", addr, svc.Namespace+"/"+svc.Name)
 		}
 

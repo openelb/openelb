@@ -17,13 +17,10 @@ package lb
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 	"reflect"
 
 	"github.com/go-logr/logr"
 	"github.com/openelb/openelb/api/v1alpha2"
-	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/util"
@@ -41,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 const (
@@ -66,6 +62,7 @@ const (
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch
 
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
@@ -306,58 +303,4 @@ func IsOpenELBService(obj runtime.Object) bool {
 		return validate.HasOpenELBAnnotation(svc.Annotations) && validate.IsTypeLoadBalancer(svc)
 	}
 	return false
-}
-
-// +kubebuilder:webhook:admissionReviewVersions=v1,path=/validate-network-kubesphere-io-v1alpha2-svc,mutating=true,sideEffects=NoneOnDryRun,failurePolicy=fail,groups="",resources=services,verbs=create,versions=v1,name=mutating.eip.network.kubesphere.io
-
-type SvcAnnotator struct {
-	client.Client
-	decoder *admission.Decoder
-}
-
-func (r *SvcAnnotator) InjectDecoder(d *admission.Decoder) error {
-	r.decoder = d
-	return nil
-}
-
-func (r *SvcAnnotator) Handle(ctx context.Context, req admission.Request) admission.Response {
-	svc := &corev1.Service{}
-
-	if err := r.decoder.Decode(req, svc); err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
-		marshaledSvc, err := json.Marshal(svc)
-		if err != nil {
-			return admission.Errored(http.StatusInternalServerError, err)
-		}
-		return admission.PatchResponseFromRaw(req.Object.Raw, marshaledSvc)
-	}
-	// check default eip
-	eips := networkv1alpha2.EipList{}
-	err := r.List(context.Background(), &eips)
-	if err != nil {
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-	for _, eip := range eips.Items {
-		if validate.HasOpenELBDefaultEipAnnotation(eip.Annotations) {
-			// exist default eip,injection annotation
-			if svc.Annotations == nil {
-				svc.Annotations = make(map[string]string)
-				svc.Annotations[constant.OpenELBAnnotationKey] = constant.OpenELBAnnotationValue
-			} else if value, ok := svc.Annotations[constant.OpenELBAnnotationKey]; !ok || value != constant.OpenELBAnnotationValue {
-				svc.Annotations[constant.OpenELBAnnotationKey] = constant.OpenELBAnnotationValue
-			}
-			if _, ok := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]; !ok {
-				svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2] = eip.Name
-				svc.Annotations[constant.OpenELBProtocolAnnotationKey] = eip.GetProtocol()
-			}
-			break
-		}
-	}
-	marshaledSvc, err := json.Marshal(svc)
-	if err != nil {
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledSvc)
 }

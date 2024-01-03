@@ -118,6 +118,7 @@ var _ = Describe("Test eip types", func() {
 			},
 			Status: EipStatus{},
 		}
+		Expect(e.Contains(net.ParseIP(""))).Should(BeFalse())
 		Expect(e.Contains(net.ParseIP("192.168.0.100"))).Should(BeTrue())
 		Expect(e.Contains(net.ParseIP("192.168.0.200"))).Should(BeTrue())
 		Expect(e.Contains(net.ParseIP("192.168.0.150"))).Should(BeTrue())

@@ -29,7 +29,7 @@ var _ = framework.KubesphereDescribe("[OpenELB:Controller]", func() {
 	ginkgo.BeforeEach(func() {
 		cli = f.OpenELBClient
 		ns = f.Namespace.Name
-		eipName = "test-eip"
+		eipName = "test-eip-ipam"
 	})
 
 	ginkgo.AfterEach(func() {
@@ -47,7 +47,7 @@ var _ = framework.KubesphereDescribe("[OpenELB:Controller]", func() {
 				Name: eipName,
 			},
 			Spec: v1alpha2.EipSpec{
-				Address: "192.168.99.10-192.168.99.11",
+				Address: "192.168.99.100-192.168.99.101",
 			},
 		}
 		framework.ExpectNoError(f.OpenELBClient.Create(context.Background(), eip))
