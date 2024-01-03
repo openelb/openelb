@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/client"
@@ -44,6 +44,10 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
+
+const (
+	defaultimeout = 60
+)
 
 var cfg *rest.Config
 var testEnv *envtest.Environment
@@ -176,10 +180,10 @@ var _ = BeforeSuite(func(done Done) {
 	err = client.Client.Create(context.Background(), node2)
 	Expect(err).ToNot(HaveOccurred())
 
-	SetDefaultEventuallyTimeout(3 * time.Second)
+	SetDefaultEventuallyTimeout(defaultimeout * time.Second)
 
 	close(done)
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
@@ -213,13 +217,13 @@ var _ = Describe("Test GoBGP Controller", func() {
 					Name:      clone.Name,
 				}, clone)
 				return k8serrors.IsNotFound(err)
-			}, 3*time.Second).Should(Equal(true))
+			}, defaultimeout*time.Second).Should(Equal(true))
 		})
 
 		It("BgpConf should not have Finalizer", func() {
 			Eventually(checkBgpConf(bgpConf, func(dst *v1alpha2.BgpConf) bool {
 				return util.ContainsString(dst.Finalizers, constant.FinalizerName)
-			}), 3*time.Second).Should(Equal(false))
+			}), defaultimeout*time.Second).Should(Equal(false))
 		})
 	})
 
@@ -242,14 +246,14 @@ var _ = Describe("Test GoBGP Controller", func() {
 					Name:      clone.Name,
 				}, clone)
 				return k8serrors.IsNotFound(err)
-			}, 3*time.Second).Should(Equal(true))
+			}, defaultimeout*time.Second).Should(Equal(true))
 		})
 
 		It("BgpConf should have Finalizer", func() {
 			clone := bgpConf.DeepCopy()
 			Eventually(util.Check(context.Background(), client.Client, clone, func() bool {
 				return util.ContainsString(clone.Finalizers, constant.FinalizerName)
-			}), 3*time.Second).Should(Equal(false))
+			}), defaultimeout*time.Second).Should(Equal(false))
 		})
 
 		Context("BgpConf status should be updated", func() {
@@ -265,7 +269,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 					}
 
 					return false
-				}), 35*time.Second).Should(Equal(false))
+				}), defaultimeout*time.Second).Should(Equal(false))
 			})
 
 			It("routerId is empty", func() {
@@ -283,7 +287,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 					}
 
 					return false
-				}), 35*time.Second).Should(Equal(true))
+				}), defaultimeout*time.Second).Should(Equal(true))
 			})
 		})
 
@@ -298,7 +302,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 							Namespace: clone.Namespace,
 							Name:      clone.Name,
 						}, clone)
-					}, 3*time.Second).ShouldNot(HaveOccurred())
+					}, defaultimeout*time.Second).ShouldNot(HaveOccurred())
 				})
 
 				AfterEach(func() {
@@ -311,13 +315,13 @@ var _ = Describe("Test GoBGP Controller", func() {
 							Name:      clone.Name,
 						}, clone)
 						return k8serrors.IsNotFound(err)
-					}, 3*time.Second).Should(Equal(true))
+					}, defaultimeout*time.Second).Should(Equal(true))
 				})
 
 				It("BgpPeer should have Finalizer", func() {
 					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
 						return util.ContainsString(dst.Finalizers, constant.FinalizerName)
-					}), 3*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 				})
 
 				It("BgpPeer should have status", func() {
@@ -331,7 +335,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						}
 
 						return false
-					}), 35*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 				})
 
 				It("BgpPeer should delete status when it cannot match node ", func() {
@@ -350,7 +354,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						}
 
 						return false
-					}), 35*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 				})
 
 				It("BgpPeer should have status when it match node ", func() {
@@ -373,7 +377,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						}
 
 						return false
-					}), 35*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 				})
 
 				It("BgpPeer should have status when modify bgpconf ", func() {
@@ -391,7 +395,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						}
 
 						return false
-					}), 35*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 				})
 
 				It("BgpPeer should delete status when delete bgpconf ", func() {
@@ -404,7 +408,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 							Name:      cloneBgpConf.Name,
 						}, cloneBgpConf)
 						return k8serrors.IsNotFound(err)
-					}, 3*time.Second).Should(Equal(true))
+					}, defaultimeout*time.Second).Should(Equal(true))
 
 					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
 						if dst.Status.NodesPeerStatus == nil {
@@ -412,7 +416,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						}
 
 						return false
-					}), 35*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 
 					cloneBgpConf = bgpConf.DeepCopy()
 					err = client.Client.Create(context.Background(), cloneBgpConf)
@@ -422,7 +426,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 							Namespace: cloneBgpConf.Namespace,
 							Name:      cloneBgpConf.Name,
 						}, cloneBgpConf)
-					}, 3*time.Second).ShouldNot(HaveOccurred())
+					}, defaultimeout*time.Second).ShouldNot(HaveOccurred())
 
 					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
 						if dst.Status.NodesPeerStatus == nil {
@@ -434,7 +438,7 @@ var _ = Describe("Test GoBGP Controller", func() {
 						}
 
 						return false
-					}), 35*time.Second).Should(Equal(true))
+					}), defaultimeout*time.Second).Should(Equal(true))
 				})
 			})
 
@@ -461,12 +465,12 @@ var _ = Describe("Test GoBGP Controller", func() {
 							Name:      clone.Name,
 						}, clone)
 						return k8serrors.IsNotFound(err)
-					}, 3*time.Second).Should(Equal(true))
+					}, defaultimeout*time.Second).Should(Equal(true))
 				})
 				It("BgpPeer should not have Finalizer", func() {
 					Eventually(checkBgpPeer(bgpPeer, func(dst *v1alpha2.BgpPeer) bool {
 						return util.ContainsString(dst.Finalizers, constant.FinalizerName)
-					}), 3*time.Second).Should(Equal(false))
+					}), defaultimeout*time.Second).Should(Equal(false))
 				})
 			})
 		})

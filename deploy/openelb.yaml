@@ -847,7 +847,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: openelb-manager-role
 rules:
 - apiGroups:

@@ -3,7 +3,7 @@ package speaker
 import (
 	"sync"
 
-	"github.com/projectcalico/libcalico-go/lib/set"
+	"github.com/openelb/openelb/pkg/util/set"
 	corev1 "k8s.io/api/core/v1"
 )
 

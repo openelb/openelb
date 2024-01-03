@@ -1,5 +1,5 @@
 
-#CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd:crdVersions=v1,allowDangerousTypes=true"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -9,7 +9,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 .PHONY: all
-all: test controller speaker server
+all: test controller speaker
 
 # Run go fmt against code
 fmt:
@@ -21,11 +21,14 @@ vet:
 
 # Run tests
 test: fmt vet
-	KUBEBUILDER_ASSETS="$(shell $(GOBIN)/setup-envtest use -p path 1.19.x)" go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(GOBIN)/setup-envtest use -p path 1.26.x)" go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
+
+e2e: ;$(info $(M)...Run e2e test.) @ ## Run e2e test in kind.
+	hack/kind_e2e.sh
 
 .PHONY: binary
 # Build all of binary
-binary: | controller speaker server; $(info $(M)...Build all of binary.) @ ## Build all of binary.
+binary: | controller speaker; $(info $(M)...Build all of binary.) @ ## Build all of binary.
 
 # Build controller binary
 controller: ; $(info $(M)...Begin to build openelb-controller binary.)  @ ## Build controller.
@@ -59,11 +62,13 @@ deploy: generate
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=openelb-manager-role webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./api/..." output:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/webhook
+	$(CONTROLLER_GEN) rbac:roleName=openelb-manager-role paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/rbac
 
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.12.1
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)

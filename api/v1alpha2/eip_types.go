@@ -28,7 +28,8 @@ import (
 	"github.com/openelb/openelb/pkg/validate"
 
 	"github.com/openelb/openelb/pkg/constant"
-	cnet "github.com/projectcalico/libcalico-go/lib/net"
+
+	cnet "github.com/openelb/openelb/pkg/util/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
