@@ -31,10 +31,10 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	google.golang.org/grpc v1.31.0
-	k8s.io/api v0.18.2
-	k8s.io/apimachinery v0.18.2
+	k8s.io/api v0.18.14
+	k8s.io/apimachinery v0.18.14
 	k8s.io/apiserver v0.18.2
-	k8s.io/client-go v0.18.2
+	k8s.io/client-go v0.18.14
 	k8s.io/component-base v0.18.2
 	sigs.k8s.io/controller-runtime v0.6.0
 )
