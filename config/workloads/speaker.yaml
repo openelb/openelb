@@ -33,6 +33,7 @@ spec:
             - --api-hosts=:50051
             - --zap-log-level=info
             - --enable-keepalived-vip=false
+            - --enable-layer2=false
           image: speaker:latest
           imagePullPolicy: IfNotPresent
           readinessProbe:
@@ -59,6 +60,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: MEMBER_LIST_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: memberlist
+                  key: key
             - name: OPENELB_DSNAME
               valueFrom:
                 fieldRef:

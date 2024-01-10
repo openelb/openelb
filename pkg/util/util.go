@@ -57,6 +57,10 @@ func GetNodeName() string {
 	return os.Getenv(constant.EnvNodeName)
 }
 
+func GetSecret() string {
+	return os.Getenv(constant.EnvSecretName)
+}
+
 func DutyOfCNI(metaOld metav1.Object, metaNew metav1.Object) bool {
 	_, okNew := metaNew.GetLabels()[constant.OpenELBCNI]
 

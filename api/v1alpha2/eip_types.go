@@ -55,13 +55,7 @@ func (e Eip) GetSpeakerName() string {
 		return constant.OpenELBProtocolDummy
 	}
 
-	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
-		return e.Spec.Interface
-	}
-	if e.Spec.Protocol == constant.OpenELBProtocolVip {
-		return constant.OpenELBProtocolVip
-	}
-	return constant.OpenELBProtocolBGP
+	return e.GetProtocol()
 }
 
 func (e Eip) GetProtocol() string {

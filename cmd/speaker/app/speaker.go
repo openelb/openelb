@@ -11,6 +11,7 @@ import (
 	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/speaker/layer2"
 	"github.com/openelb/openelb/pkg/speaker/vip"
 	"github.com/openelb/openelb/pkg/util"
 	"github.com/openelb/openelb/pkg/version"
@@ -24,6 +25,7 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/term"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
@@ -136,12 +138,27 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		vip.Clean(k8sClient)
 	}
 
-	// TODO: for layer2 mode
+	// for layer2 mode
+	reloadChan := make(chan event.GenericEvent)
+	if opt.Layer2.EnableLayer2 {
+		layer2speaker, err := layer2.NewSpeaker(k8sClient, opt.Layer2, reloadChan, spmanager.Queue)
+		if err != nil {
+			setupLog.Error(err, "unable to new layer2 speaker")
+			return err
+		}
+
+		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolLayer2, layer2speaker); err != nil {
+			setupLog.Error(err, "unable to register keepalive speaker")
+			return err
+		}
+	}
 
 	if err := (&speaker.LBReconciler{
 		Handler:       spmanager.HandleService,
+		Reloader:      spmanager.ResyncServices,
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("lb"),
+		Reload:        reloadChan,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup lb")
 		return err

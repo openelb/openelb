@@ -13,6 +13,7 @@ import (
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -45,6 +46,7 @@ type Manager struct {
 	client.Client
 	logr.Logger
 
+	Queue workqueue.Interface
 	// map[name]Speaker
 	speakers map[string]speaker
 
@@ -62,6 +64,7 @@ func NewSpeakerManager(c client.Client, l logr.Logger) *Manager {
 		speakers: make(map[string]speaker, 0),
 		eips:     make(map[string]*v1alpha2.Eip, 0),
 		ips:      make(map[string]*recordInfo, 0),
+		Queue:    workqueue.NewNamed("eip"),
 	}
 }
 
@@ -102,9 +105,14 @@ func (m *Manager) HandleEIP(eip *v1alpha2.Eip) error {
 		return nil
 	}
 
-	if eip.GetProtocol() == constant.OpenELBProtocolVip && m.GetSpeaker(eip.GetProtocol()) == nil {
+	spaeker := m.GetSpeaker(eip.GetProtocol())
+	if spaeker == nil {
 		m.Info(fmt.Sprintf("no registered speaker:[%s] eip:[%s]", eip.GetProtocol(), eip.GetName()))
 		return nil
+	}
+
+	if eip.GetProtocol() == constant.OpenELBProtocolLayer2 {
+		m.Queue.Add(eip)
 	}
 
 	m.Lock()
@@ -123,7 +131,6 @@ func (m *Manager) HandleEIP(eip *v1alpha2.Eip) error {
 		return nil
 	}
 
-	// TODO: layer2 validate NIC infos
 	m.V(3).Info(fmt.Sprintf("store eip:[%s]", eip.GetName()))
 	m.eips[eip.GetName()] = eip
 	return nil
@@ -135,7 +142,6 @@ func (m *Manager) HandleService(svc *corev1.Service) error {
 	}
 
 	svcNSName := types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}.String()
-
 	// get local record info, if localRecord is nil -- no record exists(initing)
 	localRecord, exist := m.ips[svcNSName]
 	if !exist && svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
@@ -257,7 +263,7 @@ func (m *Manager) getSvcRecordInfo(svc *corev1.Service) *recordInfo {
 	}
 
 	eip, exist := m.eips[r.eip]
-	if !exist || eip == nil {
+	if !exist {
 		return r
 	}
 
@@ -321,7 +327,6 @@ func (m *Manager) setLoadBalancer(svc *corev1.Service, record *recordInfo) error
 
 	var announceNodes []corev1.Node
 	announceNodes = append(announceNodes, nodes...)
-	// todo: layer2 mode
 
 	sp, ok := m.speakers[record.speaker]
 	if !ok {
@@ -392,4 +397,25 @@ func (m *Manager) getServiceNodes(svc *corev1.Service) ([]corev1.Node, error) {
 	}
 
 	return resultNodes, nil
+}
+
+func (m *Manager) ResyncServices(ctx context.Context) error {
+	svcs := &corev1.ServiceList{}
+	if err := m.Client.List(ctx, svcs, &client.ListOptions{}); err != nil {
+		return err
+	}
+
+	for _, svc := range svcs.Items {
+		if !IsOpenELBService(&svc) {
+			continue
+		}
+
+		name := types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}.String()
+		r, ok := m.ips[name]
+		if ok && r.speaker == constant.OpenELBProtocolLayer2 {
+			m.setLoadBalancer(&svc, r)
+		}
+	}
+
+	return nil
 }

@@ -32,7 +32,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 		eip          []*networkv1alpha2.Eip
 		svc          *v1.Service
 		wantErr      bool
-		wantNil      bool
 		wantAllocate *svcRecord
 		wantRelease  *svcRecord
 	}{
@@ -48,10 +47,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 				Status: networkv1alpha2.EipStatus{},
 			}},
-			svc:          nil,
-			wantErr:      false,
-			wantNil:      true,
-			wantAllocate: nil,
 		},
 		{
 			name: "clusterIP service",
@@ -78,7 +73,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -93,7 +87,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr:      false,
-			wantNil:      false,
 			wantAllocate: nil,
 		},
 
@@ -122,7 +115,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -139,7 +131,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 			},
 			wantErr:      false,
-			wantNil:      false,
 			wantAllocate: nil,
 			wantRelease: &svcRecord{
 				Key: "default/testsvc",
@@ -185,9 +176,54 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 				Status: v1.ServiceStatus{},
 			},
-			wantErr:      false,
-			wantNil:      false,
-			wantAllocate: nil,
+			wantErr: true,
+		},
+
+		{
+			name: "loadbalcer service - default eip",
+			eip: []*networkv1alpha2.Eip{{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eip",
+					Annotations: map[string]string{
+						constant.OpenELBEIPAnnotationDefaultPool: "true",
+					},
+				},
+				Spec: networkv1alpha2.EipSpec{
+					Address:  "192.168.1.0/24",
+					Protocol: constant.OpenELBProtocolLayer2,
+				},
+				Status: networkv1alpha2.EipStatus{
+					Used: map[string]string{
+						"192.168.1.0": "default/testsvc",
+					},
+				},
+			}},
+			svc: &v1.Service{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testsvc",
+					Namespace: "default",
+					Annotations: map[string]string{
+						constant.OpenELBAnnotationKey: constant.OpenELBAnnotationValue,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					Type: v1.ServiceTypeLoadBalancer,
+					Ports: []v1.ServicePort{
+						{
+							Port:       80,
+							TargetPort: intstr.FromInt(80),
+						},
+					},
+				},
+				Status: v1.ServiceStatus{},
+			},
+			wantErr: false,
+			wantAllocate: &svcRecord{
+				Key: "default/testsvc",
+				Eip: "eip",
+			},
 			wantRelease: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -216,7 +252,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -231,7 +266,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -264,7 +298,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -312,7 +345,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -357,10 +389,12 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testsvc",
 					Namespace: "default",
+					Labels: map[string]string{
+						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
+					},
 					Annotations: map[string]string{
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -373,7 +407,9 @@ func TestManager_ConstructAllocate(t *testing.T) {
 						},
 					},
 				},
-				Status: v1.ServiceStatus{},
+				Status: v1.ServiceStatus{
+					LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.50"}}},
+				},
 			},
 			wantErr:      false,
 			wantAllocate: nil,
@@ -401,7 +437,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBEIPAnnotationKey:         "192.168.1.100",
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -445,7 +480,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBEIPAnnotationKey:         "192.168.1.100",
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -479,7 +513,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -494,7 +527,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -514,7 +546,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				},
@@ -532,7 +563,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantRelease: &svcRecord{
 				Key: "default/testsvc",
 				IP:  "192.168.1.0",
@@ -564,7 +594,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				},
@@ -582,7 +611,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantRelease: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -613,7 +641,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Namespace: "default",
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -630,7 +657,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantRelease: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -660,10 +686,12 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testsvc",
 					Namespace: "default",
+					Labels: map[string]string{
+						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
+					},
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolLayer2,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -679,10 +707,7 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.0"}}},
 				},
 			},
-			wantErr:      false,
-			wantNil:      false,
-			wantAllocate: nil,
-			wantRelease:  nil,
+			wantErr: false,
 		},
 		{
 			name: "normal service update eip",
@@ -722,7 +747,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 					Annotations: map[string]string{
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
-						constant.OpenELBProtocolAnnotationKey:    constant.OpenELBProtocolVip,
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -739,7 +763,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -785,7 +808,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -829,7 +851,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -886,7 +907,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip-2",
@@ -932,7 +952,6 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				Status: v1.ServiceStatus{},
 			},
 			wantErr: false,
-			wantNil: false,
 			wantAllocate: &svcRecord{
 				Key: "default/testsvc",
 				Eip: "eip",
@@ -970,15 +989,11 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				t.Errorf("Request.ConstructAllocate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if (request == nil) != tt.wantNil {
-				t.Errorf("Request.ConstructAllocate() wantNil = %v, request %v", tt.wantNil, request)
-			}
-
-			if request != nil && !reflect.DeepEqual(tt.wantAllocate, request.Allocate) {
+			if !reflect.DeepEqual(tt.wantAllocate, request.Allocate) {
 				t.Errorf("Request.ConstructAllocate() wantAllocate = %v, Allocate %v", tt.wantAllocate, request.Allocate)
 			}
 
-			if request != nil && !reflect.DeepEqual(tt.wantRelease, request.Release) {
+			if !reflect.DeepEqual(tt.wantRelease, request.Release) {
 				t.Errorf("Request.ConstructAllocate() wantRelease = %v, Release %v", tt.wantRelease, request.Release)
 			}
 		})
@@ -986,19 +1001,36 @@ func TestManager_ConstructAllocate(t *testing.T) {
 }
 
 func TestManager_AssignIP(t *testing.T) {
+	eip := &networkv1alpha2.Eip{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "eip",
+		},
+		Spec: networkv1alpha2.EipSpec{
+			Address:  "192.168.1.0/24",
+			Protocol: constant.OpenELBProtocolLayer2,
+		},
+		Status: networkv1alpha2.EipStatus{
+			FirstIP:  "192.168.1.0",
+			LastIP:   "192.168.1.255",
+			PoolSize: 256,
+			Used:     map[string]string{},
+			Usage:    0,
+			Ready:    true,
+		},
+	}
 	type fields struct {
 		eip *networkv1alpha2.Eip
-		svc *v1.Service
 	}
 	type args struct {
 		allocate *svcRecord
 	}
 	tests := []struct {
-		name    string
-		args    args
-		fields  fields
-		wantErr bool
-		wantSvc *v1.Service
+		name         string
+		args         args
+		fields       fields
+		wantErr      bool
+		wantAllocate bool
 	}{
 		{
 			name:    "allocate is nil",
@@ -1007,8 +1039,7 @@ func TestManager_AssignIP(t *testing.T) {
 				allocate: nil,
 			},
 			fields: fields{
-				eip: nil,
-				svc: nil,
+				eip: eip,
 			},
 		},
 		{
@@ -1018,13 +1049,13 @@ func TestManager_AssignIP(t *testing.T) {
 				allocate: &svcRecord{Eip: "xx"},
 			},
 			fields: fields{
-				eip: nil,
-				svc: &v1.Service{},
+				eip: eip,
 			},
 		},
 		{
-			name:    "allocate from eip 1 - static ip",
-			wantErr: false,
+			name:         "allocate from eip 1 - static ip",
+			wantErr:      false,
+			wantAllocate: true,
 			args: args{
 				allocate: &svcRecord{
 					Key: "default/svc",
@@ -1033,42 +1064,13 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used:     map[string]string{},
-						Usage:    0,
-						Ready:    true,
-					},
-				},
-				svc: &v1.Service{},
-			},
-			wantSvc: &v1.Service{
-				TypeMeta: metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{
-					Finalizers: []string{constant.FinalizerName},
-					Labels: map[string]string{
-						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-					},
-				},
-				Status: v1.ServiceStatus{
-					LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.100"}}},
-				},
+				eip: eip,
 			},
 		},
 		{
-			name:    "allocate from eip 2 - auto",
-			wantErr: false,
+			name:         "allocate from eip 2 - auto",
+			wantErr:      false,
+			wantAllocate: true,
 			args: args{
 				allocate: &svcRecord{
 					Key: "default/svc",
@@ -1076,35 +1078,7 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used:     map[string]string{},
-						Usage:    0,
-						Ready:    true,
-					},
-				},
-				svc: &v1.Service{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-						},
-					},
-					Status: v1.ServiceStatus{
-						LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.0"}}},
-					},
-				},
+				eip: eip,
 			},
 		},
 		{
@@ -1117,26 +1091,11 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "eip",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used:     map[string]string{},
-						Usage:    0,
-						Ready:    true,
-					},
-				},
-				svc: &v1.Service{},
+				eip: func() *networkv1alpha2.Eip {
+					clone := eip.DeepCopy()
+					clone.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+					return clone
+				}(),
 			},
 		},
 		{
@@ -1149,26 +1108,11 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Disable:  true,
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used:     map[string]string{},
-						Usage:    0,
-						Ready:    true,
-					},
-				},
-				svc: &v1.Service{},
+				eip: func() *networkv1alpha2.Eip {
+					clone := eip.DeepCopy()
+					clone.Spec.Disable = true
+					return clone
+				}(),
 			},
 		},
 		{
@@ -1182,25 +1126,7 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used:     map[string]string{},
-						Usage:    0,
-						Ready:    true,
-					},
-				},
-				svc: &v1.Service{},
+				eip: eip,
 			},
 		},
 		{
@@ -1216,27 +1142,30 @@ func TestManager_AssignIP(t *testing.T) {
 				eip: &networkv1alpha2.Eip{
 					TypeMeta: metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
+						Name: "eip-full",
 					},
 					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
+						Address:  "192.168.1.100-192.168.1.101",
 						Protocol: constant.OpenELBProtocolLayer2,
 					},
 					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 0,
-						Used:     map[string]string{},
-						Usage:    256,
-						Ready:    true,
+						FirstIP:  "192.168.1.100",
+						LastIP:   "192.168.1.101",
+						PoolSize: 2,
+						Used: map[string]string{
+							"192.168.1.100": "default/test0",
+							"192.168.1.101": "default/test1",
+						},
+						Usage: 2,
+						Ready: true,
 					},
 				},
-				svc: &v1.Service{},
 			},
 		},
 		{
-			name:    "Allocation records that already exist - share address",
-			wantErr: false,
+			name:         "Allocation records that already exist - share address",
+			wantErr:      false,
+			wantAllocate: true,
 			args: args{
 				allocate: &svcRecord{
 					Key: "default/svc",
@@ -1245,44 +1174,20 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used: map[string]string{
-							"192.168.1.100": "default/test",
-						},
-						Usage: 1,
-						Ready: true,
-					},
-				},
-				svc: &v1.Service{},
-			},
-			wantSvc: &v1.Service{
-				TypeMeta: metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{
-					Finalizers: []string{constant.FinalizerName},
-					Labels: map[string]string{
-						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-					},
-				},
-				Status: v1.ServiceStatus{
-					LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.100"}}},
-				},
+				eip: func() *networkv1alpha2.Eip {
+					clone := eip.DeepCopy()
+					clone.Status.Usage = 1
+					clone.Status.Used = map[string]string{
+						"192.168.1.100": "default/test",
+					}
+					return clone
+				}(),
 			},
 		},
 		{
-			name:    "Allocation records that already exist - return records",
-			wantErr: false,
+			name:         "Allocation records that already exist - return records",
+			wantErr:      false,
+			wantAllocate: true,
 			args: args{
 				allocate: &svcRecord{
 					Key: "default/svc",
@@ -1291,39 +1196,14 @@ func TestManager_AssignIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						FirstIP:  "192.168.1.0",
-						LastIP:   "192.168.1.255",
-						PoolSize: 256,
-						Used: map[string]string{
-							"192.168.1.100": "default/svc",
-						},
-						Usage: 1,
-						Ready: true,
-					},
-				},
-				svc: &v1.Service{},
-			},
-			wantSvc: &v1.Service{
-				TypeMeta: metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{
-					Finalizers: []string{constant.FinalizerName},
-					Labels: map[string]string{
-						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-					},
-				},
-				Status: v1.ServiceStatus{
-					LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.100"}}},
-				},
+				eip: func() *networkv1alpha2.Eip {
+					clone := eip.DeepCopy()
+					clone.Status.Usage = 1
+					clone.Status.Used = map[string]string{
+						"192.168.1.100": "default/svc",
+					}
+					return clone
+				}(),
 			},
 		},
 	}
@@ -1333,37 +1213,28 @@ func TestManager_AssignIP(t *testing.T) {
 			if tt.fields.eip != nil {
 				objs = append(objs, tt.fields.eip)
 			}
-			if tt.fields.svc != nil {
-				objs = append(objs, tt.fields.svc)
-			}
 			cl := fake.NewClientBuilder()
 			cl.WithScheme(scheme).WithObjects(objs...)
 
 			m := NewManager(cl.Build())
-			err := m.AssignIP(context.Background(), tt.args.allocate, tt.fields.svc)
+			err := m.AssignIP(context.Background(), tt.args.allocate)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Manager.AssignIP() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if tt.wantSvc != nil && tt.fields.eip != nil {
+			if tt.fields.eip != nil {
 				eip := &networkv1alpha2.Eip{}
 				err := m.Get(context.Background(), types.NamespacedName{Name: tt.fields.eip.Name}, eip)
 				if err != nil {
 					t.Errorf("Manager.AssignIP() get eip error = %v", err)
 				}
-				if len(eip.Status.Used) == 0 {
+				if tt.wantAllocate && len(eip.Status.Used) == 0 {
 					t.Errorf("Manager.AssignIP() eip.Status %v", eip.Status)
 				}
 
-				if tt.fields.svc == nil {
-					return
-				}
-
-				if !reflect.DeepEqual(tt.fields.svc.Labels, tt.wantSvc.Labels) ||
-					!reflect.DeepEqual(tt.fields.svc.Finalizers, tt.wantSvc.Finalizers) ||
-					!reflect.DeepEqual(tt.fields.svc.Status, tt.wantSvc.Status) {
-					t.Errorf("Manager.AssignIP() svc %v  svc assign Status %v", tt.fields.svc, tt.wantSvc)
+				if !tt.wantAllocate && len(eip.Status.Used) == 1 {
+					t.Errorf("Manager.AssignIP() eip.Status %v", eip.Status)
 				}
 			}
 		})
@@ -1371,19 +1242,34 @@ func TestManager_AssignIP(t *testing.T) {
 }
 
 func TestManager_ReleaseIP(t *testing.T) {
+	eip := &networkv1alpha2.Eip{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "eip",
+		},
+		Spec: networkv1alpha2.EipSpec{
+			Address:  "192.168.1.0/24",
+			Protocol: constant.OpenELBProtocolLayer2,
+		},
+		Status: networkv1alpha2.EipStatus{
+			Used: map[string]string{
+				"192.168.1.100": "default/testsvc",
+			},
+		},
+	}
+
 	type fields struct {
 		eip *networkv1alpha2.Eip
-		svc *v1.Service
 	}
 	type args struct {
 		release *svcRecord
 	}
 	tests := []struct {
-		name    string
-		args    args
-		fields  fields
-		wantErr bool
-		wantSvc *v1.Service
+		name       string
+		args       args
+		fields     fields
+		wantErr    bool
+		wantDelete bool
 	}{
 		{
 			name:    "release is nil",
@@ -1392,46 +1278,11 @@ func TestManager_ReleaseIP(t *testing.T) {
 				release: nil,
 			},
 			fields: fields{
-				eip: nil,
+				eip: eip,
 			},
 		},
 		{
-			name:    "eip is not exist - service no record",
-			wantErr: false,
-			args: args{
-				release: &svcRecord{},
-			},
-			fields: fields{
-				eip: nil,
-				svc: &v1.Service{},
-			},
-			wantSvc: &v1.Service{},
-		},
-		{
-			name:    "eip is not exist - service has record",
-			wantErr: false,
-			args: args{
-				release: &svcRecord{},
-			},
-			fields: fields{
-				eip: nil,
-				svc: &v1.Service{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{constant.FinalizerName},
-						Labels: map[string]string{
-							constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-						},
-					},
-					Status: v1.ServiceStatus{
-						LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.100"}}},
-					},
-				},
-			},
-			wantSvc: &v1.Service{},
-		},
-		{
-			name:    "release ip from eip",
+			name:    "eip is not exist",
 			wantErr: false,
 			args: args{
 				release: &svcRecord{
@@ -1440,73 +1291,77 @@ func TestManager_ReleaseIP(t *testing.T) {
 				},
 			},
 			fields: fields{
-				eip: &networkv1alpha2.Eip{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eip",
-					},
-					Spec: networkv1alpha2.EipSpec{
-						Address:  "192.168.1.0/24",
-						Protocol: constant.OpenELBProtocolLayer2,
-					},
-					Status: networkv1alpha2.EipStatus{
-						Used: map[string]string{
-							"192.168.1.100": "default/testsvc",
-						},
-					},
-				},
-				svc: &v1.Service{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{constant.FinalizerName},
-						Labels: map[string]string{
-							constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
-						},
-					},
-					Status: v1.ServiceStatus{
-						LoadBalancer: v1.LoadBalancerStatus{Ingress: []v1.LoadBalancerIngress{{IP: "192.168.1.100"}}},
-					},
+				eip: nil,
+			},
+		},
+		{
+			name:       "eip is deleting",
+			wantDelete: false,
+			wantErr:    false,
+			args: args{
+				release: &svcRecord{},
+			},
+			fields: fields{
+				eip: eip,
+			},
+		},
+		{
+			name:       "eip no record",
+			wantDelete: false,
+			wantErr:    false,
+			args: args{
+				release: &svcRecord{
+					Key: "default/no-svc",
+					Eip: "eip",
 				},
 			},
-			wantSvc: &v1.Service{},
+			fields: fields{
+				eip: eip,
+			},
+		},
+		{
+			name:       "release ip from eip",
+			wantErr:    false,
+			wantDelete: true,
+			args: args{
+				release: &svcRecord{
+					Key: "default/testsvc",
+					Eip: "eip",
+				},
+			},
+			fields: fields{
+				eip: eip,
+			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			objs := []client.Object{}
 			if tt.fields.eip != nil {
 				objs = append(objs, tt.fields.eip)
 			}
-			if tt.fields.svc != nil {
-				objs = append(objs, tt.fields.svc)
-			}
 			cl := fake.NewClientBuilder()
 			cl.WithScheme(scheme).WithObjects(objs...)
 
 			m := NewManager(cl.Build())
-			if err := m.ReleaseIP(context.Background(), tt.args.release, tt.fields.svc); (err != nil) != tt.wantErr {
+			if err := m.ReleaseIP(context.Background(), tt.args.release); (err != nil) != tt.wantErr {
 				t.Errorf("Manager.ReleaseIP() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.wantSvc != nil && tt.fields.eip != nil {
+			if tt.fields.eip != nil {
 				eip := &networkv1alpha2.Eip{}
 				err := m.Get(context.Background(), types.NamespacedName{Name: tt.fields.eip.Name}, eip)
 				if err != nil {
 					t.Errorf("Manager.ReleaseIP() get eip error = %v", err)
 				}
-				if len(eip.Status.Used) != 0 {
+				if tt.wantDelete && len(eip.Status.Used) != 0 {
 					t.Errorf("Manager.ReleaseIP() eip.Status %v", eip.Status)
 				}
-			}
 
-			if tt.fields.svc == nil {
-				return
-			}
-
-			if len(tt.fields.svc.Labels) != len(tt.wantSvc.Labels) ||
-				len(tt.fields.svc.Finalizers) != len(tt.wantSvc.Finalizers) ||
-				len(tt.fields.svc.Status.LoadBalancer.Ingress) != len(tt.wantSvc.Status.LoadBalancer.Ingress) {
-				t.Errorf("Manager.AssignIP() svc %v  svc assign Status %v", tt.fields.svc, tt.wantSvc)
+				if !tt.wantDelete && len(eip.Status.Used) == 0 {
+					t.Errorf("Manager.ReleaseIP() eip.Status %v", eip.Status)
+				}
 			}
 		})
 	}

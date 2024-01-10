@@ -1,11 +1,9 @@
 package layer2
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -13,19 +11,21 @@ import (
 	"github.com/mdlayher/arp"
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
-	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
-	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/vishvananda/netlink"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const protocolARP = 0x0806
+const (
+	protocolARP = 0x0806
 
-var _ speaker.Speaker = &arpSpeaker{}
+	ERROR_NotContainsIP = "node's IP is not in the same network segment as the announced IP."
+)
 
-type arpSpeaker struct {
+var _ Announcer = &arpAnnouncer{}
+
+type arpAnnouncer struct {
 	logger logr.Logger
 
 	intf  *net.Interface
@@ -33,13 +33,23 @@ type arpSpeaker struct {
 	conn  *arp.Client
 	p     *raw.Conn
 
-	lock   sync.Mutex
+	stopCh chan struct{}
+	lock   sync.RWMutex
 	ip2mac map[string]net.HardwareAddr
 }
 
-func (a *arpSpeaker) getMac(ip string) *net.HardwareAddr {
-	a.lock.Lock()
-	defer a.lock.Unlock()
+func (a *arpAnnouncer) ContainsIP(ip string) bool {
+	for _, addr := range a.addrs {
+		if addr.Contains(net.ParseIP(ip)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *arpAnnouncer) getMac(ip string) *net.HardwareAddr {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
 
 	result, ok := a.ip2mac[ip]
 	if !ok {
@@ -48,14 +58,14 @@ func (a *arpSpeaker) getMac(ip string) *net.HardwareAddr {
 	return &result
 }
 
-func (a *arpSpeaker) setMac(ip string, mac net.HardwareAddr) {
+func (a *arpAnnouncer) setMac(ip string, mac net.HardwareAddr) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	a.ip2mac[ip] = mac
 }
 
-func newARPSpeaker(ifi *net.Interface) (*arpSpeaker, error) {
+func newARPAnnouncer(ifi *net.Interface) (*arpAnnouncer, error) {
 	p, err := raw.ListenPacket(ifi, protocolARP, nil)
 	if err != nil {
 		return nil, err
@@ -67,12 +77,13 @@ func newARPSpeaker(ifi *net.Interface) (*arpSpeaker, error) {
 
 	link, _ := netlink.LinkByIndex(ifi.Index)
 	addrs, _ := netlink.AddrList(link, netlink.FAMILY_V4)
-	ret := &arpSpeaker{
+	ret := &arpAnnouncer{
 		logger: ctrl.Log.WithName("arpSpeaker"),
 		intf:   ifi,
 		addrs:  addrs,
 		conn:   client,
 		p:      p,
+		stopCh: make(chan struct{}),
 		ip2mac: make(map[string]net.HardwareAddr),
 	}
 
@@ -106,7 +117,7 @@ func generateArp(intfHW net.HardwareAddr, op arp.Operation, srcHW net.HardwareAd
 	return fb, err
 }
 
-func (a *arpSpeaker) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err error) {
+func (a *arpAnnouncer) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err error) {
 	routers, err := netlink.RouteGet(nodeIP)
 	if err != nil {
 		return nil, err
@@ -143,7 +154,7 @@ func (a *arpSpeaker) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err erro
 	return nil, err
 }
 
-func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
+func (a *arpAnnouncer) gratuitous(ip, nodeIP net.IP) error {
 	if a.getMac(ip.String()) != nil {
 		return nil
 	}
@@ -174,104 +185,53 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 	return nil
 }
 
-func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
-	if nodes[0].Annotations != nil {
-		nexthop := nodes[0].Annotations[constant.OpenELBLayer2Annotation]
-		// check for valid CIDR range
-		if strings.Contains(nexthop, "/") {
-			return a.setNextHopFromIPRange(ip, nexthop)
-		}
-		// check for valid ip
-		if net.ParseIP(nexthop) != nil {
-			return a.setBalancer(ip, []string{nexthop})
-		}
-	}
-
-	for _, addr := range a.addrs {
-		for _, tmp := range nodes[0].Status.Addresses {
-			if tmp.Type == corev1.NodeInternalIP || tmp.Type == corev1.NodeExternalIP {
-				if addr.Contains(net.ParseIP(tmp.Address)) {
-					return a.setBalancer(ip, []string{tmp.Address})
-				}
-			}
-		}
-	}
-
-	return fmt.Errorf("node %s has no nexthop", nodes[0].Name)
-}
-
-func (a *arpSpeaker) setNextHopFromIPRange(svcIP, cidr string) error {
-	var err error
-	// convert string to IPNet struct
-	_, ipv4Net, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return err
-	}
-	// convert IPNet struct mask and address to uint32
-	// network is BigEndian
-	mask := binary.BigEndian.Uint32(ipv4Net.Mask)
-	start := binary.BigEndian.Uint32(ipv4Net.IP)
-
-	// find the final address
-	finish := (start & mask) | (mask ^ 0xffffffff)
-
-	// loop through addresses as uint32
-	for i := start; i <= finish; i++ {
-		// convert back to net.IP
-		nexthop := make(net.IP, 4)
-		binary.BigEndian.PutUint32(nexthop, i)
-		hwAddr, err := a.resolveIP(nexthop)
-		if err != nil {
-			a.logger.Error(err, "arp: could not resolve ", "ip", nexthop)
-			continue
-		}
-		if hwAddr.String() != a.intf.HardwareAddr.String() {
-			continue
-		}
-		err = a.setBalancer(svcIP, []string{nexthop.String()})
-		if err == nil {
-			return nil
-		}
-	}
-	return err
-}
-
-func (a *arpSpeaker) setBalancer(ip string, nexthops []string) error {
+func (a *arpAnnouncer) AddAnnouncedIP(ip string) error {
 	if _, ok := a.ip2mac[ip]; !ok {
 		metrics.InitLayer2Metrics(ip)
 	}
 
-	if err := a.gratuitous(net.ParseIP(ip), net.ParseIP(nexthops[0])); err != nil {
+	nexthops := ""
+	for _, addr := range a.addrs {
+		if addr.Contains(net.ParseIP(ip)) {
+			nexthops = addr.IP.String()
+		}
+	}
+
+	if nexthops == "" {
+		return fmt.Errorf("arpAnnouncer add announced IP error : %s", ERROR_NotContainsIP)
+	}
+
+	if err := a.gratuitous(net.ParseIP(ip), net.ParseIP(nexthops)); err != nil {
 		return err
 	}
 
 	metrics.UpdateGratuitousSentMetrics(ip)
 	return nil
-
 }
 
-func (a *arpSpeaker) DelBalancer(ip string) error {
+func (a *arpAnnouncer) DelAnnouncedIP(ip string) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	klog.Infof("cancel respone %s's arp packet", ip)
 	delete(a.ip2mac, ip)
 	metrics.DeleteLayer2Metrics(ip)
 
 	return nil
 }
 
-func (a *arpSpeaker) Start(stopCh <-chan struct{}) error {
+func (a *arpAnnouncer) Start(stopCh <-chan struct{}) error {
 	go a.run(stopCh)
-
-	go func() {
-		<-stopCh
-		a.conn.Close()
-	}()
-
 	return nil
 }
 
-func (a *arpSpeaker) run(stopCh <-chan struct{}) {
+func (a *arpAnnouncer) Stop() error {
+	a.conn.Close()
+	close(a.stopCh)
+	return nil
+}
+
+func (a *arpAnnouncer) run(stopCh <-chan struct{}) {
 	for {
 		err := a.processRequest()
 
@@ -287,7 +247,7 @@ func (a *arpSpeaker) run(stopCh <-chan struct{}) {
 	}
 }
 
-func (a *arpSpeaker) processRequest() dropReason {
+func (a *arpAnnouncer) processRequest() dropReason {
 	pkt, _, err := a.conn.Read()
 	if err != nil {
 		if err == io.EOF {

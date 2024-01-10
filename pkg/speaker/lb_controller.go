@@ -39,12 +39,15 @@ type LBReconciler struct {
 	client.Client
 	record.EventRecorder
 
-	Handler func(*corev1.Service) error
+	Reload   chan event.GenericEvent
+	Handler  func(*corev1.Service) error
+	Reloader func(context.Context) error
 }
 
-func SetupLBReconciler(mgr ctrl.Manager, svchandler func(*corev1.Service) error) error {
+func SetupLBReconciler(mgr ctrl.Manager, svchandler func(*corev1.Service) error, svcreloader func(context.Context) error) error {
 	lb := &LBReconciler{
 		Handler:       svchandler,
+		Reloader:      svcreloader,
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("lb"),
 	}
@@ -83,10 +86,7 @@ func (r *LBReconciler) shouldReconcileEP(e metav1.Object) bool {
 	svc := &corev1.Service{}
 	err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.GetNamespace(), Name: e.GetName()}, svc)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return false
-		}
-		return true
+		return !errors.IsNotFound(err)
 	}
 
 	return IsOpenELBService(svc)
@@ -104,6 +104,7 @@ func (r *LBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Service{}).
+		Watches(&source.Channel{Source: r.Reload}, &handler.EnqueueRequestForObject{}).
 		Owns(&corev1.Endpoints{}).
 		WithEventFilter(p).
 		Named("LBController").
@@ -140,17 +141,21 @@ func (l *LBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	log.V(1).Info("start setup openelb service")
 	defer log.V(1).Info("finish reconcile openelb service")
 
+	if l.reloadServices(req) {
+		return ctrl.Result{}, l.Reloader(ctx)
+	}
+
 	svc := &corev1.Service{}
 	if err := l.Client.Get(ctx, req.NamespacedName, svc); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("NotFound", " req.NamespacedName", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{}, err
 	}
 
-	if err := l.Handler(svc); err != nil {
-		return ctrl.Result{Requeue: true}, err
-	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, l.Handler(svc)
+}
+
+func (l *LBReconciler) reloadServices(req ctrl.Request) bool {
+	return req.Name == constant.Layer2ReloadServiceName && req.Namespace == constant.Layer2ReloadServiceNamespace
 }

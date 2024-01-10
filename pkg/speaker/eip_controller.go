@@ -56,14 +56,10 @@ func (l *EIPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	eip := &v1alpha2.Eip{}
 	if err := l.Client.Get(ctx, req.NamespacedName, eip); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("NotFound", " req.NamespacedName", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{}, err
 	}
 
-	if err := l.Handler(eip); err != nil {
-		return ctrl.Result{Requeue: true}, err
-	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, l.Handler(eip)
 }
