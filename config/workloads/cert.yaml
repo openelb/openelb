@@ -1,4 +1,11 @@
 apiVersion: v1
+data:
+  key: b3BlbmVsYi1zcGVha2Vycw==
+kind: Secret
+metadata:
+  name: memberlist
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: openelb-admission

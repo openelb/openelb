@@ -1122,6 +1122,14 @@ subjects:
   namespace: openelb-system
 ---
 apiVersion: v1
+data:
+  key: b3BlbmVsYi1zcGVha2Vycw==
+kind: Secret
+metadata:
+  name: memberlist
+  namespace: openelb-system
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: openelb-admission
@@ -1248,6 +1256,7 @@ spec:
         - --api-hosts=:50051
         - --zap-log-level=info
         - --enable-keepalived-vip=false
+        - --enable-layer2=false
         command:
         - openelb-speaker
         env:
@@ -1259,6 +1268,11 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: MEMBER_LIST_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: key
+              name: memberlist
         - name: OPENELB_DSNAME
           valueFrom:
             fieldRef:
@@ -1266,6 +1280,17 @@ spec:
         image: kubesphere/openelb-speaker:v0.6.0
         imagePullPolicy: IfNotPresent
         name: openelb-speaker
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              gobgp -p 50051 global
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
         resources:
           limits:
             cpu: 100m

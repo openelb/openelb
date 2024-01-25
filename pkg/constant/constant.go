@@ -53,6 +53,7 @@ const (
 	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
 	EnvDaemonsetName          = "OPENELB_DSNAME"
 	EnvNodeName               = "NODE_NAME"
+	EnvSecretName             = "MEMBER_LIST_SECRET"
 
 	// default images and specify images
 	OpenELBImagesConfigMap         = "openelb-images"
@@ -62,4 +63,8 @@ const (
 	OpenELBDefaultKeepAliveImage   = "kubesphere/kube-keepalived-vip:0.35" // keepalived image by default
 	NodeProxyDefaultForwardImage   = "kubesphere/openelb-forward:master"
 	NodeProxyDefaultProxyImage     = "kubesphere/openelb-proxy:master"
+
+	Layer2MemberlistDefaultSecret = "openelb-speakers"
+	Layer2ReloadServiceName       = "reload"
+	Layer2ReloadServiceNamespace  = "openelb-services-reload"
 )

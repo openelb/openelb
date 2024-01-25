@@ -33,8 +33,20 @@ spec:
             - --api-hosts=:50051
             - --zap-log-level=info
             - --enable-keepalived-vip=false
+            - --enable-layer2=false
           image: speaker:latest
           imagePullPolicy: IfNotPresent
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - |
+                gobgp -p 50051 global
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           name: openelb-speaker
           securityContext:
             capabilities:
@@ -48,6 +60,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: MEMBER_LIST_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: memberlist
+                  key: key
             - name: OPENELB_DSNAME
               valueFrom:
                 fieldRef:

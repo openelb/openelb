@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -217,14 +218,13 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	clone := svc.DeepCopy()
 	// Reconcile by OpenELB NodeProxy if this service is specified to be exported by it
-	if validate.HasOpenELBNPAnnotation(clone.Annotations) {
-		return r.reconcileNP(clone)
+	if validate.HasOpenELBNPAnnotation(svc.Annotations) {
+		return r.reconcileNP(svc)
 	}
 
-	request, err := r.ipmanager.ConstructRequest(ctx, clone)
-	if err != nil || request == nil {
+	request, err := r.ipmanager.ConstructRequest(ctx, svc)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -232,54 +232,56 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
+	clone := svc.DeepCopy()
+	statusIPs := svc.Status.LoadBalancer.Ingress
 	if request.Release != nil {
-		err = r.ipmanager.ReleaseIP(ctx, request.Release, clone)
+		err = r.ipmanager.ReleaseIP(ctx, request.Release)
 		if err != nil {
 			log.Error(err, "release ip", "request", request)
 			return ctrl.Result{}, err
 		}
+
+		//update service
+		statusIPs = []corev1.LoadBalancerIngress{}
+		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
+		delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
 	}
 
 	if request.Allocate != nil {
-		err = r.ipmanager.AssignIP(ctx, request.Allocate, clone)
+		err = r.ipmanager.AssignIP(ctx, request.Allocate)
 		if err != nil {
 			log.Error(err, "assign ip", "request", request)
 			return ctrl.Result{}, err
 		}
+
+		//update service
+		if !util.ContainsString(clone.Finalizers, constant.FinalizerName) {
+			controllerutil.AddFinalizer(clone, constant.FinalizerName)
+		}
+		if clone.Labels == nil {
+			clone.Labels = make(map[string]string)
+		}
+		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = request.Allocate.Eip
+		statusIPs = []corev1.LoadBalancerIngress{{IP: request.Allocate.IP}}
 	}
 
-	return ctrl.Result{}, r.updateService(ctx, svc, clone)
-}
-
-func (r *ServiceReconciler) updateService(ctx context.Context, svc, clone *corev1.Service) error {
-	update := false
+	// update service resource
 	if !reflect.DeepEqual(svc.Labels, clone.Labels) {
-		err := r.Update(ctx, clone)
-		update = true
-		if err != nil {
-			return err
+		if err := r.Update(ctx, clone); err != nil {
+			log.Error(err, "update update labels")
+			return ctrl.Result{}, err
 		}
 	}
 
+	clone.Status.LoadBalancer.Ingress = statusIPs
 	if !reflect.DeepEqual(svc.Status, clone.Status) {
-		if update {
-			err := r.Get(ctx, types.NamespacedName{
-				Namespace: svc.Namespace,
-				Name:      svc.Name,
-			}, svc)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return nil
-				}
-				return err
-			}
-
-			clone.ObjectMeta = svc.ObjectMeta
+		if err := r.Status().Update(context.Background(), clone); err != nil {
+			log.Error(err, "update service status")
+			return ctrl.Result{}, err
 		}
-
-		return r.Status().Update(ctx, clone)
 	}
-	return nil
+
+	return ctrl.Result{}, nil
 }
 
 func SetupServiceReconciler(mgr ctrl.Manager) error {

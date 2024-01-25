@@ -23,7 +23,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -169,46 +168,57 @@ func (i *Manager) getAllocatedEIPInfo(ctx context.Context, svcInfo string) (stri
 }
 
 type info struct {
-	key           string
-	svcEIP        string
-	svcLBIP       string
-	svcStatusLBIP string
-	actualEip     string
-	actualIP      string
+	svcName        string
+	svcSpecifyEIP  string
+	svcSpecifyLBIP string
+	svcStatusLBIP  string
+	allocatedEip   string
+	allocatedIP    string
 }
 
 func (i *info) needUpdate() bool {
-	if i.svcEIP == i.actualEip {
-		if i.svcLBIP == i.actualIP {
+	if i.svcSpecifyEIP == "" && i.svcSpecifyLBIP == "" && i.svcStatusLBIP == i.allocatedIP {
+		return false
+	}
+
+	if i.svcSpecifyEIP == i.allocatedEip {
+		if i.svcSpecifyLBIP == i.allocatedIP {
 			return false
 		}
 
-		if i.svcLBIP == "" && i.svcStatusLBIP == i.actualIP {
+		if i.svcSpecifyLBIP == "" && i.svcStatusLBIP == i.allocatedIP {
 			return false
 		}
 	}
+
 	return true
 }
 
-func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (*Request, error) {
+func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (Request, error) {
+	req := Request{}
 	if svc == nil || svc.Annotations == nil {
-		return nil, nil
+		return req, nil
 	}
 
-	svcLBIP := svc.Spec.LoadBalancerIP
+	svcSpecifyLBIP := svc.Spec.LoadBalancerIP
 	if value, ok := svc.Annotations[constant.OpenELBEIPAnnotationKey]; ok {
-		svcLBIP = value
+		svcSpecifyLBIP = value
 	}
 
-	svcEip := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
-	if svcEip == "" && svc.Labels != nil {
-		svcEip = svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	svcSpecifyEIP := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	if svcSpecifyEIP == "" {
+		eip, err := i.getEIP(context.Background(), svc.Namespace, svcSpecifyLBIP, svcSpecifyEIP)
+		if err != nil || eip == nil {
+			i.log.Error(err, "get eip error")
+			return req, err
+		}
+		svcSpecifyEIP = eip.Name
 	}
 
 	eip, addr, err := i.getAllocatedEIPInfo(ctx, types.NamespacedName{
 		Namespace: svc.Namespace, Name: svc.Name}.String())
 	if err != nil {
-		return nil, err
+		return req, nil
 	}
 
 	lbIP := ""
@@ -222,24 +232,37 @@ func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (*Reque
 	}
 
 	info := info{
-		key:           types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}.String(),
-		svcEIP:        svcEip,
-		svcLBIP:       svcLBIP,
-		actualIP:      addr,
-		actualEip:     eip,
-		svcStatusLBIP: lbIP,
+		svcName:        types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}.String(),
+		svcSpecifyEIP:  svcSpecifyEIP,
+		svcSpecifyLBIP: svcSpecifyLBIP,
+		allocatedIP:    addr,
+		allocatedEip:   eip,
+		svcStatusLBIP:  lbIP,
 	}
 
 	if needRelease(svc) {
-		return &Request{
-			Release: i.constructRelease(info, true),
-		}, nil
+		req.Release = i.constructRelease(info)
+		return req, nil
 	}
 
-	return &Request{
-		Allocate: i.constructAllocate(info, svc.Namespace),
-		Release:  i.constructRelease(info, false),
-	}, nil
+	if !info.needUpdate() {
+		if _, exist := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]; !exist {
+			req.Allocate = &svcRecord{
+				Key: info.svcName,
+				Eip: info.allocatedEip,
+				IP:  info.allocatedIP,
+			}
+		}
+		return req, nil
+	}
+
+	req.Release = i.constructRelease(info)
+	req.Allocate = &svcRecord{
+		Key: info.svcName,
+		Eip: info.svcSpecifyEIP,
+		IP:  info.svcSpecifyLBIP,
+	}
+	return req, nil
 }
 
 func needRelease(svc *v1.Service) bool {
@@ -362,39 +385,14 @@ func (i *Manager) getDefaultEIP(ctx context.Context, name string) (*networkv1alp
 	return defaultEip, nil
 }
 
-func (i *Manager) constructAllocate(info info, ns string) *svcRecord {
-	if info.svcEIP == "" {
-		eip, err := i.getEIP(context.Background(), ns, info.svcLBIP, info.svcEIP)
-		if err != nil || eip == nil {
-			i.log.Error(err, "get eip error")
-			return nil
-		}
-		info.svcEIP = eip.Name
-	}
-
-	if !info.needUpdate() {
-		return nil
-	}
-
-	return &svcRecord{
-		Key: info.key,
-		Eip: info.svcEIP,
-		IP:  info.svcLBIP,
-	}
-}
-
-func (i *Manager) constructRelease(info info, release bool) *svcRecord {
-	if !release && !info.needUpdate() {
-		return nil
-	}
-
+func (i *Manager) constructRelease(info info) *svcRecord {
 	r := &svcRecord{
-		Key: info.key,
-		Eip: info.actualEip,
-		IP:  info.actualIP,
+		Key: info.svcName,
+		Eip: info.allocatedEip,
+		IP:  info.allocatedIP,
 	}
 
-	if info.actualEip == "" && info.actualIP == "" {
+	if info.allocatedEip == "" && info.allocatedIP == "" {
 		// no eip record and no status record
 		if info.svcStatusLBIP == "" {
 			return nil
@@ -407,8 +405,8 @@ func (i *Manager) constructRelease(info info, release bool) *svcRecord {
 	return r
 }
 
-func (i *Manager) AssignIP(ctx context.Context, allocate *svcRecord, svc *v1.Service) error {
-	if allocate == nil || svc == nil {
+func (i *Manager) AssignIP(ctx context.Context, allocate *svcRecord) error {
+	if allocate == nil {
 		return nil
 	}
 
@@ -431,39 +429,19 @@ func (i *Manager) AssignIP(ctx context.Context, allocate *svcRecord, svc *v1.Ser
 		}
 	}
 
-	// assign ip handle service
-	if !util.ContainsString(svc.Finalizers, constant.FinalizerName) {
-		controllerutil.AddFinalizer(svc, constant.FinalizerName)
-	}
-	//update labels
-	if svc.Labels == nil {
-		svc.Labels = make(map[string]string)
-	}
-	svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = allocate.Eip
-
-	//update ingress status
-	svc.Status.LoadBalancer.Ingress = make([]v1.LoadBalancerIngress, 0)
-	svc.Status.LoadBalancer.Ingress = append(svc.Status.LoadBalancer.Ingress, v1.LoadBalancerIngress{IP: addr})
-
+	allocate.IP = addr
 	i.log.Info("assign ip", "allocate Record", allocate, "eip status", clone.Status)
-
 	return nil
 }
 
-func (i *Manager) ReleaseIP(ctx context.Context, release *svcRecord, svc *v1.Service) error {
-	if release == nil || svc == nil {
+func (i *Manager) ReleaseIP(ctx context.Context, release *svcRecord) error {
+	if release == nil {
 		return nil
 	}
 
 	eip := &networkv1alpha2.Eip{}
 	err := i.Get(ctx, types.NamespacedName{Name: release.Eip}, eip)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			svc.Status.LoadBalancer.Ingress = nil
-			controllerutil.RemoveFinalizer(svc, constant.FinalizerName)
-			delete(svc.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
-			return nil
-		}
+	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -475,11 +453,6 @@ func (i *Manager) ReleaseIP(ctx context.Context, release *svcRecord, svc *v1.Ser
 			return err
 		}
 	}
-
-	// we think only openelb handles this status
-	svc.Status.LoadBalancer.Ingress = nil
-	controllerutil.RemoveFinalizer(svc, constant.FinalizerName)
-	delete(svc.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
 
 	i.log.Info("release ip", "release Record", release, "eip status", clone.Status)
 	return nil
