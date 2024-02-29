@@ -75,6 +75,7 @@ func fromAPIPath(path *api.Path) net.IP {
 }
 
 func (b *Bgp) retriveRoutes(ip string, prefix uint32, nexthops []string) (err error, toAdd, toDelete []string) {
+	ctrl.Log.Info("bgp: retrieving routes")
 	listPathRequest := &api.ListPathRequest{
 		TableType: api.TableType_GLOBAL,
 		Family:    getFamily(ip),
@@ -135,6 +136,7 @@ func (b *Bgp) ready() error {
 }
 
 func (b *Bgp) setBalancer(ip string, nexthops []string) error {
+	ctrl.Log.Info("bgp: configuring next hops")
 	err := b.ready()
 	if err != nil {
 		return err

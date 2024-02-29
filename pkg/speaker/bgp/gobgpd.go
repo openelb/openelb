@@ -1,13 +1,14 @@
 package bgp
 
 import (
+	"sync"
+
 	"github.com/openelb/openelb/pkg/speaker"
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sync"
 )
 
 var _ speaker.Speaker = &Bgp{}

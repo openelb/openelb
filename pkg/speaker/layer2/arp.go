@@ -121,7 +121,7 @@ func (a *arpSpeaker) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err erro
 	if iface.Name == "lo" {
 		hwAddr = a.intf.HardwareAddr
 	} else {
-		//Resolve mac
+		a.logger.Info("layer2: arp pinging to resolve MAC", "node IP", nodeIP)
 		for i := 0; i < 3; i++ {
 			hwAddr, _, err = arping.PingOverIface(nodeIP, *iface)
 			if err != nil {
@@ -180,6 +180,7 @@ func (a *arpSpeaker) gratuitous(ip, nodeIP net.IP) error {
 }
 
 func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
+	a.logger.Info("layer2: calculating next hop for node", "node name", nodes[0].Name)
 	if nodes[0].Annotations != nil {
 		nexthop := nodes[0].Annotations[constant.OpenELBLayer2Annotation]
 		// check for valid CIDR range
@@ -202,7 +203,7 @@ func (a *arpSpeaker) SetBalancer(ip string, nodes []corev1.Node) error {
 		}
 	}
 
-	return fmt.Errorf("node %s has no nexthop", nodes[0].Name)
+	return fmt.Errorf("layer2: node %s has no nexthop", nodes[0].Name)
 }
 
 func (a *arpSpeaker) setNextHopFromIPRange(svcIP, cidr string) error {
