@@ -8,7 +8,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
 	github.com/go-logr/logr v0.1.0
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/j-keck/arping v1.0.1
 	github.com/magiconair/properties v1.8.1 // indirect
@@ -29,8 +29,8 @@ require (
 	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	go.uber.org/zap v1.10.0
-	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
-	google.golang.org/grpc v1.31.0
+	golang.org/x/net v0.9.0
+	google.golang.org/grpc v1.56.3
 	k8s.io/api v0.18.14
 	k8s.io/apimachinery v0.18.14
 	k8s.io/apiserver v0.18.2
