@@ -242,7 +242,7 @@ func (r *ServiceReconciler) newForwardCtn(name string) *corev1.Container {
 	}
 }
 
-// Main procedure for ProterLB NodeProxy
+// Main procedure for OpenELB NodeProxy
 func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
 	log.Info("node-proxy reconciling")

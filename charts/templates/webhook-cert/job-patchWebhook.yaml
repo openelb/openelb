@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+  {{- include "openelb.admission.labels" . | nindent 4 }}
+  name: {{ template "openelb.admission.fullname" . }}-patch
+  namespace: {{ template "openelb.namespace" . }}
+spec:
+  template:
+    metadata:
+      labels:
+      {{- include "openelb.admission.labels" . | nindent 8 }}
+      name: {{ template "openelb.admission.fullname" . }}-patch
+    spec:
+      containers:
+        - args:
+            - patch
+            - --webhook-name=openelb-admission
+            - --namespace=$(POD_NAMESPACE)
+            - --patch-mutating=false
+            - --secret-name={{ template "openelb.admission.fullname" . }}
+            - --patch-failure-policy=Fail
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          image: {{ template "admission.image" . }}
+          imagePullPolicy: {{ .Values.admission.image.pullPolicy }}
+          name: patch
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+      serviceAccountName: {{ template "openelb.admission.serviceAccountName" . }}

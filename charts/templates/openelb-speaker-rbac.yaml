@@ -3,7 +3,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: openelb-speaker
+  name: {{ template "openelb.speaker.fullname" . }}
 rules:
 - apiGroups:
   - ""
@@ -95,13 +95,37 @@ rules:
   - patch
   - update
 
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ template "openelb.speaker.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "openelb.speaker.serviceAccountName" . }}
+    namespace: {{ template "openelb.namespace" . }}
+roleRef:
+  kind: ClusterRole
+  name: {{ template "openelb.speaker.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "openelb.speaker.serviceAccountName" . }}
+  namespace: {{ template "openelb.namespace" . }}
+
+
 
 # kube-keepalived-vip
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kube-keepalived-vip
+  labels:
+    {{- include "openelb.keepalived.labels" . | nindent 4 }}
+  name: {{ template "openelb.keepalived.fullname" . }}
 rules:
   - apiGroups:
       - ""
@@ -115,119 +139,28 @@ rules:
       - get
       - list
       - watch
-
-# openelb-controller
+      
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: ClusterRoleBinding
 metadata:
-  name: openelb-controller
-rules:
-- apiGroups:
-    - coordination.k8s.io
-  resources:
-    - leases
-  verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - patch
-    - delete
-- apiGroups:
-    - coordination.k8s.io
-  resources:
-    - leases/status
-  verbs:
-    - get
-    - update
-    - patch
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  - nodes
-  - pods
-  - pods/status
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - services/status
-  - nodes/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - eips
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - eips/status
-  verbs:
-  - get
-  - patch
-  - update
+  labels:
+    {{- include "openelb.keepalived.labels" . | nindent 4 }}
+  name: {{ template "openelb.keepalived.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: kube-keepalived-vip
+    namespace: {{ template "openelb.namespace" . }}
+roleRef:
+  kind: ClusterRole
+  name: {{ template "openelb.keepalived.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
 
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-keepalived-vip
+  namespace: {{ template "openelb.namespace" . }}
+  labels:
+    {{- include "openelb.keepalived.labels" . | nindent 4 }}

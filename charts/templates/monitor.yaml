@@ -1,0 +1,48 @@
+{{- if .Values.controller.monitorEnable }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+  {{- include "openelb.controller.labels" . | nindent 4 }}
+  name: {{ template "openelb.controller.fullname" . }}
+  namespace: {{ template "openelb.namespace" . }}
+spec:
+  endpoints:
+    - path: /metrics
+      port: metrics
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+      - {{ template "openelb.namespace" . }}
+  selector:
+    matchLabels:
+      app: openelb-controller
+{{- end }}
+
+
+{{- if .Values.speaker.monitorEnable }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+  {{- include "openelb.speaker.labels" . | nindent 4 }}
+  name: {{ template "openelb.speaker.fullname" . }}
+  namespace: {{ template "openelb.namespace" . }}
+spec:
+  endpoints:
+    - path: /metrics
+      port: metrics
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+      - {{ template "openelb.namespace" . }}
+  selector:
+    matchLabels:
+      app: openelb-speaker
+{{- end }}
+

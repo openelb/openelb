@@ -63,8 +63,7 @@ deploy: generate
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./api/..." output:artifacts:config=config/crd/bases
-	$(CONTROLLER_GEN) webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/webhook
-	$(CONTROLLER_GEN) rbac:roleName=openelb-manager-role paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/rbac
+#	$(CONTROLLER_GEN) webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/webhook
 
 controller-gen:
 ifeq (, $(shell which controller-gen))

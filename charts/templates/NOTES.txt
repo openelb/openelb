@@ -1,0 +1,3 @@
+The OpenELB has been installed.
+
+More info on the official site: https://openelb.io

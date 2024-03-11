@@ -7,10 +7,10 @@ import (
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/cmd/speaker/app/options"
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/controllers/bgp"
 	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/speaker"
-	bgpd "github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/speaker/bgp"
+	bgpd "github.com/openelb/openelb/pkg/speaker/bgp/bgp"
 	"github.com/openelb/openelb/pkg/speaker/layer2"
 	"github.com/openelb/openelb/pkg/speaker/vip"
 	"github.com/openelb/openelb/pkg/util"
@@ -148,7 +148,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		}
 
 		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolLayer2, layer2speaker); err != nil {
-			setupLog.Error(err, "unable to register keepalive speaker")
+			setupLog.Error(err, "unable to register layer2 speaker")
 			return err
 		}
 	}

@@ -1,0 +1,79 @@
+# create secret role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    {{- include "openelb.admission.labels" . | nindent 4 }}
+  name: {{ template "openelb.admission.fullname" . }}
+  namespace: {{ template "openelb.namespace" . }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+  {{- include "openelb.admission.labels" . | nindent 4 }}
+  name: {{ template "openelb.admission.fullname" . }}
+  namespace: {{ template "openelb.namespace" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ template "openelb.admission.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "openelb.admission.serviceAccountName" . }}
+    namespace: {{ template "openelb.namespace" . }}
+
+
+
+# patch webhook cluster role
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "openelb.admission.labels" . | nindent 4 }}
+  name: {{ template "openelb.admission.fullname" . }}
+rules:
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - update
+
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    {{- include "openelb.admission.labels" . | nindent 4 }}
+  name: {{ template "openelb.admission.fullname" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ template "openelb.admission.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "openelb.admission.serviceAccountName" . }}
+    namespace:  {{ template "openelb.namespace" . }}
+
+# serviceaccount
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "openelb.admission.serviceAccountName" . }}
+  namespace: {{ template "openelb.namespace" . }}
+  labels:
+  {{- include "openelb.admission.labels" . | nindent 4 }}

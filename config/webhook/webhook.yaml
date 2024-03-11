@@ -23,5 +23,5 @@ webhooks:
     clientConfig:
       service:
         namespace: openelb-system
-        name: openelb-admission
+        name: openelb-controller
         path: /validate-network-kubesphere-io-v1alpha2-eip

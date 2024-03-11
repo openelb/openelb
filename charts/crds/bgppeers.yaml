@@ -1,0 +1,433 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.0
+  creationTimestamp: null
+  name: bgppeers.network.kubesphere.io
+spec:
+  group: network.kubesphere.io
+  names:
+    kind: BgpPeer
+    listKind: BgpPeerList
+    plural: bgppeers
+    singular: bgppeer
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: BgpPeer is the Schema for the bgppeers API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              addPaths:
+                description: original -> bgp:add-paths Parameters relating to the
+                  advertisement and receipt of multiple paths for a single NLRI (add-paths).
+                properties:
+                  sendMax:
+                    description: original -> bgp:send-max The maximum number of paths
+                      to advertise to neighbors for a single NLRI.
+                    type: integer
+                type: object
+              config:
+                description: original -> bgp:neighbor-address original -> bgp:neighbor-config
+                  Configuration parameters relating to the BGP neighbor or group.
+                properties:
+                  neighborAddress:
+                    description: original -> bgp:neighbor-address bgp:neighbor-address's
+                      original type is inet:ip-address. Address of the BGP peer, either
+                      in IPv4 or IPv6.
+                    pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}$
+                    type: string
+                  peerAs:
+                    description: original -> bgp:peer-as bgp:peer-as's original type
+                      is inet:as-number. AS number of the peer.
+                    format: int32
+                    type: integer
+                required:
+                - neighborAddress
+                - peerAs
+                type: object
+              transport:
+                description: original -> bgp:transport Transport session parameters
+                  for the BGP neighbor or group.
+                properties:
+                  passiveMode:
+                    description: original -> bgp:passive-mode bgp:passive-mode's original
+                      type is boolean. Wait for peers to issue requests to open a
+                      BGP session, rather than initiating sessions from the local
+                      router.
+                    type: boolean
+                  remotePort:
+                    description: original -> gobgp:remote-port gobgp:remote-port's
+                      original type is inet:port-number.
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                type: object
+              usingPortForward:
+                type: boolean
+            type: object
+          status:
+            description: BgpPeerStatus defines the observed state of BgpPeer
+            type: object
+        type: object
+    served: true
+    storage: false
+  - name: v1alpha2
+    schema:
+      openAPIV3Schema:
+        description: BgpPeer is the Schema for the bgppeers API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              afiSafis:
+                items:
+                  properties:
+                    addPaths:
+                      properties:
+                        config:
+                          properties:
+                            receive:
+                              type: boolean
+                            sendMax:
+                              format: int32
+                              type: integer
+                          type: object
+                      type: object
+                    config:
+                      properties:
+                        enabled:
+                          type: boolean
+                        family:
+                          properties:
+                            afi:
+                              type: string
+                            safi:
+                              type: string
+                          type: object
+                      type: object
+                    mpGracefulRestart:
+                      properties:
+                        config:
+                          properties:
+                            enabled:
+                              type: boolean
+                          type: object
+                      type: object
+                  type: object
+                type: array
+              conf:
+                properties:
+                  adminDown:
+                    type: boolean
+                  allowOwnAs:
+                    format: int32
+                    type: integer
+                  authPassword:
+                    type: string
+                  description:
+                    type: string
+                  localAs:
+                    format: int32
+                    type: integer
+                  neighborAddress:
+                    type: string
+                  neighborInterface:
+                    type: string
+                  peerAs:
+                    format: int32
+                    type: integer
+                  peerGroup:
+                    type: string
+                  peerType:
+                    format: int32
+                    type: integer
+                  removePrivateAs:
+                    type: string
+                  replacePeerAs:
+                    type: boolean
+                  routeFlapDamping:
+                    type: boolean
+                  sendCommunity:
+                    format: int32
+                    type: integer
+                  vrf:
+                    type: string
+                type: object
+              ebgpMultihop:
+                properties:
+                  enabled:
+                    type: boolean
+                  multihopTtl:
+                    format: int32
+                    type: integer
+                type: object
+              gracefulRestart:
+                properties:
+                  deferralTime:
+                    format: int32
+                    type: integer
+                  enabled:
+                    type: boolean
+                  helperOnly:
+                    type: boolean
+                  localRestarting:
+                    type: boolean
+                  longlivedEnabled:
+                    type: boolean
+                  mode:
+                    type: string
+                  notificationEnabled:
+                    type: boolean
+                  peerRestartTime:
+                    format: int32
+                    type: integer
+                  peerRestarting:
+                    type: boolean
+                  restartTime:
+                    format: int32
+                    type: integer
+                  staleRoutesTime:
+                    format: int32
+                    type: integer
+                type: object
+              nodeSelector:
+                description: A label selector is a label query over a set of resources.
+                  The result of matchLabels and matchExpressions are ANDed. An empty
+                  label selector matches all objects. A null label selector matches
+                  no objects.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
+              timers:
+                properties:
+                  config:
+                    description: https://stackoverflow.com/questions/21151765/cannot-unmarshal-string-into-go-value-of-type-int64
+                    properties:
+                      connectRetry:
+                        type: string
+                      holdTime:
+                        type: string
+                      keepaliveInterval:
+                        type: string
+                      minimumAdvertisementInterval:
+                        type: string
+                    type: object
+                type: object
+              transport:
+                properties:
+                  mtuDiscovery:
+                    type: boolean
+                  passiveMode:
+                    type: boolean
+                  remoteAddress:
+                    type: string
+                  remotePort:
+                    format: int32
+                    type: integer
+                  tcpMss:
+                    format: int32
+                    type: integer
+                type: object
+            type: object
+          status:
+            description: BgpPeerStatus defines the observed state of BgpPeer
+            properties:
+              nodesPeerStatus:
+                additionalProperties:
+                  properties:
+                    peerState:
+                      properties:
+                        adminState:
+                          type: string
+                        authPassword:
+                          type: string
+                        description:
+                          type: string
+                        flops:
+                          format: int32
+                          type: integer
+                        localAs:
+                          format: int32
+                          type: integer
+                        messages:
+                          properties:
+                            received:
+                              properties:
+                                discarded:
+                                  type: string
+                                keepalive:
+                                  type: string
+                                notification:
+                                  type: string
+                                open:
+                                  type: string
+                                refresh:
+                                  type: string
+                                total:
+                                  type: string
+                                update:
+                                  type: string
+                                withdrawPrefix:
+                                  type: string
+                                withdrawUpdate:
+                                  type: string
+                              type: object
+                            sent:
+                              properties:
+                                discarded:
+                                  type: string
+                                keepalive:
+                                  type: string
+                                notification:
+                                  type: string
+                                open:
+                                  type: string
+                                refresh:
+                                  type: string
+                                total:
+                                  type: string
+                                update:
+                                  type: string
+                                withdrawPrefix:
+                                  type: string
+                                withdrawUpdate:
+                                  type: string
+                              type: object
+                          type: object
+                        neighborAddress:
+                          type: string
+                        outQ:
+                          format: int32
+                          type: integer
+                        peerAs:
+                          format: int32
+                          type: integer
+                        peerGroup:
+                          type: string
+                        peerType:
+                          format: int32
+                          type: integer
+                        queues:
+                          properties:
+                            input:
+                              format: int32
+                              type: integer
+                            output:
+                              format: int32
+                              type: integer
+                          type: object
+                        removePrivateAs:
+                          format: int32
+                          type: integer
+                        routeFlapDamping:
+                          type: boolean
+                        routerId:
+                          type: string
+                        sendCommunity:
+                          format: int32
+                          type: integer
+                        sessionState:
+                          type: string
+                      type: object
+                    timersState:
+                      properties:
+                        connectRetry:
+                          type: string
+                        downtime:
+                          type: string
+                        holdTime:
+                          type: string
+                        keepaliveInterval:
+                          type: string
+                        minimumAdvertisementInterval:
+                          type: string
+                        negotiatedHoldTime:
+                          type: string
+                        uptime:
+                          type: string
+                      type: object
+                  type: object
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

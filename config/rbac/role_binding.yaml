@@ -1,28 +1,39 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openelb-speaker
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: openelb-manager-rolebinding
+  name: openelb-speaker
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: openelb-manager-role
+  name: openelb-speaker
 subjects:
   - kind: ServiceAccount
-    name: openelb-admission
+    name: openelb-speaker
+
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openelb-controller
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: ClusterRoleBinding
 metadata:
-  name: kube-keepalived-vip
-rules:
-  - apiGroups: [""]
-    resources:
-      - pods
-      - nodes
-      - endpoints
-      - services
-      - configmaps
-    verbs: ["get", "list", "watch"]
+  name: openelb-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openelb-controller
+subjects:
+  - kind: ServiceAccount
+    name: openelb-controller
+    
 ---
 apiVersion: v1
 kind: ServiceAccount

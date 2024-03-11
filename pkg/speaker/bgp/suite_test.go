@@ -28,7 +28,7 @@ import (
 	"github.com/openelb/openelb/pkg/client"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/manager"
-	"github.com/openelb/openelb/pkg/speaker/bgp"
+	bgpd "github.com/openelb/openelb/pkg/speaker/bgp/bgp"
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -53,7 +53,7 @@ var cfg *rest.Config
 var testEnv *envtest.Environment
 var stopCh context.Context
 var cancel context.CancelFunc
-var bgpServer *bgp.Bgp
+var bgpServer *bgpd.Bgp
 
 var (
 	node1 = &corev1.Node{
@@ -159,7 +159,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(mgr).ToNot(BeNil())
 
 	// Setup all Controllers
-	bgpServer = bgp.NewGoBgpd(bgp.NewBgpOptions())
+	bgpServer = bgpd.NewGoBgpd(bgpd.NewBgpOptions())
 	bgpServer.Start(stopCh.Done())
 	err = SetupBgpPeerReconciler(bgpServer, mgr)
 	Expect(err).ToNot(HaveOccurred())

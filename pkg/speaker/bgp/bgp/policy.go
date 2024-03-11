@@ -11,8 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/speaker/bgp/config"
-	"github.com/openelb/openelb/pkg/speaker/bgp/table"
+	"github.com/openelb/openelb/pkg/speaker/bgp/bgp/config"
+	"github.com/openelb/openelb/pkg/speaker/bgp/bgp/table"
 )
 
 func (b *Bgp) updatePolicy(cm *corev1.ConfigMap) error {

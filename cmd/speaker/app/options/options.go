@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/openelb/openelb/pkg/log"
-	"github.com/openelb/openelb/pkg/speaker/bgp"
+	"github.com/openelb/openelb/pkg/speaker/bgp/bgp"
 	"github.com/openelb/openelb/pkg/speaker/layer2"
 	"github.com/openelb/openelb/pkg/speaker/vip"
 	cliflag "k8s.io/component-base/cli/flag"

@@ -10,7 +10,7 @@ import (
 	"github.com/osrg/gobgp/pkg/packet/bgp"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/openelb/openelb/pkg/speaker/bgp/config"
+	"github.com/openelb/openelb/pkg/speaker/bgp/bgp/config"
 )
 
 const (
