@@ -23,7 +23,7 @@ import (
 
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/speaker/bgp"
+	bgpd "github.com/openelb/openelb/pkg/speaker/bgp/bgp"
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,14 +50,12 @@ var (
 // BgpConfReconciler reconciles a BgpConf object
 type BgpConfReconciler struct {
 	client.Client
-	BgpServer *bgp.Bgp
+	BgpServer *bgpd.Bgp
 	record.EventRecorder
 }
 
-//+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs/finalizers,verbs=update
-//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgppeers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgppeers/status,verbs=get;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster BgpConf CRD closer to the desired state.
@@ -291,7 +289,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctl.Watch(&source.Kind{Type: &corev1.Node{}}, &EnqueueRequestForNode{Client: r.Client, peer: false}, np)
 }
 
-func SetupBgpConfReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {
+func SetupBgpConfReconciler(bgpServer *bgpd.Bgp, mgr ctrl.Manager) error {
 	bgpConf := BgpConfReconciler{
 		Client:        mgr.GetClient(),
 		BgpServer:     bgpServer,

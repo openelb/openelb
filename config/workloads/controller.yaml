@@ -3,13 +3,13 @@ kind: Deployment
 metadata:
   name: openelb-controller
   labels:
-    control-plane: openelb-manager
-    app: openelb-manager
+    control-plane: openelb-controller
+    app: openelb-controller
 spec:
   selector:
     matchLabels:
-      control-plane: openelb-manager
-      app: openelb-manager
+      control-plane: openelb-controller
+      app: openelb-controller
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -17,8 +17,8 @@ spec:
   template:
     metadata:
       labels:
-        control-plane: openelb-manager
-        app: openelb-manager
+        control-plane: openelb-controller
+        app: openelb-controller
     spec:
       affinity:
         podAntiAffinity:
@@ -28,7 +28,7 @@ spec:
                   - key: app
                     operator: In
                     values:
-                      - openelb-manager
+                      - openelb-controller
               topologyKey: "kubernetes.io/hostname"
       tolerations:
         - key: "CriticalAddonsOnly"
@@ -40,7 +40,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         kubernetes.io/os: linux
-      serviceAccountName: openelb-admission
+      serviceAccountName: openelb-controller
       containers:
         - command:
             - openelb-controller
@@ -78,4 +78,19 @@ spec:
                 path: tls.key
               - key: cert
                 path: tls.crt
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openelb-controller
+spec:
+  type: ClusterIP
+  ports:
+    - name: https-webhook
+      port: 443
+      targetPort: webhook
+  selector:
+      control-plane: openelb-controller
+      app: openelb-controller
 

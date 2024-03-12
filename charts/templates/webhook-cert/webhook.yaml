@@ -1,0 +1,29 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  labels:
+  {{- include "openelb.admission.labels" . | nindent 4 }}
+  name: openelb-admission
+webhooks:
+  - admissionReviewVersions:
+      - v1beta1
+      - v1
+    clientConfig:
+      service:
+        name: {{ template "openelb.controller.fullname" . }}
+        namespace: {{ template "openelb.namespace" . }}
+        path: /validate-network-kubesphere-io-v1alpha2-eip
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    name: validate.eip.network.kubesphere.io
+    rules:
+      - apiGroups:
+          - network.kubesphere.io
+        apiVersions:
+          - v1alpha2
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - eips
+    sideEffects: None

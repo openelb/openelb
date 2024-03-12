@@ -76,7 +76,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - create
-            - --host=openelb-admission,openelb-admission.$(POD_NAMESPACE).svc
+            - --host=openelb-controller,openelb-controller.$(POD_NAMESPACE).svc
             - --namespace=$(POD_NAMESPACE)
             - --secret-name=openelb-admission
           env:

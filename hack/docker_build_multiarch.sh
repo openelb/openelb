@@ -32,12 +32,12 @@ ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
   -t "${REPO}"/openelb-controller:"${TAG}" .
 
 
-# # shellcheck disable=SC2086 # intended splitting of CONTAINER_BUILDER
-# ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
-#   --platform ${PLATFORMS} \
-#   ${PUSH} \
-#   -f build/speaker/Dockerfile \
-#   -t "${REPO}"/openelb-speaker:"${TAG}" .
+# shellcheck disable=SC2086 # intended splitting of CONTAINER_BUILDER
+${CONTAINER_CLI} ${CONTAINER_BUILDER} \
+  --platform ${PLATFORMS} \
+  ${PUSH} \
+  -f build/speaker/Dockerfile \
+  -t "${REPO}"/openelb-speaker:"${TAG}" .
 
 
 # shellcheck disable=SC2086 # inteneded splitting of CONTAINER_BUILDER

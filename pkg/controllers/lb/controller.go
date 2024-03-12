@@ -20,7 +20,6 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
-	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/util"
@@ -36,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -52,18 +50,14 @@ const (
 
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=services/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch
 
 // ServiceReconciler reconciles a Service object
 type ServiceReconciler struct {
@@ -110,46 +104,6 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(p).
 		Named("LBController").
 		Build(r)
-	if err != nil {
-		return err
-	}
-
-	//endpoints
-	ep := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return r.shouldReconcileEP(e.ObjectNew)
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			return r.shouldReconcileEP(e.Object)
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return r.shouldReconcileEP(e.Object)
-		},
-	}
-	err = ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, ep)
-	if err != nil {
-		return err
-	}
-
-	bp := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			old := e.ObjectOld.(*v1alpha2.BgpConf)
-			new := e.ObjectNew.(*v1alpha2.BgpConf)
-
-			if !reflect.DeepEqual(old.Annotations, new.Annotations) {
-				return true
-			}
-
-			return false
-		},
-	}
-	err = ctl.Watch(&source.Kind{Type: &v1alpha2.BgpConf{}}, &EnqueueRequestForNode{Client: r.Client}, bp)
 	if err != nil {
 		return err
 	}

@@ -1,16 +1,14 @@
 package validate
 
 import (
+	"strings"
+
 	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"strings"
 )
 
 func HasOpenELBAnnotation(annotation map[string]string) bool {
-	if annotation == nil {
-		return false
-	}
 	if value, ok := annotation[constant.OpenELBAnnotationKey]; ok {
 		if value == constant.OpenELBAnnotationValue {
 			return true
@@ -20,9 +18,6 @@ func HasOpenELBAnnotation(annotation map[string]string) bool {
 }
 
 func HasOpenELBNPAnnotation(annotation map[string]string) bool {
-	if annotation == nil {
-		return false
-	}
 	if value, ok := annotation[constant.NodeProxyTypeAnnotationKey]; ok {
 		if value == constant.NodeProxyTypeDeployment || value == constant.NodeProxyTypeDaemonSet {
 			return true

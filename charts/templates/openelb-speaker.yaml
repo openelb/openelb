@@ -1,41 +1,34 @@
+{{- if .Values.speaker.enable }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: openelb-speaker
+  name: {{ template "openelb.speaker.fullname" . }}
+  namespace: {{ template "openelb.namespace" . }}
   labels:
-    app: openelb
-    component: speaker
+    {{- include "openelb.speaker.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: openelb
-      component: speaker
+      {{- include "openelb.speaker.labels" . | nindent 6 }}
   template:
     metadata:
-      labels:
-        app: openelb
-        component: speaker
+      labels: {{- include "openelb.speaker.labels" . | nindent 8 }}
     spec:
-      tolerations:
-        - key: "node-role.kubernetes.io/master"
-          operator: Exists
-          effect: NoSchedule
-        - key: "node-role.kubernetes.io/control-plane"
-          operator: Exists
-          effect: NoSchedule
+      tolerations: {{- toYaml .Values.speaker.tolerations | nindent 8 }}
       nodeSelector:
-        kubernetes.io/os: linux
-      serviceAccountName: openelb-speaker
+        {{- toYaml .Values.speaker.nodeSelector | nindent 8 }}
+      serviceAccountName: {{ template "openelb.speaker.serviceAccountName" . }}
       containers:
-        - command:
+        - name: openelb-speaker
+          command:
             - openelb-speaker
           args:
-            - --api-hosts=:50051
+            - --api-hosts={{ .Values.speaker.apiHosts }}
             - --zap-log-level=info
-            - --enable-keepalived-vip=false
-            - --enable-layer2=true
-          image: speaker:latest
-          imagePullPolicy: IfNotPresent
+            - --enable-keepalived-vip={{ .Values.speaker.vip }}
+            - --enable-layer2={{ .Values.speaker.layer2 }}
+          image: {{ template "speaker.image" . }}
+          imagePullPolicy: {{ .Values.speaker.image.pullPolicy }}
           readinessProbe:
             exec:
               command:
@@ -47,7 +40,6 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
-          name: openelb-speaker
           securityContext:
             capabilities:
               add: [ "NET_ADMIN", "SYS_TIME", "NET_RAW", "NET_BIND_SERVICE" ]
@@ -60,15 +52,19 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            {{- if (ne .Values.speaker.memberlistSecret "") }}
             - name: MEMBER_LIST_SECRET
               valueFrom:
-                secretKeyRef:
-                  name: memberlist
-                  key: key
+              secretKeyRef:
+                name: memberlist
+                key: key
+            {{- end }}
             - name: OPENELB_DSNAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+          resources: {{- toYaml .Values.speaker.resources | nindent 12 }}
       terminationGracePeriodSeconds: 10
       hostNetwork: true
+{{- end }}
 

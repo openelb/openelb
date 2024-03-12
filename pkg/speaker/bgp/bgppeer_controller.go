@@ -25,7 +25,7 @@ import (
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
-	"github.com/openelb/openelb/pkg/speaker/bgp"
+	bgpd "github.com/openelb/openelb/pkg/speaker/bgp/bgp"
 	"github.com/openelb/openelb/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,7 +43,7 @@ import (
 // BgpPeerReconciler reconciles a BgpPeer object
 type BgpPeerReconciler struct {
 	client.Client
-	BgpServer *bgp.Bgp
+	BgpServer *bgpd.Bgp
 	record.EventRecorder
 }
 
@@ -205,7 +205,7 @@ func (r BgpPeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}).Complete(r)
 }
 
-func SetupBgpPeerReconciler(bgpServer *bgp.Bgp, mgr ctrl.Manager) error {
+func SetupBgpPeerReconciler(bgpServer *bgpd.Bgp, mgr ctrl.Manager) error {
 	bgpPeer := BgpPeerReconciler{
 		Client:        mgr.GetClient(),
 		BgpServer:     bgpServer,
