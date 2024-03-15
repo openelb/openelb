@@ -2,15 +2,15 @@
 # Use of this source code is governed by an Apache license
 # that can be found in the LICENSE file.
 
-FROM golang:1.19 as openelb-builder
+FROM golang:alpine as openelb-builder
 
 COPY / /go/src/github.com/openelb/openelb
 
 WORKDIR /go/src/github.com/openelb/openelb
-RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/openelb/openelb/cmd/...
-RUN GO111MODULE=on CGO_ENABLED=0 go install -i -ldflags '-w -s' github.com/osrg/gobgp/cmd/gobgp
+RUN GO111MODULE=on CGO_ENABLED=0 go install -ldflags '-w -s' github.com/openelb/openelb/cmd/...
+RUN GO111MODULE=on CGO_ENABLED=0 go install -ldflags '-w -s' github.com/osrg/gobgp/cmd/gobgp
 
-FROM alpine:3.17
+FROM alpine
 RUN apk add --update ca-certificates iptables && update-ca-certificates
 COPY --from=openelb-builder /go/bin/controller /usr/local/bin/openelb-controller
 # COPY --from=openelb-builder /go/bin/speaker /usr/local/bin/openelb-speaker

@@ -20,6 +20,7 @@ export PATH=$PATH:/usr/local/kubebuilder/bin:/usr/local/bin/
 
 echo "setup envtest"
 
-go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+# TODO: update to latest
+go install sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.0.0-20230926180527-c93e2abcb28e
 
 echo "Tools install done"
