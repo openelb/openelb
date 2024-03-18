@@ -21,29 +21,29 @@ func (f *Framework) PodClientNS(namespace string) *PodClient {
 	return &PodClient{f, e2epod.PodClientNS(f.Framework, namespace)}
 }
 
-func (c *PodClient) Create(pod *corev1.Pod) *corev1.Pod {
-	return c.PodClient.Create(pod)
+func (c *PodClient) Create(ctx context.Context, pod *corev1.Pod) *corev1.Pod {
+	return c.PodClient.Create(ctx, pod)
 }
 
-func (c *PodClient) CreateSync(pod *corev1.Pod) *corev1.Pod {
-	return c.PodClient.CreateSync(pod)
+func (c *PodClient) CreateSync(ctx context.Context, pod *corev1.Pod) *corev1.Pod {
+	return c.PodClient.CreateSync(ctx, pod)
 }
 
-func (c *PodClient) Delete(name string) error {
-	return c.PodClient.Delete(context.Background(), name, metav1.DeleteOptions{})
+func (c *PodClient) Delete(ctx context.Context, name string) error {
+	return c.PodClient.Delete(ctx, name, metav1.DeleteOptions{})
 }
 
-func (c *PodClient) DeleteSync(name string) {
-	c.PodClient.DeleteSync(name, metav1.DeleteOptions{}, timeout)
+func (c *PodClient) DeleteSync(ctx context.Context, name string) {
+	c.PodClient.DeleteSync(ctx, name, metav1.DeleteOptions{}, timeout)
 }
 
-func (c *PodClient) WaitForRunning(name string) {
-	err := e2epod.WaitTimeoutForPodRunningInNamespace(c.f.ClientSet, name, c.f.Namespace.Name, timeout)
+func (c *PodClient) WaitForRunning(ctx context.Context, name string) {
+	err := e2epod.WaitTimeoutForPodRunningInNamespace(ctx, c.f.ClientSet, name, c.f.Namespace.Name, timeout)
 	ExpectNoError(err)
 }
 
-func (c *PodClient) WaitForNotFound(name string) {
-	err := e2epod.WaitForPodNotFoundInNamespace(c.f.ClientSet, name, c.f.Namespace.Name, timeout)
+func (c *PodClient) WaitForNotFound(ctx context.Context, name string) {
+	err := e2epod.WaitForPodNotFoundInNamespace(ctx, c.f.ClientSet, name, c.f.Namespace.Name, timeout)
 	ExpectNoError(err)
 }
 

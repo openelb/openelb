@@ -17,12 +17,6 @@ func KubesphereDescribe(text string, body func()) bool {
 	return ginkgo.Describe("[LB:OpenELB] "+text, body)
 }
 
-// KubesphereDescribe is wrapper function for ginkgo It.
-// Adds "[Conformance]" tag and makes static analysis easier.
-func ConformanceIt(text string, body interface{}) bool {
-	return ginkgo.It(text+" [Conformance]", ginkgo.Offset(1), body)
-}
-
 type Framework struct {
 	KubeConfig string
 	*framework.Framework

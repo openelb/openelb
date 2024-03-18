@@ -38,7 +38,7 @@ func (e *EnqueueRequestForNode) getServices() []corev1.Service {
 }
 
 // Create implements EventHandler
-func (e *EnqueueRequestForNode) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
 		nodeEnqueueLog.Error(nil, "CreateEvent received with no metadata", "event", evt)
 		return
@@ -83,7 +83,7 @@ func nodeInternalAndExternalIP(obj runtime.Object) (externalIP, internalIP strin
 }
 
 // Update implements EventHandler
-func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if evt.ObjectOld == nil {
 		nodeEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
 	}
@@ -101,7 +101,7 @@ func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLi
 }
 
 // Delete implements EventHandler
-func (e *EnqueueRequestForNode) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
 		nodeEnqueueLog.Error(nil, "DeleteEvent received with no metadata", "event", evt)
 		return
@@ -115,7 +115,7 @@ func (e *EnqueueRequestForNode) Delete(evt event.DeleteEvent, q workqueue.RateLi
 }
 
 // Generic implements EventHandler
-func (e *EnqueueRequestForNode) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Generic(ctx context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 
 }
 
@@ -148,7 +148,7 @@ func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 }
 
 // Create implements EventHandler
-func (e *EnqueueRequestForDeAndDs) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForDeAndDs) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
 		deAndDsEnqueueLog.Error(nil, "CreateEvent received with no metadata", "event", evt)
 		return
@@ -163,7 +163,7 @@ func (e *EnqueueRequestForDeAndDs) Create(evt event.CreateEvent, q workqueue.Rat
 }
 
 // Update implements EventHandler
-func (e *EnqueueRequestForDeAndDs) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForDeAndDs) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if evt.ObjectOld == nil {
 		deAndDsEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
 	}
@@ -181,7 +181,7 @@ func (e *EnqueueRequestForDeAndDs) Update(evt event.UpdateEvent, q workqueue.Rat
 }
 
 // Delete implements EventHandler
-func (e *EnqueueRequestForDeAndDs) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForDeAndDs) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
 		deAndDsEnqueueLog.Error(nil, "DeleteEvent received with no metadata", "event", evt)
 		return
@@ -195,6 +195,6 @@ func (e *EnqueueRequestForDeAndDs) Delete(evt event.DeleteEvent, q workqueue.Rat
 }
 
 // Generic implements EventHandler
-func (e *EnqueueRequestForDeAndDs) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForDeAndDs) Generic(ctx context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 
 }

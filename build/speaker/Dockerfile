@@ -1,6 +1,5 @@
 # Build
-FROM golang:1.19 as build_context
-
+FROM golang:1.21 as build_context
 ENV OUTDIR=/out
 RUN mkdir -p ${OUTDIR}/usr/local/bin/
 
@@ -18,7 +17,7 @@ RUN mv /go/bin/gobgp ${OUTDIR}/usr/local/bin/gobgp
 ##############
 # Final image
 #############
-FROM alpine:3.17
+FROM alpine
 
 COPY --from=build_context /out/ /
 WORKDIR /

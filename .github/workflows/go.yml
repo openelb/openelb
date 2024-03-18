@@ -37,7 +37,7 @@ jobs:
       - name: install Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.19
+          go-version: 1.21
       - name: setup e2e test environment and run e2e
         run: |
           export K8S_VERSION=${{ matrix.k8s }}

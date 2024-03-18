@@ -17,7 +17,7 @@ func NewOptions() *Options {
 		Options: zap.Options{
 			Development:     true,
 			Encoder:         nil,
-			DestWritter:     nil,
+			DestWriter:      nil,
 			StacktraceLevel: zapcore.PanicLevel,
 			TimeEncoder:     zapcore.RFC3339TimeEncoder,
 			ZapOpts:         nil,

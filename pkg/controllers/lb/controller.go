@@ -125,7 +125,7 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
-	err = ctl.Watch(&source.Kind{Type: &corev1.Node{}}, &EnqueueRequestForNode{Client: r.Client}, np)
+	err = ctl.Watch(source.Kind(mgr.GetCache(), &corev1.Node{}), &EnqueueRequestForNode{Client: r.Client}, np)
 	if err != nil {
 		return err
 	}
@@ -144,11 +144,11 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return r.shouldReconcileDeDs(e.Object)
 		},
 	}
-	err = ctl.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
+	err = ctl.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
 	if err != nil {
 		return err
 	}
-	err = ctl.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
+	err = ctl.Watch(source.Kind(mgr.GetCache(), &appsv1.DaemonSet{}), &EnqueueRequestForDeAndDs{Client: r.Client}, dedsp)
 	if err != nil {
 		return err
 	}

@@ -40,7 +40,7 @@ var _ = framework.KubesphereDescribe("[OpenELB:Controller]", func() {
 		}))
 	})
 
-	framework.ConformanceIt("ipam", func() {
+	ginkgo.It("ipam", func() {
 		ginkgo.By("Add Eip")
 		eip := &v1alpha2.Eip{
 			ObjectMeta: metav1.ObjectMeta{

@@ -27,6 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -86,8 +87,10 @@ func NewOpenELBSpeakerCommand() *cobra.Command {
 func Run(opt *options.OpenELBSpeakerOptions) error {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opt.LogOptions.Options)))
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		MetricsBindAddress: opt.MetricsAddr,
-		Scheme:             scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: opt.MetricsAddr,
+		},
+		Scheme: scheme,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to new manager")

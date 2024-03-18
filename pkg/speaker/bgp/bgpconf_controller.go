@@ -143,7 +143,7 @@ func (r *BgpConfReconciler) getPolicyConfigMap(ctx context.Context, bgpConf *v1a
 	return foundPolicy, nil
 }
 
-func (r *BgpConfReconciler) Map(configMap client.Object) []reconcile.Request {
+func (r *BgpConfReconciler) Map(ctx context.Context, configMap client.Object) []reconcile.Request {
 	attachedBgpConfs := &v1alpha2.BgpConfList{}
 	listOps := &client.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector(policyField, configMap.GetName()),
@@ -249,8 +249,8 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha2.BgpConf{}, builder.WithPredicates(p)).
-		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+		WatchesRawSource(
+			source.Kind(mgr.GetCache(), &corev1.ConfigMap{}),
 			handler.EnqueueRequestsFromMapFunc(r.Map),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
@@ -286,7 +286,7 @@ func (r *BgpConfReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 	}
-	return ctl.Watch(&source.Kind{Type: &corev1.Node{}}, &EnqueueRequestForNode{Client: r.Client, peer: false}, np)
+	return ctl.Watch(source.Kind(mgr.GetCache(), &corev1.Node{}), &EnqueueRequestForNode{Client: r.Client, peer: false}, np)
 }
 
 func SetupBgpConfReconciler(bgpServer *bgpd.Bgp, mgr ctrl.Manager) error {

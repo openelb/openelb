@@ -104,7 +104,7 @@ func (r *LBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Service{}).
-		Watches(&source.Channel{Source: r.Reload}, &handler.EnqueueRequestForObject{}).
+		WatchesRawSource(&source.Channel{Source: r.Reload}, &handler.EnqueueRequestForObject{}).
 		Owns(&corev1.Endpoints{}).
 		WithEventFilter(p).
 		Named("LBController").
@@ -126,7 +126,7 @@ func (r *LBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	return ctl.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestForObject{}, ep)
+	return ctl.Watch(source.Kind(mgr.GetCache(), &corev1.Endpoints{}), &handler.EnqueueRequestForObject{}, ep)
 }
 
 //+kubebuilder:rbac:groups=network.kubesphere.io,resources=bgpconfs,verbs=get;list;watch;create;update;patch;delete

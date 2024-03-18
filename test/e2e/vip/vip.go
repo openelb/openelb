@@ -54,7 +54,7 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 		framework.ExpectNoError(err)
 	})
 
-	framework.ConformanceIt("Keepalived-vip", func() {
+	ginkgo.It("Keepalived-vip", func() {
 		ctx := context.Background()
 
 		ginkgo.By("Waiting Keepalived-vip daemonset ready")
@@ -81,10 +81,10 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 
 		ginkgo.By("Adding service")
 		tcpJig := e2eservice.NewTestJig(c, ns, "test-service")
-		_, err := tcpJig.CreateTCPService(nil)
+		_, err := tcpJig.CreateTCPService(ctx, nil)
 		framework.ExpectNoError(err)
 
-		_, err = tcpJig.UpdateService(func(s *v1.Service) {
+		_, err = tcpJig.UpdateService(ctx, func(s *v1.Service) {
 			s.Spec.Type = v1.ServiceTypeLoadBalancer
 			if s.ObjectMeta.Annotations == nil {
 				s.ObjectMeta.Annotations = map[string]string{}
@@ -96,11 +96,11 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 		})
 
 		framework.ExpectNoError(err)
-		svc, err := tcpJig.WaitForLoadBalancer(defaultTime * time.Second)
+		svc, err := tcpJig.WaitForLoadBalancer(ctx, defaultTime*time.Second)
 		framework.ExpectNoError(err)
 		framework.Logf("ingress %v", svc.Status.LoadBalancer.Ingress)
 
-		_, err = tcpJig.Run(tcpJig.AddRCAntiAffinity)
+		_, err = tcpJig.Run(ctx, tcpJig.AddRCAntiAffinity)
 		framework.ExpectNoError(err)
 
 		ingressIP := e2eservice.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
