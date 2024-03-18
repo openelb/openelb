@@ -547,6 +547,7 @@ func TestManager_ConstructAllocate(t *testing.T) {
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
 					},
+					Finalizers:        []string{constant.FinalizerName},
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				},
 				Spec: v1.ServiceSpec{
@@ -595,6 +596,7 @@ func TestManager_ConstructAllocate(t *testing.T) {
 						constant.OpenELBEIPAnnotationKeyV1Alpha2: "eip",
 						constant.OpenELBAnnotationKey:            constant.OpenELBAnnotationValue,
 					},
+					Finalizers:        []string{constant.FinalizerName},
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				},
 				Spec: v1.ServiceSpec{
@@ -1093,6 +1095,7 @@ func TestManager_AssignIP(t *testing.T) {
 			fields: fields{
 				eip: func() *networkv1alpha2.Eip {
 					clone := eip.DeepCopy()
+					clone.Finalizers = append(clone.Finalizers, constant.IPAMFinalizerName)
 					clone.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 					return clone
 				}(),
@@ -1214,7 +1217,7 @@ func TestManager_AssignIP(t *testing.T) {
 				objs = append(objs, tt.fields.eip)
 			}
 			cl := fake.NewClientBuilder()
-			cl.WithScheme(scheme).WithObjects(objs...)
+			cl.WithStatusSubresource(objs...).WithScheme(scheme).WithObjects(objs...)
 
 			m := NewManager(cl.Build())
 			err := m.AssignIP(context.Background(), tt.args.allocate)
@@ -1342,7 +1345,7 @@ func TestManager_ReleaseIP(t *testing.T) {
 				objs = append(objs, tt.fields.eip)
 			}
 			cl := fake.NewClientBuilder()
-			cl.WithScheme(scheme).WithObjects(objs...)
+			cl.WithStatusSubresource(objs...).WithScheme(scheme).WithObjects(objs...)
 
 			m := NewManager(cl.Build())
 			if err := m.ReleaseIP(context.Background(), tt.args.release); (err != nil) != tt.wantErr {

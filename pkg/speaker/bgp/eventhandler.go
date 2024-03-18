@@ -40,11 +40,11 @@ func (e *EnqueueRequestForNode) getBgpPeers() []v1alpha2.BgpPeer {
 }
 
 // Create implements EventHandler
-func (e *EnqueueRequestForNode) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 }
 
 // Update implements EventHandler
-func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if evt.ObjectOld == nil {
 		nodeEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
 	}
@@ -71,10 +71,10 @@ func (e *EnqueueRequestForNode) Update(evt event.UpdateEvent, q workqueue.RateLi
 }
 
 // Delete implements EventHandler
-func (e *EnqueueRequestForNode) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 }
 
 // Generic implements EventHandler
-func (e *EnqueueRequestForNode) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForNode) Generic(ctx context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 
 }

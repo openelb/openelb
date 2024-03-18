@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (e Eip) IPToOrdinal(ip net.IP) int {
@@ -184,16 +185,16 @@ func (e Eip) IsDefault() bool {
 	return e.Annotations[constant.OpenELBEIPAnnotationDefaultPool] == "true"
 }
 
-func (e Eip) ValidateCreate() error {
+func (e Eip) ValidateCreate() (admission.Warnings, error) {
 	_, _, err := e.GetSize()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 && e.Spec.Interface == "" {
-		return fmt.Errorf("field spec.interface should not be empty")
+		return nil, fmt.Errorf("field spec.interface should not be empty")
 	}
-	return e.validate(true)
+	return nil, e.validate(true)
 }
 
 func (e Eip) validate(overlap bool) error {
@@ -252,26 +253,26 @@ func (e Eip) validateOverlap(eips *EipList) error {
 	return nil
 }
 
-func (e Eip) ValidateUpdate(old runtime.Object) error {
+func (e Eip) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	oldE := old.(*Eip)
 	if !reflect.DeepEqual(e.Annotations, oldE.Annotations) {
 		if err := e.validate(false); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if !reflect.DeepEqual(e.Spec, oldE.Spec) {
 		if e.Spec.Address != oldE.Spec.Address {
-			return fmt.Errorf("the address field is not allowed to be modified")
+			return nil, fmt.Errorf("the address field is not allowed to be modified")
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 // TODO :validate eip is not used:
-func (e Eip) ValidateDelete() error {
-	return nil
+func (e Eip) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }
 
 func (e Eip) SetupWebhookWithManager(mgr ctrl.Manager) error {

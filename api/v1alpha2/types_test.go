@@ -138,10 +138,12 @@ var _ = Describe("Test eip types", func() {
 
 		e2 := e.DeepCopy()
 		e2.Spec.Address = "192.168.0.100"
-		Expect(e2.ValidateUpdate(e)).Should(HaveOccurred())
+		_, err := e2.ValidateUpdate(e)
+		Expect(err).Should(HaveOccurred())
 
 		e2 = e.DeepCopy()
 		e2.Spec.Disable = true
-		Expect(e2.ValidateUpdate(e)).ShouldNot(HaveOccurred())
+		_, err = e2.ValidateUpdate(e)
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 })

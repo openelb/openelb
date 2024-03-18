@@ -13,10 +13,12 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	nc "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 type GenericOptions struct {
 	WebhookPort      int
+	WebhookCertDir   string
 	MetricsAddr      string
 	ReadinessAddr    string
 	LeaderElector    bool
@@ -26,6 +28,7 @@ type GenericOptions struct {
 func NewGenericOptions() *GenericOptions {
 	return &GenericOptions{
 		WebhookPort:      443,
+		WebhookCertDir:   "/tmp/k8s-webhook-server/serving-certs",
 		MetricsAddr:      ":50052",
 		ReadinessAddr:    "0",
 		LeaderElector:    true,
@@ -35,18 +38,20 @@ func NewGenericOptions() *GenericOptions {
 
 func (options *GenericOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&options.WebhookPort, "webhook-port", options.WebhookPort, "The port that the webhook server serves at")
+	fs.StringVar(&options.WebhookCertDir, "webhook-cert-dir", options.WebhookCertDir, "Certificate directory used to setup webhooks.")
 	fs.StringVar(&options.MetricsAddr, "metrics-addr", options.MetricsAddr, "The address the metric endpoint binds to.")
 	fs.StringVar(&options.ReadinessAddr, "readiness-addr", options.ReadinessAddr, "The address readinessProbe used")
 	fs.BoolVar(&options.LeaderElector, "leader-elect", options.LeaderElector, "Enable leader election for controller manager")
 }
 
 func NewManager(cfg *rest.Config, options *GenericOptions) (ctrl.Manager, error) {
-	opts := ctrl.Options{
-		Scheme: scheme,
-	}
+	opts := ctrl.Options{Scheme: scheme}
 	if options != nil {
-		opts.Port = options.WebhookPort
-		opts.MetricsBindAddress = options.MetricsAddr
+		opts.WebhookServer = webhook.NewServer(webhook.Options{
+			CertDir: options.WebhookCertDir,
+			Port:    options.WebhookPort,
+		})
+		opts.Metrics.BindAddress = options.MetricsAddr
 		opts.LeaderElection = options.LeaderElector
 		opts.LeaderElectionID = options.LeaderElectionID
 	}
