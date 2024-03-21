@@ -12,6 +12,7 @@ require (
 	github.com/mdlayher/arp v0.0.0-20191213142603-f72070a231fc
 	github.com/mdlayher/ethernet v0.0.0-20190606142754-0394541c37b7
 	github.com/mdlayher/raw v0.0.0-20191009151244-50f2db8cc065
+	github.com/moby/term v0.5.0
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.1
 	github.com/osrg/gobgp v0.0.0-20210101133947-496b372f7b8d
@@ -26,7 +27,6 @@ require (
 	google.golang.org/grpc v1.56.3
 	k8s.io/api v0.18.14
 	k8s.io/apimachinery v0.18.14
-	k8s.io/apiserver v0.18.2
 	k8s.io/client-go v0.18.14
 	k8s.io/component-base v0.18.2
 	sigs.k8s.io/controller-runtime v0.6.0
@@ -40,7 +40,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
-	github.com/docker/docker v20.10.27+incompatible // indirect
 	github.com/eapache/channels v1.1.0 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
@@ -62,7 +61,6 @@ require (
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nxadm/tail v1.4.6 // indirect
