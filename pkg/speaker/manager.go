@@ -3,38 +3,19 @@ package speaker
 import (
 	"context"
 	"fmt"
+	"net"
 	"reflect"
 	"strings"
-	"sync"
 
-	"github.com/go-logr/logr"
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/util"
+	"github.com/openelb/openelb/pkg/util/iprange"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type handleResult int
-
-const (
-	none handleResult = iota
-	wantDelete
-	wantStore
-	wantReset
-)
-
-type recordInfo struct {
-	ips     []string
-	eip     string
-	speaker string
-}
-
-func (r *recordInfo) String() string {
-	return fmt.Sprintf("{eip:%s, speaker:%s, ips:%s}", r.eip, r.speaker, strings.Join(r.ips, ";"))
-}
 
 type speaker struct {
 	Speaker
@@ -42,29 +23,17 @@ type speaker struct {
 }
 
 type Manager struct {
-	sync.RWMutex
 	client.Client
-	logr.Logger
 
-	Queue workqueue.Interface
-	// map[name]Speaker
 	speakers map[string]speaker
-
-	// map[eip.name]EIP
-	eips map[string]*v1alpha2.Eip
-
-	// map[NamespacedName]recordInfo
-	ips map[string]*recordInfo
+	pools    map[string]*v1alpha2.Eip
 }
 
-func NewSpeakerManager(c client.Client, l logr.Logger) *Manager {
+func NewSpeakerManager(c client.Client) *Manager {
 	return &Manager{
 		Client:   c,
-		Logger:   l,
 		speakers: make(map[string]speaker, 0),
-		eips:     make(map[string]*v1alpha2.Eip, 0),
-		ips:      make(map[string]*recordInfo, 0),
-		Queue:    workqueue.NewNamed("eip"),
+		pools:    make(map[string]*v1alpha2.Eip, 0),
 	}
 }
 
@@ -74,13 +43,12 @@ func (m *Manager) RegisterSpeaker(name string, s Speaker) error {
 		ch:      make(chan struct{}),
 	}
 
-	err := s.Start(t.ch)
-	if err == nil {
-		m.speakers[name] = t
-		return nil
+	if err := s.Start(t.ch); err != nil {
+		return err
 	}
 
-	return err
+	m.speakers[name] = t
+	return nil
 }
 
 func (m *Manager) UnRegisterSpeaker(name string) {
@@ -100,275 +68,193 @@ func (m *Manager) GetSpeaker(name string) Speaker {
 	return nil
 }
 
-func (m *Manager) HandleEIP(eip *v1alpha2.Eip) error {
+func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
 	if eip == nil {
 		return nil
 	}
 
-	spaeker := m.GetSpeaker(eip.GetProtocol())
-	if spaeker == nil {
-		m.Info(fmt.Sprintf("no registered speaker:[%s] eip:[%s]", eip.GetProtocol(), eip.GetName()))
-		return nil
+	if m.GetSpeaker(eip.GetProtocol()) == nil {
+		return fmt.Errorf("no registered speaker:[%s] eip:[%s]", eip.GetProtocol(), eip.GetName())
 	}
 
-	if eip.GetProtocol() == constant.OpenELBProtocolLayer2 {
-		m.Queue.Add(eip)
-	}
-
-	m.Lock()
-	defer m.Unlock()
-	_, exist := m.eips[eip.GetName()]
-	if exist {
-		if !eip.DeletionTimestamp.IsZero() {
-			m.V(3).Info(fmt.Sprintf("deleting eip:[%s]", eip.GetName()))
-			delete(m.eips, eip.GetName())
-		}
-
-		return nil
-	}
-
-	if !eip.DeletionTimestamp.IsZero() {
-		return nil
-	}
-
-	m.V(3).Info(fmt.Sprintf("store eip:[%s]", eip.GetName()))
-	m.eips[eip.GetName()] = eip
-	return nil
-}
-
-func (m *Manager) HandleService(svc *corev1.Service) error {
-	if svc == nil {
-		return nil
-	}
-
-	svcNSName := types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}.String()
-	// get local record info, if localRecord is nil -- no record exists(initing)
-	localRecord, exist := m.ips[svcNSName]
-	if !exist && svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
-		m.V(3).Info(fmt.Sprintf("openelb no record about servic:[%s] type:[%s]", svcNSName, svc.Spec.Type))
-		return nil
-	}
-
-	// deleting svc
-	if !svc.DeletionTimestamp.IsZero() {
-		if localRecord == nil {
-			m.Info(fmt.Sprintf("service:%s is deleting, so don't handler it", svcNSName))
-			return nil
-		}
-		m.V(3).Info(fmt.Sprintf("deleting svc:[%s - %s], so delete LoadBalancer", svc.GetName(), localRecord.String()))
-		return m.delLoadBalancer(svc, localRecord)
-	}
-
-	// update service from TypeLoadBalancer to other type
-	if exist && svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
-		if localRecord == nil {
-			m.Info(fmt.Sprintf("local:%s record exists but no data. changed svc'type is %s", svcNSName, svc.Spec.Type))
-			return nil
-		}
-		m.V(3).Info(fmt.Sprintf("change service:[%s] type from LoadBalancer to %s, so delete LoadBalancer", svc.GetName(), svc.Spec.Type))
-		return m.delLoadBalancer(svc, localRecord)
-	}
-
-	// get service record info
-	svcRecord := m.getSvcRecordInfo(svc)
-	if svcRecord == nil {
-		m.V(3).Info(fmt.Sprintf("get service:[%s] record info error", svc.GetName()))
-		return nil
-	}
-
-	return m.handleSvcBalance(svc, localRecord, svcRecord)
-}
-
-func (m *Manager) handleSvcBalance(svc *corev1.Service, localRecord, svcRecord *recordInfo) error {
-	switch m.getHandleResult(localRecord, svcRecord) {
-	case wantDelete:
-		m.V(1).Info("delLoadBalancer " + localRecord.String())
-		return m.delLoadBalancer(svc, localRecord)
-	case wantStore:
-		m.V(1).Info("setLoadBalancer " + svcRecord.String())
-		return m.setLoadBalancer(svc, svcRecord)
-	case wantReset:
-		m.V(1).Info(fmt.Sprintf("resetLoadBalancer localRecord:%s svcRecord:%s", localRecord.String(), svcRecord.String()))
-		return m.resetLoadBalancer(svc, localRecord, svcRecord)
-
-	default:
-		// endpoint update
-		if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal {
-			m.V(1).Info("Local svc.externalTrafficPolicy updateLoadBalancer")
-			return m.updateLoadBalancer(svc, svcRecord)
-		}
-		m.V(1).Info("handler do nothing")
-	}
-
-	return nil
-}
-
-func (m *Manager) getHandleResult(localRecord, svcRecord *recordInfo) handleResult {
-	if reflect.DeepEqual(localRecord, svcRecord) {
-		return none
-	}
-
-	if localRecord == nil {
-		return wantStore
-	}
-
-	if svcRecord == nil {
-		return wantDelete
-	}
-
-	m.V(4).Info(fmt.Sprintf("local record is: %s  service record is: %s", localRecord.String(), svcRecord.String()))
-	if !reflect.DeepEqual(localRecord.ips, svcRecord.ips) {
-		if len(svcRecord.ips) == 0 {
-			return wantDelete
-		}
-
-		if len(localRecord.ips) == 0 {
-			return wantStore
-		}
-
-		return wantReset
-	}
-
-	if localRecord.eip != svcRecord.eip {
-		if svcRecord.eip == "" {
-			return wantDelete
-		}
-
-		if localRecord.eip == "" {
-			return wantStore
-		}
-
-		return wantReset
-	}
-
-	return none
-}
-
-func (m *Manager) getSvcRecordInfo(svc *corev1.Service) *recordInfo {
-	if svc == nil || svc.Annotations == nil || svc.Labels == nil {
-		return nil
-	}
-
-	r := &recordInfo{}
-	if value, ok := svc.Annotations[constant.OpenELBAnnotationKey]; !ok || value != constant.OpenELBAnnotationValue {
-		return r
-	}
-
-	for _, v := range svc.Status.LoadBalancer.Ingress {
-		r.ips = append(r.ips, v.IP)
-	}
-
-	if eipname, ok := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]; ok {
-		r.eip = eipname
-	}
-
-	eip, exist := m.eips[r.eip]
+	oldData, exist := m.pools[eip.GetName()]
 	if !exist {
-		return r
+		klog.V(1).Infof("start to set balancer with new eip:%s", eip.GetName())
+		if err := m.setBalancerWithEIP(ctx, eip); err != nil {
+			return err
+		}
+		m.pools[eip.GetName()] = eip
+		return nil
 	}
 
-	r.speaker = eip.GetSpeakerName()
-	return r
+	// delete eip - cancel advertise
+	if !eip.DeletionTimestamp.IsZero() {
+		klog.V(1).Infof("delete balancer with deleting eip:%s", eip.GetName())
+		if err := m.delBalancerWithEIP(oldData); err != nil {
+			return err
+		}
+		delete(m.pools, eip.GetName())
+		return nil
+	}
+
+	// update speaker configurate
+	if m.isSpeakerConfigUpdate(eip.Spec, oldData.Spec) {
+		klog.V(1).Infof("update protocol with eip:%s", eip.GetName())
+		if err := m.delBalancerWithEIP(oldData); err != nil {
+			return err
+		}
+
+		if err := m.setBalancerWithEIP(ctx, eip); err != nil {
+			return err
+		}
+		m.pools[eip.GetName()] = eip
+		return nil
+	}
+
+	// update status - for update service ip record
+	if !reflect.DeepEqual(eip.Status.Used, oldData.Status.Used) {
+		klog.V(1).Infof("update status with eip:%s", eip.GetName())
+		add, del := util.DiffMaps(oldData.Status.Used, eip.Status.Used)
+		if err := m.delBalancer(eip.GetProtocol(), del); err != nil {
+			return err
+		}
+		if err := m.setBalancer(ctx, eip.GetProtocol(), add); err != nil {
+			return err
+		}
+		m.pools[eip.GetName()] = eip
+	}
+
+	klog.V(1).Infof("no need to handle eip:%s", eip.GetName())
+	return nil
 }
 
-func (m *Manager) resetLoadBalancer(svc *corev1.Service, localRecord, svcRecord *recordInfo) error {
-	if err := m.delLoadBalancer(svc, localRecord); err != nil {
+// update speaker configurate
+// protocol change or interface change
+func (m *Manager) isSpeakerConfigUpdate(old, new v1alpha2.EipSpec) bool {
+	return (old.Protocol == new.Protocol && new.Protocol == constant.OpenELBProtocolLayer2 &&
+		old.Interface != new.Interface) || old.Protocol != new.Protocol
+}
+
+func (m *Manager) delBalancerWithEIP(eip *v1alpha2.Eip) error {
+	if err := m.delBalancer(eip.GetProtocol(), eip.Status.Used); err != nil {
 		return err
 	}
 
-	return m.setLoadBalancer(svc, svcRecord)
+	return m.speakers[eip.GetProtocol()].ConfigureWithEIP(eip, true)
 }
 
-func (m *Manager) delLoadBalancer(svc *corev1.Service, record *recordInfo) error {
-	if record == nil || len(record.ips) == 0 {
-		return nil
-	}
-
-	if svc == nil {
-		return nil
-	}
-
-	sp, ok := m.speakers[record.speaker]
-	if !ok {
-		return fmt.Errorf("there is no speaker:%s", record.speaker)
-	}
-
-	for _, addr := range record.ips {
-		if record.speaker == constant.OpenELBProtocolVip {
-			addr = fmt.Sprintf("%s:%s", addr, svc.Namespace+"/"+svc.Name)
+func (m *Manager) delBalancer(protocol string, usage map[string]string) error {
+	for ip, value := range usage {
+		if protocol == constant.OpenELBProtocolVip {
+			ip = fmt.Sprintf("%s:%s", ip, value)
 		}
 
-		if err := sp.DelBalancer(addr); err != nil {
+		if err := m.speakers[protocol].DelBalancer(ip); err != nil {
 			return err
 		}
 	}
 
-	delete(m.ips, svc.GetNamespace()+"/"+svc.GetName())
 	return nil
 }
 
-func (m *Manager) updateLoadBalancer(svc *corev1.Service, record *recordInfo) error {
-	return m.setLoadBalancer(svc, record)
+func (m *Manager) setBalancerWithEIP(ctx context.Context, eip *v1alpha2.Eip) error {
+	if err := m.speakers[eip.GetProtocol()].ConfigureWithEIP(eip, false); err != nil {
+		return err
+	}
+
+	return m.setBalancer(ctx, eip.GetProtocol(), eip.Status.Used)
 }
 
-func (m *Manager) setLoadBalancer(svc *corev1.Service, record *recordInfo) error {
-	if record == nil || len(record.ips) == 0 {
+func (m *Manager) setBalancer(ctx context.Context, protocol string, usage map[string]string) error {
+	for ip, value := range usage {
+		nodes, err := m.getServiceNodes(ctx, value)
+		if err != nil {
+			return err
+		}
+
+		if protocol == constant.OpenELBProtocolVip {
+			ip = fmt.Sprintf("%s:%s", ip, value)
+		}
+
+		if err := m.speakers[protocol].SetBalancer(ip, nodes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *Manager) HandleService(ctx context.Context, svc *corev1.Service) error {
+	if svc == nil || !svc.DeletionTimestamp.IsZero() {
 		return nil
 	}
 
-	if svc == nil {
+	eip, exist := m.pools[m.getSvcEIPUsed(svc)]
+	if !exist || eip == nil {
 		return nil
 	}
 
-	nodes, err := m.getServiceNodes(svc)
+	addr, err := iprange.ParseRange(eip.Spec.Address)
 	if err != nil {
 		return err
 	}
 
-	var announceNodes []corev1.Node
-	announceNodes = append(announceNodes, nodes...)
-
-	sp, ok := m.speakers[record.speaker]
-	if !ok {
-		return fmt.Errorf("there is no speaker:%s", record.speaker)
-	}
-
-	for _, addr := range record.ips {
-		if record.speaker == constant.OpenELBProtocolVip {
-			addr = fmt.Sprintf("%s:%s", addr, svc.Namespace+"/"+svc.Name)
+	ingress := map[string]string{}
+	for _, ip := range svc.Status.LoadBalancer.Ingress {
+		value, ok := ingress[ip.IP]
+		if ok {
+			value += ";"
 		}
 
-		if err := sp.SetBalancer(addr, announceNodes); err != nil {
-			return err
+		if addr.Contains(net.ParseIP(ip.IP)) {
+			ingress[ip.IP] = value + svc.GetNamespace() + "/" + svc.GetName()
 		}
 	}
 
-	m.ips[svc.GetNamespace()+"/"+svc.GetName()] = record
-	return nil
+	return m.setBalancer(ctx, eip.GetProtocol(), ingress)
 }
 
-func (m *Manager) getServiceNodes(svc *corev1.Service) ([]corev1.Node, error) {
+// todo: annotions
+func (m *Manager) getSvcEIPUsed(svc *corev1.Service) string {
+	eipName := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	if eipName != "" {
+		return eipName
+	}
+
+	return svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+}
+
+func (m *Manager) getServiceNodes(ctx context.Context, svcString string) ([]corev1.Node, error) {
 	//1. filter endpoints
-	endpoints := &corev1.Endpoints{}
-	err := m.Get(context.TODO(), types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}, endpoints)
-	if err != nil {
-		return nil, err
-	}
-
+	svc := &corev1.Service{}
 	active := make(map[string]bool)
-	for _, subnet := range endpoints.Subsets {
-		for _, addr := range subnet.Addresses {
-			if addr.NodeName == nil {
-				continue
+	for _, str := range strings.Split(svcString, ";") {
+		svcInfo := strings.Split(str, "/")
+		if len(svcInfo) != 2 {
+			continue
+		}
+
+		if err := m.Get(ctx, types.NamespacedName{Namespace: svcInfo[0], Name: svcInfo[1]}, svc); err != nil {
+			return nil, err
+		}
+
+		endpoints := &corev1.Endpoints{}
+		if err := m.Get(ctx, types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}, endpoints); err != nil {
+			return nil, err
+		}
+
+		for _, subnet := range endpoints.Subsets {
+			for _, addr := range subnet.Addresses {
+				if addr.NodeName == nil {
+					continue
+				}
+				active[*addr.NodeName] = true
 			}
-			active[*addr.NodeName] = true
 		}
 	}
 
 	//2. get next hops
 	nodeList := &corev1.NodeList{}
-	err = m.List(context.TODO(), nodeList)
-	if err != nil {
+	if err := m.List(ctx, nodeList); err != nil {
 		return nil, err
 	}
 
@@ -384,10 +270,7 @@ func (m *Manager) getServiceNodes(svc *corev1.Service) ([]corev1.Node, error) {
 	}
 
 	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) == 0 {
-		clone := svc.DeepCopy()
-		clone.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
-		_ = m.Update(context.Background(), clone)
-		m.V(1).Info(fmt.Sprintf("endpoint don't have nodeName, so cannot set externalTrafficPolicy to Local"))
+		klog.Warningf("service %s's ExternalTrafficPolicyType is Local, and endpoint don't have nodeName, Please make sure the endpoints are configured correctly", svc.GetName())
 	}
 
 	for _, node := range nodeList.Items {
@@ -399,22 +282,18 @@ func (m *Manager) getServiceNodes(svc *corev1.Service) ([]corev1.Node, error) {
 	return resultNodes, nil
 }
 
-func (m *Manager) ResyncServices(ctx context.Context) error {
-	svcs := &corev1.ServiceList{}
-	if err := m.Client.List(ctx, svcs, &client.ListOptions{}); err != nil {
+func (m *Manager) ResyncEIPSpeaker(ctx context.Context) error {
+	eips := &v1alpha2.EipList{}
+	if err := m.Client.List(ctx, eips, &client.ListOptions{}); err != nil {
 		return err
 	}
 
-	for _, svc := range svcs.Items {
-		if !IsOpenELBService(&svc) {
+	for _, e := range eips.Items {
+		if e.Spec.Protocol != constant.OpenELBProtocolLayer2 {
 			continue
 		}
 
-		name := types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}.String()
-		r, ok := m.ips[name]
-		if ok && r.speaker == constant.OpenELBProtocolLayer2 {
-			m.setLoadBalancer(&svc, r)
-		}
+		m.setBalancer(ctx, constant.OpenELBProtocolLayer2, e.Status.Used)
 	}
 
 	return nil

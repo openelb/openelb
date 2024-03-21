@@ -65,6 +65,6 @@ const (
 	NodeProxyDefaultProxyImage     = "kubesphere/openelb-proxy:master"
 
 	Layer2MemberlistDefaultSecret = "openelb-speakers"
-	Layer2ReloadServiceName       = "reload"
-	Layer2ReloadServiceNamespace  = "openelb-services-reload"
+	Layer2ReloadEIPName           = "reload"
+	Layer2ReloadEIPNamespace      = "openelb-layer2-eip-reload"
 )

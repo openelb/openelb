@@ -8,12 +8,14 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -135,11 +137,6 @@ func (b *Bgp) ready() error {
 }
 
 func (b *Bgp) setBalancer(ip string, nexthops []string) error {
-	err := b.ready()
-	if err != nil {
-		return err
-	}
-
 	prefix := uint32(32)
 	err, toAdd, toDelete := b.retriveRoutes(ip, prefix, nexthops)
 	if err != nil {
@@ -179,8 +176,12 @@ func (b *Bgp) getPeers() []*api.Peer {
 }
 
 func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
-	var nexthops []string
+	err := b.ready()
+	if err != nil {
+		return err
+	}
 
+	var nexthops []string
 	for _, node := range nodes {
 		rack := ""
 		if node.Labels != nil {
@@ -196,7 +197,6 @@ func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 	}
 
 	ctrl.Log.Info("bgp setBalancer", "ip", ip, "nexthops", nexthops)
-
 	return b.setBalancer(ip, nexthops)
 }
 
@@ -239,7 +239,8 @@ func (b *Bgp) deleteMultiRoutes(ip string, prefix uint32, nexthops []string) err
 func (b *Bgp) DelBalancer(ip string) error {
 	err := b.ready()
 	if err != nil {
-		return err
+		klog.Warning(err)
+		return nil
 	}
 
 	lookup := &api.TableLookupPrefix{
@@ -289,5 +290,10 @@ func (b *Bgp) MonitorPeers(ctx context.Context, ip string) error {
 	}, func(p *api.Peer) {
 
 	})
+	return nil
+}
+
+// TODO:
+func (l *Bgp) ConfigureWithEIP(eip *v1alpha2.Eip, deleted bool) error {
 	return nil
 }

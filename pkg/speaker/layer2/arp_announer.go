@@ -12,6 +12,7 @@ import (
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
 	"github.com/openelb/openelb/pkg/metrics"
+	"github.com/openelb/openelb/pkg/util/iprange"
 	"github.com/vishvananda/netlink"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,14 +34,40 @@ type arpAnnouncer struct {
 	conn  *arp.Client
 	p     *raw.Conn
 
-	stopCh chan struct{}
-	lock   sync.RWMutex
-	ip2mac map[string]net.HardwareAddr
+	stopCh   chan struct{}
+	lock     sync.RWMutex
+	ip2mac   map[string]net.HardwareAddr
+	ipranges map[string]iprange.Range
 }
 
-func (a *arpAnnouncer) ContainsIP(ip string) bool {
-	for _, addr := range a.addrs {
-		if addr.Contains(net.ParseIP(ip)) {
+func (a *arpAnnouncer) RegisterIPRange(name string, r iprange.Range) {
+	a.ipranges[name] = r
+}
+
+func (a *arpAnnouncer) UnregisterIPRange(name string) {
+	r, exist := a.ipranges[name]
+	if !exist {
+		return
+	}
+
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+
+	for ip := range a.ip2mac {
+		if r.Contains(net.ParseIP(ip)) {
+			delete(a.ip2mac, ip)
+		}
+	}
+	delete(a.ipranges, name)
+}
+
+func (a *arpAnnouncer) Size() int {
+	return len(a.ipranges)
+}
+
+func (a *arpAnnouncer) ContainsIP(ip net.IP) bool {
+	for _, r := range a.ipranges {
+		if r.Contains(ip) {
 			return true
 		}
 	}
@@ -62,6 +89,10 @@ func (a *arpAnnouncer) setMac(ip string, mac net.HardwareAddr) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	if _, ok := a.ip2mac[ip]; !ok {
+		metrics.InitLayer2Metrics(ip)
+	}
+
 	a.ip2mac[ip] = mac
 }
 
@@ -78,13 +109,14 @@ func newARPAnnouncer(ifi *net.Interface) (*arpAnnouncer, error) {
 	link, _ := netlink.LinkByIndex(ifi.Index)
 	addrs, _ := netlink.AddrList(link, netlink.FAMILY_V4)
 	ret := &arpAnnouncer{
-		logger: ctrl.Log.WithName("arpSpeaker"),
-		intf:   ifi,
-		addrs:  addrs,
-		conn:   client,
-		p:      p,
-		stopCh: make(chan struct{}),
-		ip2mac: make(map[string]net.HardwareAddr),
+		logger:   ctrl.Log.WithName("arpSpeaker"),
+		intf:     ifi,
+		addrs:    addrs,
+		conn:     client,
+		p:        p,
+		stopCh:   make(chan struct{}),
+		ip2mac:   make(map[string]net.HardwareAddr),
+		ipranges: make(map[string]iprange.Range),
 	}
 
 	return ret, nil
@@ -185,14 +217,10 @@ func (a *arpAnnouncer) gratuitous(ip, nodeIP net.IP) error {
 	return nil
 }
 
-func (a *arpAnnouncer) AddAnnouncedIP(ip string) error {
-	if _, ok := a.ip2mac[ip]; !ok {
-		metrics.InitLayer2Metrics(ip)
-	}
-
+func (a *arpAnnouncer) AddAnnouncedIP(ip net.IP) error {
 	nexthops := ""
 	for _, addr := range a.addrs {
-		if addr.Contains(net.ParseIP(ip)) {
+		if addr.Contains(ip) {
 			nexthops = addr.IP.String()
 		}
 	}
@@ -201,50 +229,48 @@ func (a *arpAnnouncer) AddAnnouncedIP(ip string) error {
 		return fmt.Errorf("arpAnnouncer add announced IP error : %s", ERROR_NotContainsIP)
 	}
 
-	if err := a.gratuitous(net.ParseIP(ip), net.ParseIP(nexthops)); err != nil {
+	if err := a.gratuitous(ip, net.ParseIP(nexthops)); err != nil {
 		return err
 	}
 
-	metrics.UpdateGratuitousSentMetrics(ip)
+	metrics.UpdateGratuitousSentMetrics(ip.String())
 	return nil
 }
 
-func (a *arpAnnouncer) DelAnnouncedIP(ip string) error {
+func (a *arpAnnouncer) DelAnnouncedIP(ip net.IP) error {
+	klog.Infof("cancel respone %s's arp packet", ip)
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	klog.Infof("cancel respone %s's arp packet", ip)
-	delete(a.ip2mac, ip)
-	metrics.DeleteLayer2Metrics(ip)
+	delete(a.ip2mac, ip.String())
+	metrics.DeleteLayer2Metrics(ip.String())
 
 	return nil
 }
 
-func (a *arpAnnouncer) Start(stopCh <-chan struct{}) error {
-	go a.run(stopCh)
+func (a *arpAnnouncer) Start() error {
+	go func() {
+		for {
+			select {
+			case <-a.stopCh:
+				klog.Infof("arp announcer %s stop Successfully", a.intf.Name)
+				return
+			default:
+				err := a.processRequest()
+				if err == dropReasonClosed {
+					return
+				}
+			}
+		}
+	}()
+
 	return nil
 }
 
 func (a *arpAnnouncer) Stop() error {
 	a.conn.Close()
-	close(a.stopCh)
+	a.stopCh <- struct{}{}
 	return nil
-}
-
-func (a *arpAnnouncer) run(stopCh <-chan struct{}) {
-	for {
-		err := a.processRequest()
-
-		if err == dropReasonClosed {
-			return
-		} else if err == dropReasonError {
-			select {
-			case <-stopCh:
-				return
-			default:
-			}
-		}
-	}
 }
 
 func (a *arpAnnouncer) processRequest() dropReason {

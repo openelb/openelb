@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/openelb/openelb/pkg/util"
@@ -148,6 +149,11 @@ func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
 		}
 	}()
 
+	return nil
+}
+
+// TODO:
+func (l *KeepAlived) ConfigureWithEIP(eip *v1alpha2.Eip, deleted bool) error {
 	return nil
 }
 

@@ -7,12 +7,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type Speaker interface {
-	SetBalancer(ip string, nexthops []corev1.Node) error
-	DelBalancer(ip string) error
-	Start(stopCh <-chan struct{}) error
-}
-
 type Fake struct {
 	lock     sync.Mutex
 	nextHops map[string]set.Set

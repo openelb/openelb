@@ -18,12 +18,18 @@ package speaker
 
 import (
 	"context"
+	"time"
 
 	"github.com/openelb/openelb/api/v1alpha2"
+	"github.com/openelb/openelb/pkg/constant"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // BgpConfReconciler reconciles a BgpConf object
@@ -31,12 +37,15 @@ type EIPReconciler struct {
 	client.Client
 	record.EventRecorder
 
-	Handler func(*v1alpha2.Eip) error
+	Reload   chan event.GenericEvent
+	Reloader func(context.Context) error
+	Handler  func(context.Context, *v1alpha2.Eip) error
 }
 
 func (e *EIPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha2.Eip{}).
+		WatchesRawSource(&source.Channel{Source: e.Reload}, &handler.EnqueueRequestForObject{}).
 		Named("EIPController").
 		Complete(e)
 }
@@ -46,18 +55,29 @@ func (e *EIPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster BgpConf CRD closer to the desired state.
-func (l *EIPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.Log.WithValues("eip", req.NamespacedName.Name)
-	log.V(1).Info("start setup openelb eip")
-	defer log.V(1).Info("finish reconcile openelb eip")
+func (e *EIPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	klog.V(4).Infof("Starting to sync eip %s", req.Name)
+	startTime := time.Now()
+
+	defer func() {
+		klog.V(4).Infof("Finished syncing eip %s in %s", req.Name, time.Since(startTime))
+	}()
+
+	if e.reloadLayer2Speaker(req) {
+		return ctrl.Result{}, e.Reloader(ctx)
+	}
 
 	eip := &v1alpha2.Eip{}
-	if err := l.Client.Get(ctx, req.NamespacedName, eip); err != nil {
+	if err := e.Client.Get(ctx, req.NamespacedName, eip); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, l.Handler(eip)
+	return ctrl.Result{}, e.Handler(ctx, eip)
+}
+
+func (e *EIPReconciler) reloadLayer2Speaker(req ctrl.Request) bool {
+	return req.Name == constant.Layer2ReloadEIPName && req.Namespace == constant.Layer2ReloadEIPNamespace
 }

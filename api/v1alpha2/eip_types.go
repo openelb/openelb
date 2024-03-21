@@ -192,7 +192,7 @@ func (e Eip) ValidateCreate() (admission.Warnings, error) {
 	}
 
 	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 && e.Spec.Interface == "" {
-		return nil, fmt.Errorf("field spec.interface should not be empty")
+		return nil, fmt.Errorf("if protocol is layer2, interface should not be empty")
 	}
 	return nil, e.validate(true)
 }
@@ -265,6 +265,10 @@ func (e Eip) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 		if e.Spec.Address != oldE.Spec.Address {
 			return nil, fmt.Errorf("the address field is not allowed to be modified")
 		}
+	}
+
+	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 && e.Spec.Interface == "" {
+		return nil, fmt.Errorf("if protocol is layer2, interface should not be empty")
 	}
 
 	return nil, nil
