@@ -97,7 +97,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		return err
 	}
 
-	spmanager := speaker.NewSpeakerManager(mgr.GetClient(), ctrl.Log.WithName("speakerManger"))
+	spmanager := speaker.NewSpeakerManager(mgr.GetClient())
 
 	//For gobgp
 	bgpServer := bgpd.NewGoBgpd(opt.Bgp)
@@ -144,7 +144,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 	// for layer2 mode
 	reloadChan := make(chan event.GenericEvent)
 	if opt.Layer2.EnableLayer2 {
-		layer2speaker, err := layer2.NewSpeaker(k8sClient, opt.Layer2, reloadChan, spmanager.Queue)
+		layer2speaker, err := layer2.NewSpeaker(k8sClient, opt.Layer2, reloadChan)
 		if err != nil {
 			setupLog.Error(err, "unable to new layer2 speaker")
 			return err
@@ -158,10 +158,8 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 
 	if err := (&speaker.LBReconciler{
 		Handler:       spmanager.HandleService,
-		Reloader:      spmanager.ResyncServices,
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("lb"),
-		Reload:        reloadChan,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup lb")
 		return err
@@ -169,6 +167,8 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 
 	if err := (&speaker.EIPReconciler{
 		Handler:       spmanager.HandleEIP,
+		Reload:        reloadChan,
+		Reloader:      spmanager.ResyncEIPSpeaker,
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("eip"),
 	}).SetupWithManager(mgr); err != nil {
