@@ -18,14 +18,15 @@ package speaker
 
 import (
 	"context"
+	"time"
 
 	"github.com/openelb/openelb/pkg/constant"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -39,48 +40,20 @@ type LBReconciler struct {
 	client.Client
 	record.EventRecorder
 
-	Reload   chan event.GenericEvent
-	Handler  func(*corev1.Service) error
-	Reloader func(context.Context) error
+	Handler func(context.Context, *corev1.Service) error
 }
 
-func SetupLBReconciler(mgr ctrl.Manager, svchandler func(*corev1.Service) error, svcreloader func(context.Context) error) error {
-	lb := &LBReconciler{
-		Handler:       svchandler,
-		Reloader:      svcreloader,
-		Client:        mgr.GetClient(),
-		EventRecorder: mgr.GetEventRecorderFor("lb"),
-	}
-
-	return lb.SetupWithManager(mgr)
-}
-
-func IsOpenELBService(obj runtime.Object) bool {
-	svc, ok := obj.(*corev1.Service)
-	if !ok {
-		return false
-	}
-
-	if svc.Annotations == nil {
-		return false
-	}
-
+func IsOpenELBService(svc *corev1.Service) bool {
 	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
 		return false
 	}
 
-	if value, ok := svc.Annotations[constant.OpenELBAnnotationKey]; ok && value == constant.OpenELBAnnotationValue {
-		return true
-	}
-
-	return false
+	return svc.Annotations[constant.OpenELBAnnotationKey] == constant.OpenELBAnnotationValue
 }
 
 func (r *LBReconciler) shouldReconcileEP(e metav1.Object) bool {
-	if e.GetAnnotations() != nil {
-		if e.GetAnnotations()["control-plane.alpha.kubernetes.io/leader"] != "" {
-			return false
-		}
+	if e.GetAnnotations()["control-plane.alpha.kubernetes.io/leader"] != "" {
+		return false
 	}
 
 	svc := &corev1.Service{}
@@ -89,22 +62,41 @@ func (r *LBReconciler) shouldReconcileEP(e metav1.Object) bool {
 		return !errors.IsNotFound(err)
 	}
 
-	return IsOpenELBService(svc)
+	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal {
+		return IsOpenELBService(svc)
+	}
+	return false
 }
 
 func (r *LBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return IsOpenELBService(e.Object)
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			old, ok := e.ObjectOld.(*corev1.Service)
+			if !ok {
+				return false
+			}
+
+			new, ok := e.ObjectNew.(*corev1.Service)
+			if !ok {
+				return false
+			}
+
+			if old.Spec.ExternalTrafficPolicy == new.Spec.ExternalTrafficPolicy {
+				return false
+			}
+
+			return IsOpenELBService(new)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return IsOpenELBService(e.Object)
+			return false
 		},
 	}
 
 	ctl, err := ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Service{}).
-		WatchesRawSource(&source.Channel{Source: r.Reload}, &handler.EnqueueRequestForObject{}).
 		Owns(&corev1.Endpoints{}).
 		WithEventFilter(p).
 		Named("LBController").
@@ -137,13 +129,12 @@ func (r *LBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster BgpConf CRD closer to the desired state.
 func (l *LBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.Log.WithValues("service", req.NamespacedName)
-	log.V(1).Info("start setup openelb service")
-	defer log.V(1).Info("finish reconcile openelb service")
+	klog.V(4).Infof("Starting to sync service %s/%s", req.Namespace, req.Name)
+	startTime := time.Now()
 
-	if l.reloadServices(req) {
-		return ctrl.Result{}, l.Reloader(ctx)
-	}
+	defer func() {
+		klog.V(4).Infof("Finished syncing service %s/%s in %s", req.Namespace, req.Name, time.Since(startTime))
+	}()
 
 	svc := &corev1.Service{}
 	if err := l.Client.Get(ctx, req.NamespacedName, svc); err != nil {
@@ -153,9 +144,5 @@ func (l *LBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, l.Handler(svc)
-}
-
-func (l *LBReconciler) reloadServices(req ctrl.Request) bool {
-	return req.Name == constant.Layer2ReloadServiceName && req.Namespace == constant.Layer2ReloadServiceNamespace
+	return ctrl.Result{}, l.Handler(ctx, svc)
 }

@@ -137,3 +137,22 @@ func NodeReady(obj runtime.Object) bool {
 
 	return ready
 }
+
+func DiffMaps(old, new map[string]string) (add, del map[string]string) {
+	add = make(map[string]string)
+	del = make(map[string]string)
+
+	for k, v := range new {
+		if _, ok := old[k]; !ok {
+			add[k] = v
+		}
+	}
+
+	for k, v := range old {
+		if _, ok := new[k]; !ok {
+			del[k] = v
+		}
+	}
+
+	return
+}

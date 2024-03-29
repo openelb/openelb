@@ -1,14 +1,18 @@
 package layer2
 
-type Announcer interface {
-	AddAnnouncedIP(ip string) error
-	DelAnnouncedIP(ip string) error
-	Start(stopCh <-chan struct{}) error
-	ContainsIP(ip string) bool
-}
+import (
+	"net"
 
-type announcer struct {
-	Announcer
-	eips   map[string]struct{}
-	stopCh chan struct{}
+	"github.com/openelb/openelb/pkg/util/iprange"
+)
+
+type Announcer interface {
+	AddAnnouncedIP(net.IP) error
+	DelAnnouncedIP(net.IP) error
+	Start() error
+	Stop() error
+	ContainsIP(net.IP) bool
+	RegisterIPRange(string, iprange.Range)
+	UnregisterIPRange(string)
+	Size() int
 }
