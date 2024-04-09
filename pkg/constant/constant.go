@@ -57,7 +57,7 @@ const (
 	NodeProxyConfigMapForwardImage = "forward-image"
 	NodeProxyConfigMapProxyImage   = "proxy-image"
 	OpenELBKeepAliveImage          = "keepalived-vip-image"
-	OpenELBDefaultKeepAliveImage   = "kubesphere/kube-keepalived-vip:0.35" // keepalived image by default
+	OpenELBDefaultKeepAliveImage   = "oamchronicle/kube-keepalived-vip:2.2.8" // keepalived image by default
 	NodeProxyDefaultForwardImage   = "kubesphere/openelb-forward:master"
 	NodeProxyDefaultProxyImage     = "kubesphere/openelb-proxy:master"
 )
