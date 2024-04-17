@@ -317,6 +317,9 @@ func (a *arpSpeaker) processRequest() dropReason {
 	if hwAddr == nil {
 		return dropReasonUnknowTargetIP
 	}
+	// alter ip mac to openelb node send mac address
+	a.setMac(pkt.TargetIP.String(), a.intf.HardwareAddr)
+	hwAddr = a.getMac(pkt.TargetIP.String())
 
 	metrics.UpdateRequestsReceivedMetrics(pkt.TargetIP.String())
 	a.logger.Info("got ARP request, sending response",
@@ -336,6 +339,7 @@ func (a *arpSpeaker) processRequest() dropReason {
 	}
 
 	metrics.UpdateResponsesSentMetrics(pkt.TargetIP.String())
+
 	return dropReasonNone
 }
 
