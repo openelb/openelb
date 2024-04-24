@@ -16,7 +16,8 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_MANAGER_IMAGE=kubesphere/openelb
+          DOCKER_CONTROLLER_IMAGE=kubesphere/openelb-controller
+          DOCKER_SPEAKER_IMAGE=kubesphere/openelb-speaker
           DOCKER_FORWARD_IMAGE=kubesphere/openelb-forward
           DOCKER_PROXY_IMAGE=kubesphere/openelb-proxy
           VERSION=$(cat VERSION)
@@ -27,16 +28,19 @@ jobs:
           elif [[ $GITHUB_REF == refs/pull/* ]]; then
             VERSION=pr-${{ github.event.number }}
           fi
-          MANAGER_TAGS="${DOCKER_MANAGER_IMAGE}:${VERSION}"
+          CONTROLLER_TAGS="${DOCKER_CONTROLLER_IMAGE}:${VERSION}"
+          SPEAKER_TAGS="${DOCKER_SPEAKER_IMAGE}:${VERSION}"
           FORWARD_TAGS="${DOCKER_FORWARD_IMAGE}:${VERSION}"
           PROXY_TAGS="${DOCKER_PROXY_IMAGE}:${VERSION}"
           if [ "${{ github.event_name }}" = "push" ]; then
-            MANAGER_TAGS="$MANAGER_TAGS,${DOCKER_MANAGER_IMAGE}:sha-${GITHUB_SHA::8}"
+            CONTROLLER_TAGS="$CONTROLLER_TAGS,${DOCKER_CONTROLLER_IMAGE}:sha-${GITHUB_SHA::8}"
+            SPEAKER_TAGS="$SPEAKER_TAGS,${DOCKER_SPEAKER_IMAGE}:sha-${GITHUB_SHA::8}"
             FORWARD_TAGS="$FORWARD_TAGS,${DOCKER_FORWARD_IMAGE}:sha-${GITHUB_SHA::8}"
             PROXY_TAGS="$PROXY_TAGS,${DOCKER_PROXY_IMAGE}:sha-${GITHUB_SHA::8}"
           fi
           echo ::set-output name=version::${VERSION}
-          echo ::set-output name=manager-tags::${MANAGER_TAGS}
+          echo ::set-output name=controller-tags::${CONTROLLER_TAGS}
+          echo ::set-output name=speaker-tags::${SPEAKER_TAGS}
           echo ::set-output name=forward-tags::${FORWARD_TAGS}
           echo ::set-output name=proxy-tags::${PROXY_TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
@@ -49,13 +53,25 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: Build and push openelb-manager
+      - name: Build and push openelb-controller
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./Dockerfile
+          file: ./build/controller/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.prep.outputs.manager-tags }}
+          tags: ${{ steps.prep.outputs.controller-tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+      - name: Build and push openelb-speaker
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/speaker/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.prep.outputs.speaker-tags }}
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.clone_url }}
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}
@@ -65,7 +81,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./images/proxy/Dockerfile
+          file: ./build/proxy/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.proxy-tags }}
           labels: |
@@ -77,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./images/forward/Dockerfile
+          file: ./build/forward/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.forward-tags }}
           labels: |
