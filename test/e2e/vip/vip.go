@@ -12,11 +12,9 @@ import (
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/test/e2e/framework"
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/klog/v2"
 	e2eservice "k8s.io/kubernetes/test/e2e/framework/service"
 )
 
@@ -57,12 +55,6 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 	ginkgo.It("Keepalived-vip", func() {
 		ctx := context.Background()
 
-		ginkgo.By("Waiting Keepalived-vip daemonset ready")
-		framework.WaitDaemonsetPresentFitWith(f.OpenELBClient, OpenELBNamespace, constant.OpenELBVipName, func(ds *appsv1.DaemonSet) bool {
-			klog.Infof("Desired:%d  ready:%d", ds.Status.DesiredNumberScheduled, ds.Status.NumberReady)
-			return ds.Status.DesiredNumberScheduled == ds.Status.NumberReady
-		})
-
 		// config openelb
 		ginkgo.By("Adding Eip")
 		eip := &v1alpha2.Eip{
@@ -70,8 +62,9 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 				Name: "test-eip",
 			},
 			Spec: v1alpha2.EipSpec{
-				Address:  "172.18.0.101-172.18.0.200",
-				Protocol: constant.OpenELBProtocolVip,
+				Address:   "172.18.0.101-172.18.0.200",
+				Interface: "eth0",
+				Protocol:  constant.OpenELBProtocolVip,
 			},
 		}
 		framework.ExpectNoError(f.OpenELBClient.Create(ctx, eip))
@@ -92,7 +85,6 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 
 			s.Annotations[constant.OpenELBAnnotationKey] = constant.OpenELBAnnotationValue
 			s.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2] = eip.Name
-			s.Annotations[constant.OpenELBProtocolAnnotationKey] = constant.OpenELBProtocolVip
 		})
 
 		framework.ExpectNoError(err)
@@ -108,6 +100,5 @@ var _ = framework.KubesphereDescribe("[OpenELB:VIP]", func() {
 		hostport := net.JoinHostPort(ingressIP, port)
 		address := fmt.Sprintf("http://%s/", hostport)
 		framework.ExpectNoError(framework.Do(address))
-
 	})
 })

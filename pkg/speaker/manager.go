@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/openelb/openelb/api/v1alpha2"
@@ -13,6 +14,7 @@ import (
 	"github.com/openelb/openelb/pkg/util/iprange"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -24,16 +26,18 @@ type speaker struct {
 
 type Manager struct {
 	client.Client
+	record.EventRecorder
 
 	speakers map[string]speaker
 	pools    map[string]*v1alpha2.Eip
 }
 
-func NewSpeakerManager(c client.Client) *Manager {
+func NewSpeakerManager(c client.Client, record record.EventRecorder) *Manager {
 	return &Manager{
-		Client:   c,
-		speakers: make(map[string]speaker, 0),
-		pools:    make(map[string]*v1alpha2.Eip, 0),
+		Client:        c,
+		EventRecorder: record,
+		speakers:      make(map[string]speaker, 0),
+		pools:         make(map[string]*v1alpha2.Eip, 0),
 	}
 }
 
@@ -90,7 +94,7 @@ func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
 	// delete eip - cancel advertise
 	if !eip.DeletionTimestamp.IsZero() {
 		klog.V(1).Infof("delete balancer with deleting eip:%s", eip.GetName())
-		if err := m.delBalancerWithEIP(oldData); err != nil {
+		if err := m.delBalancerWithEIP(ctx, oldData); err != nil {
 			return err
 		}
 		delete(m.pools, eip.GetName())
@@ -100,9 +104,10 @@ func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
 	// update speaker configurate
 	if m.isSpeakerConfigUpdate(eip.Spec, oldData.Spec) {
 		klog.V(1).Infof("update protocol with eip:%s", eip.GetName())
-		if err := m.delBalancerWithEIP(oldData); err != nil {
+		if err := m.delBalancerWithEIP(ctx, oldData); err != nil {
 			return err
 		}
+		delete(m.pools, eip.GetName())
 
 		if err := m.setBalancerWithEIP(ctx, eip); err != nil {
 			return err
@@ -115,7 +120,7 @@ func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
 	if !reflect.DeepEqual(eip.Status.Used, oldData.Status.Used) {
 		klog.V(1).Infof("update status with eip:%s", eip.GetName())
 		add, del := util.DiffMaps(oldData.Status.Used, eip.Status.Used)
-		if err := m.delBalancer(eip.GetProtocol(), del); err != nil {
+		if err := m.delBalancer(ctx, eip.GetProtocol(), del); err != nil {
 			return err
 		}
 		if err := m.setBalancer(ctx, eip.GetProtocol(), add); err != nil {
@@ -131,56 +136,113 @@ func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
 // update speaker configurate
 // protocol change or interface change
 func (m *Manager) isSpeakerConfigUpdate(old, new v1alpha2.EipSpec) bool {
-	return (old.Protocol == new.Protocol && new.Protocol == constant.OpenELBProtocolLayer2 &&
-		old.Interface != new.Interface) || old.Protocol != new.Protocol
+	if old.Protocol != new.Protocol {
+		return true
+	}
+
+	if new.Protocol != constant.OpenELBProtocolBGP && old.Interface != new.Interface {
+		return true
+	}
+	return false
 }
 
-func (m *Manager) delBalancerWithEIP(eip *v1alpha2.Eip) error {
-	if err := m.delBalancer(eip.GetProtocol(), eip.Status.Used); err != nil {
+func (m *Manager) delBalancerWithEIP(ctx context.Context, eip *v1alpha2.Eip) error {
+	if err := m.delBalancer(ctx, eip.GetProtocol(), eip.Status.Used); err != nil {
 		return err
 	}
 
-	return m.speakers[eip.GetProtocol()].ConfigureWithEIP(eip, true)
+	r, err := iprange.ParseRange(eip.Spec.Address)
+	if err != nil {
+		return err
+	}
+
+	c := Config{Name: eip.Name, Iface: eip.Spec.Interface, IPRange: r}
+	if err := m.speakers[eip.GetProtocol()].ConfigureWithEIP(c, true); err != nil {
+		m.Event(eip, corev1.EventTypeWarning, "ConfigSpeakerFailed", err.Error())
+		return err
+	}
+	m.Event(eip, corev1.EventTypeNormal, "ConfigSpeaker", fmt.Sprintf("unconfig openelb %s speaker successfully", eip.GetProtocol()))
+	return nil
 }
 
-func (m *Manager) delBalancer(protocol string, usage map[string]string) error {
-	for ip, value := range usage {
-		if protocol == constant.OpenELBProtocolVip {
-			ip = fmt.Sprintf("%s:%s", ip, value)
-		}
-
+func (m *Manager) delBalancer(ctx context.Context, protocol string, usage map[string]string) error {
+	for ip, svcs := range usage {
 		if err := m.speakers[protocol].DelBalancer(ip); err != nil {
+			m.addSvcEventRecorder(ctx, svcs, corev1.EventTypeWarning, "DelBalancer", err.Error())
 			return err
 		}
+
+		m.addSvcEventRecorder(ctx, svcs, corev1.EventTypeNormal, "DelBalancer", "success to withdraw announcement for service")
 	}
 
 	return nil
 }
 
 func (m *Manager) setBalancerWithEIP(ctx context.Context, eip *v1alpha2.Eip) error {
-	if err := m.speakers[eip.GetProtocol()].ConfigureWithEIP(eip, false); err != nil {
+	r, err := iprange.ParseRange(eip.Spec.Address)
+	if err != nil {
 		return err
 	}
 
-	return m.setBalancer(ctx, eip.GetProtocol(), eip.Status.Used)
+	c := Config{Name: eip.Name, Iface: eip.Spec.Interface, IPRange: r}
+	if err := m.speakers[eip.GetProtocol()].ConfigureWithEIP(c, false); err != nil {
+		m.Event(eip, corev1.EventTypeWarning, "ConfigSpeakerFailed", err.Error())
+		return err
+	}
+	m.Event(eip, corev1.EventTypeNormal, "ConfigSpeaker", fmt.Sprintf("config openelb %s speaker successfully", eip.GetProtocol()))
+
+	if err := m.setBalancer(ctx, eip.GetProtocol(), eip.Status.Used); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) setBalancer(ctx context.Context, protocol string, usage map[string]string) error {
 	for ip, value := range usage {
-		nodes, err := m.getServiceNodes(ctx, value)
+		nodes, err := m.getServiceNodes(ctx, ip, value)
 		if err != nil {
 			return err
 		}
 
-		if protocol == constant.OpenELBProtocolVip {
-			ip = fmt.Sprintf("%s:%s", ip, value)
+		if len(nodes) == 0 {
+			warnStr := fmt.Sprintf("no available nodes for service ip %s:%s", ip, value)
+			m.addSvcEventRecorder(ctx, value, corev1.EventTypeWarning, "SetBalancer", warnStr)
+			klog.Warning(warnStr)
+			continue
 		}
 
+		nodeNames := []string{}
+		for _, node := range nodes {
+			nodeNames = append(nodeNames, node.Name)
+		}
+		sort.Slice(nodeNames, func(i, j int) bool {
+			return nodeNames[i] < nodeNames[j]
+		})
 		if err := m.speakers[protocol].SetBalancer(ip, nodes); err != nil {
+			m.addSvcEventRecorder(ctx, value, corev1.EventTypeWarning, "SetBalancer", err.Error())
 			return err
 		}
+
+		m.addSvcEventRecorder(ctx, value, corev1.EventTypeNormal, "SetBalancer", fmt.Sprintf("success to add nexthops [%s]", strings.Join(nodeNames, ", ")))
 	}
 	return nil
+}
+
+func (m *Manager) addSvcEventRecorder(ctx context.Context, services, eventType, reason, message string) {
+	for _, str := range strings.Split(services, ";") {
+		svcInfo := strings.Split(str, "/")
+		if len(svcInfo) != 2 {
+			continue
+		}
+
+		svc := &corev1.Service{}
+		if err := m.Get(ctx, types.NamespacedName{Namespace: svcInfo[0], Name: svcInfo[1]}, svc); err != nil {
+			klog.Warningf("get service %s failed, err: %s", services, err.Error())
+			continue
+		}
+
+		m.Event(svc, eventType, reason, message)
+	}
 }
 
 func (m *Manager) HandleService(ctx context.Context, svc *corev1.Service) error {
@@ -200,7 +262,7 @@ func (m *Manager) HandleService(ctx context.Context, svc *corev1.Service) error 
 
 	ingress := map[string]string{}
 	for _, ip := range svc.Status.LoadBalancer.Ingress {
-		value, ok := ingress[ip.IP]
+		value, ok := eip.Status.Used[ip.IP]
 		if ok {
 			value += ";"
 		}
@@ -210,7 +272,10 @@ func (m *Manager) HandleService(ctx context.Context, svc *corev1.Service) error 
 		}
 	}
 
-	return m.setBalancer(ctx, eip.GetProtocol(), ingress)
+	if err := m.setBalancer(ctx, eip.GetProtocol(), ingress); err != nil {
+		return err
+	}
+	return nil
 }
 
 // todo: annotions
@@ -223,62 +288,73 @@ func (m *Manager) getSvcEIPUsed(svc *corev1.Service) string {
 	return svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
 }
 
-func (m *Manager) getServiceNodes(ctx context.Context, svcString string) ([]corev1.Node, error) {
-	//1. filter endpoints
-	svc := &corev1.Service{}
-	active := make(map[string]bool)
-	for _, str := range strings.Split(svcString, ";") {
-		svcInfo := strings.Split(str, "/")
-		if len(svcInfo) != 2 {
-			continue
-		}
-
-		if err := m.Get(ctx, types.NamespacedName{Namespace: svcInfo[0], Name: svcInfo[1]}, svc); err != nil {
-			return nil, err
-		}
-
-		endpoints := &corev1.Endpoints{}
-		if err := m.Get(ctx, types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}, endpoints); err != nil {
-			return nil, err
-		}
-
-		for _, subnet := range endpoints.Subsets {
-			for _, addr := range subnet.Addresses {
-				if addr.NodeName == nil {
-					continue
-				}
-				active[*addr.NodeName] = true
-			}
-		}
-	}
-
-	//2. get next hops
+func (m *Manager) getServiceNodes(ctx context.Context, ip, svcs string) ([]corev1.Node, error) {
+	nodeSets := map[string]corev1.Node{}
 	nodeList := &corev1.NodeList{}
 	if err := m.List(ctx, nodeList); err != nil {
 		return nil, err
 	}
 
-	resultNodes := make([]corev1.Node, 0)
-	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) > 0 {
-		for _, node := range nodeList.Items {
-			if active[node.Name] {
-				resultNodes = append(resultNodes, node)
+	share := false
+	svcArray := strings.Split(svcs, ";")
+	if len(svcArray) > 1 {
+		share = true
+	}
+
+	for _, str := range svcArray {
+		//1. filter endpoints
+		svcInfo := strings.Split(str, "/")
+		if len(svcInfo) != 2 {
+			continue
+		}
+
+		svc := &corev1.Service{}
+		if err := m.Get(ctx, types.NamespacedName{Namespace: svcInfo[0], Name: svcInfo[1]}, svc); err != nil {
+			return nil, err
+		}
+		endpoints := &corev1.Endpoints{}
+		if err := m.Get(ctx, types.NamespacedName{Namespace: svc.GetNamespace(), Name: svc.GetName()}, endpoints); err != nil {
+			return nil, err
+		}
+
+		//2. get next hops
+		if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal {
+			if share {
+				klog.Warningf("service %s's ExternalTrafficPolicyType is Local, but specify %s as a shared ip", svc.GetName(), ip)
+			}
+
+			active := make(map[string]bool)
+			for _, subnet := range endpoints.Subsets {
+				for _, addr := range subnet.Addresses {
+					if addr.NodeName == nil {
+						continue
+					}
+					active[*addr.NodeName] = true
+				}
+			}
+
+			if len(active) == 0 {
+				klog.Warningf("service %s's ExternalTrafficPolicyType is Local, and endpoint don't have nodeName, Please make sure the endpoints are configured correctly", svc.GetName())
+				continue
+			}
+
+			for _, node := range nodeList.Items {
+				if active[node.Name] {
+					nodeSets[node.Name] = node
+				}
+			}
+
+		} else {
+			for _, node := range nodeList.Items {
+				nodeSets[node.Name] = node
 			}
 		}
-
-		return resultNodes, nil
 	}
 
-	if svc.Spec.ExternalTrafficPolicy == corev1.ServiceExternalTrafficPolicyTypeLocal && len(active) == 0 {
-		klog.Warningf("service %s's ExternalTrafficPolicyType is Local, and endpoint don't have nodeName, Please make sure the endpoints are configured correctly", svc.GetName())
+	resultNodes := []corev1.Node{}
+	for _, node := range nodeSets {
+		resultNodes = append(resultNodes, node)
 	}
-
-	for _, node := range nodeList.Items {
-		if util.NodeReady(&node) {
-			resultNodes = append(resultNodes, node)
-		}
-	}
-
 	return resultNodes, nil
 }
 
@@ -293,7 +369,9 @@ func (m *Manager) ResyncEIPSpeaker(ctx context.Context) error {
 			continue
 		}
 
-		m.setBalancer(ctx, constant.OpenELBProtocolLayer2, e.Status.Used)
+		if err := m.setBalancer(ctx, constant.OpenELBProtocolLayer2, e.Status.Used); err != nil {
+			klog.Warningf("resync speaker error: %s", err.Error())
+		}
 	}
 
 	return nil

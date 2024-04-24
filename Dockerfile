@@ -13,7 +13,7 @@ RUN GO111MODULE=on CGO_ENABLED=0 go install -ldflags '-w -s' github.com/osrg/gob
 FROM alpine
 RUN apk add --update ca-certificates iptables && update-ca-certificates
 COPY --from=openelb-builder /go/bin/controller /usr/local/bin/openelb-controller
-# COPY --from=openelb-builder /go/bin/speaker /usr/local/bin/openelb-speaker
+COPY --from=openelb-builder /go/bin/speaker /usr/local/bin/openelb-speaker
 # COPY --from=openelb-builder /go/bin/apiserver /usr/local/bin/openelb-apiserver
 COPY --from=openelb-builder /go/bin/gobgp /usr/local/bin/gobgp
 

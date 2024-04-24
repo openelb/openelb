@@ -8,9 +8,9 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
+	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
@@ -294,6 +294,6 @@ func (b *Bgp) MonitorPeers(ctx context.Context, ip string) error {
 }
 
 // TODO:
-func (l *Bgp) ConfigureWithEIP(eip *v1alpha2.Eip, deleted bool) error {
+func (l *Bgp) ConfigureWithEIP(config speaker.Config, deleted bool) error {
 	return nil
 }

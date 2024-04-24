@@ -192,6 +192,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		err = r.ipmanager.ReleaseIP(ctx, request.Release)
 		if err != nil {
 			log.Error(err, "release ip", "request", request)
+			r.Event(svc, corev1.EventTypeWarning, "ReleaseIPFailed", err.Error())
 			return ctrl.Result{}, err
 		}
 
@@ -199,12 +200,14 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		statusIPs = []corev1.LoadBalancerIngress{}
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
 		delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
+		r.Eventf(svc, corev1.EventTypeNormal, "ReleaseIP", "success to release ip: %s", request.Release.IP)
 	}
 
 	if request.Allocate != nil {
 		err = r.ipmanager.AssignIP(ctx, request.Allocate)
 		if err != nil {
 			log.Error(err, "assign ip", "request", request)
+			r.Event(svc, corev1.EventTypeWarning, "AssignIPFailed", err.Error())
 			return ctrl.Result{}, err
 		}
 
@@ -217,6 +220,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = request.Allocate.Eip
 		statusIPs = []corev1.LoadBalancerIngress{{IP: request.Allocate.IP}}
+		r.Eventf(svc, corev1.EventTypeNormal, "AssignIP", "success to assign ip: %s", request.Allocate.IP)
 	}
 
 	// update service resource
@@ -231,6 +235,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if !reflect.DeepEqual(svc.Status, clone.Status) {
 		if err := r.Status().Update(context.Background(), clone); err != nil {
 			log.Error(err, "update service status")
+			r.Event(svc, corev1.EventTypeWarning, "UpdateServiceStatus", err.Error())
 			return ctrl.Result{}, err
 		}
 	}
