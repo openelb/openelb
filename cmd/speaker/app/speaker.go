@@ -13,7 +13,6 @@ import (
 	bgpd "github.com/openelb/openelb/pkg/speaker/bgp/bgp"
 	"github.com/openelb/openelb/pkg/speaker/layer2"
 	"github.com/openelb/openelb/pkg/speaker/vip"
-	"github.com/openelb/openelb/pkg/util"
 	"github.com/openelb/openelb/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -97,7 +96,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		return err
 	}
 
-	spmanager := speaker.NewSpeakerManager(mgr.GetClient())
+	spmanager := speaker.NewSpeakerManager(mgr.GetClient(), mgr.GetEventRecorderFor("speakerManager"))
 
 	//For gobgp
 	bgpServer := bgpd.NewGoBgpd(opt.Bgp)
@@ -119,26 +118,15 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 	//For keepalive
 	k8sClient := clientset.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	if opt.Vip.EnableVIP {
-		ns := util.EnvNamespace()
-		config := constant.OpenELBVipConfigMap
-		if opt.Vip.ConfigNamespace != "" {
-			ns = opt.Vip.ConfigNamespace
+		keepalive, err := vip.NewKeepAlived(k8sClient, opt.Vip.LogPath, opt.Vip.KeepAlivedArgs)
+		if err != nil {
+			setupLog.Error(err, "unable to new vip speaker")
+			return err
 		}
-		if opt.Vip.ConfigName != "" {
-			config = opt.Vip.ConfigName
-		}
-		keepalive := vip.NewKeepAlived(k8sClient, &vip.KeepAlivedConfig{
-			Args: []string{
-				fmt.Sprintf("--services-configmap=%s/%s", ns, config),
-				fmt.Sprintf("--http-port=%d", opt.Vip.HealthPort)},
-		})
-
 		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolVip, keepalive); err != nil {
 			setupLog.Error(err, "unable to register keepalive speaker")
 			return err
 		}
-	} else {
-		vip.Clean(k8sClient)
 	}
 
 	// for layer2 mode

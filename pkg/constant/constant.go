@@ -43,24 +43,19 @@ const (
 	OpenELBCNICalico      string = "calico"
 	EipRangeSeparator     string = "-"
 
-	OpenELBControllerLocker   = "openelb-controller"
-	OpenELBSpeakerName        = "openelb-speaker"
-	OpenELBNamespace          = "openelb-system"
-	OpenELBVipConfigMap       = "openelb-vip-configmap"
-	OpenELBVipName            = "openelb-keepalive-vip"
-	OpenELBBgpName            = "gobgp.conf"
-	OpenELBServiceAccountName = "kube-keepalived-vip"
-	EnvOpenELBNamespace       = "OPENELB_NAMESPACE"
-	EnvDaemonsetName          = "OPENELB_DSNAME"
-	EnvNodeName               = "NODE_NAME"
-	EnvSecretName             = "MEMBER_LIST_SECRET"
+	OpenELBControllerLocker = "openelb-controller"
+	OpenELBSpeakerName      = "openelb-speaker"
+	OpenELBNamespace        = "openelb-system"
+	OpenELBBgpName          = "gobgp.conf"
+	EnvOpenELBNamespace     = "OPENELB_NAMESPACE"
+	EnvDaemonsetName        = "OPENELB_DSNAME"
+	EnvNodeName             = "NODE_NAME"
+	EnvSecretName           = "MEMBER_LIST_SECRET"
 
 	// default images and specify images
 	OpenELBImagesConfigMap         = "openelb-images"
 	NodeProxyConfigMapForwardImage = "forward-image"
 	NodeProxyConfigMapProxyImage   = "proxy-image"
-	OpenELBKeepAliveImage          = "keepalived-vip-image"
-	OpenELBDefaultKeepAliveImage   = "kubesphere/kube-keepalived-vip:0.35" // keepalived image by default
 	NodeProxyDefaultForwardImage   = "kubesphere/openelb-forward:master"
 	NodeProxyDefaultProxyImage     = "kubesphere/openelb-proxy:master"
 

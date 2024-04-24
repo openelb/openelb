@@ -191,8 +191,8 @@ func (e Eip) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
-	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 && e.Spec.Interface == "" {
-		return nil, fmt.Errorf("if protocol is layer2, interface should not be empty")
+	if (e.Spec.Protocol == constant.OpenELBProtocolLayer2 || e.Spec.Protocol == constant.OpenELBProtocolVip) && e.Spec.Interface == "" {
+		return nil, fmt.Errorf("if protocol is layer2 or vip, interface should not be empty")
 	}
 	return nil, e.validate(true)
 }
@@ -267,8 +267,8 @@ func (e Eip) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 		}
 	}
 
-	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 && e.Spec.Interface == "" {
-		return nil, fmt.Errorf("if protocol is layer2, interface should not be empty")
+	if (e.Spec.Protocol == constant.OpenELBProtocolLayer2 || e.Spec.Protocol == constant.OpenELBProtocolVip) && e.Spec.Interface == "" {
+		return nil, fmt.Errorf("if protocol is layer2 or vip, interface should not be empty")
 	}
 
 	return nil, nil

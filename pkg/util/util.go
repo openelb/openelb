@@ -122,20 +122,16 @@ func EnvDaemonsetName() string {
 
 func NodeReady(obj runtime.Object) bool {
 	node := obj.(*corev1.Node)
-
-	ready := true
 	for _, con := range node.Status.Conditions {
 		if con.Type == corev1.NodeReady && con.Status != corev1.ConditionTrue {
-			ready = false
-			break
+			return false
 		}
 		if con.Type == corev1.NodeNetworkUnavailable && con.Status != corev1.ConditionFalse {
-			ready = false
-			break
+			return false
 		}
 	}
 
-	return ready
+	return true
 }
 
 func DiffMaps(old, new map[string]string) (add, del map[string]string) {

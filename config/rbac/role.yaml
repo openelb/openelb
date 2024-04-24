@@ -95,27 +95,6 @@ rules:
   - patch
   - update
 
-
-# kube-keepalived-vip
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: kube-keepalived-vip
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - nodes
-      - endpoints
-      - services
-      - configmaps
-    verbs:
-      - get
-      - list
-      - watch
-
 # openelb-controller
 ---
 apiVersion: rbac.authorization.k8s.io/v1

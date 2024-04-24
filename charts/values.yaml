@@ -76,6 +76,5 @@ speaker:
 
 customImage:
   enable: true
-  vipImage: ""      # "kubesphere/kube-keepalived-vip:0.35"
   forwardImage: ""  # kubesphere/openelb-forward:master
   proxyImage: ""    # kubesphere/openelb-proxy:master

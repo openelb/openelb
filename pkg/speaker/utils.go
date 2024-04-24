@@ -1,14 +1,15 @@
-package layer2
+package speaker
 
 import (
 	"fmt"
 	"net"
 	"strings"
 
+	"github.com/openelb/openelb/pkg/util/iprange"
 	"github.com/vishvananda/netlink"
 )
 
-func parseInterface(ifaceName string, v4 bool) (iface *net.Interface, err error) {
+func ParseInterface(ifaceName string, v4 bool) (iface *net.Interface, err error) {
 	strs := strings.SplitN(ifaceName, ":", 2)
 	if len(strs) == 1 {
 		return net.InterfaceByName(ifaceName)
@@ -41,9 +42,24 @@ func parseInterface(ifaceName string, v4 bool) (iface *net.Interface, err error)
 	return iface, nil
 }
 
-func newAnnouncer(iface *net.Interface, v4 bool) (Announcer, error) {
-	if v4 {
-		return newARPAnnouncer(iface)
+func ValidateInterface(netif *net.Interface, r iprange.Range) error {
+	addrs, err := netif.Addrs()
+	if err != nil {
+		return err
 	}
-	return nil, fmt.Errorf("cannot create layer2 announcer, only support ipv4 now")
+
+	for _, addr := range addrs {
+		ip, cidrnet, err := net.ParseCIDR(addr.String())
+		if err != nil {
+			return err
+		}
+
+		if ip.To4() != nil {
+			if cidrnet.Contains(r.Start()) && cidrnet.Contains(r.End()) {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("%s's ip and the eip[%s] are not in the same network segment", netif.Name, r.String())
 }

@@ -153,51 +153,20 @@ func (l *layer2Speaker) Start(stopCh <-chan struct{}) error {
 	return nil
 }
 
-func (l *layer2Speaker) ConfigureWithEIP(eip *v1alpha2.Eip, deleted bool) error {
-	if eip == nil {
-		return nil
-	}
-
-	netif, err := parseInterface(eip.Spec.Interface, true)
+func (l *layer2Speaker) ConfigureWithEIP(config speaker.Config, deleted bool) error {
+	netif, err := speaker.ParseInterface(config.Iface, true)
 	if err != nil || netif == nil {
 		return err
 	}
 
-	r, err := iprange.ParseRange(eip.Spec.Address)
-	if err != nil {
-		return err
-	}
-
-	if err := l.validateInterface(netif, r); err != nil {
+	if err := speaker.ValidateInterface(netif, config.IPRange); err != nil {
 		return err
 	}
 
 	if deleted {
-		return l.unregisterAnnouncer(eip.Name, netif.Name)
+		return l.unregisterAnnouncer(config.Name, netif.Name)
 	}
-	return l.registerAnnouncer(eip.Name, netif, r)
-}
-
-func (l *layer2Speaker) validateInterface(netif *net.Interface, r iprange.Range) error {
-	addrs, err := netif.Addrs()
-	if err != nil {
-		return err
-	}
-
-	for _, addr := range addrs {
-		ip, cidrnet, err := net.ParseCIDR(addr.String())
-		if err != nil {
-			return err
-		}
-
-		if ip.To4() != nil {
-			if cidrnet.Contains(r.Start()) && cidrnet.Contains(r.End()) {
-				return nil
-			}
-		}
-	}
-
-	return fmt.Errorf("%s's ip and the eip[%s] are not in the same network segment", netif.Name, r.String())
+	return l.registerAnnouncer(config.Name, netif, config.IPRange)
 }
 
 func (l *layer2Speaker) registerAnnouncer(eipName string, netif *net.Interface, r iprange.Range) error {
