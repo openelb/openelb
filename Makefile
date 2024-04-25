@@ -1,28 +1,5 @@
 
-# Image URL to use all building/pushing image targets
-BRANCH ?= release
-RELEASE_TAG = $(shell cat VERSION)
-DOCKER_USERNAME ?= kubesphere
-IMG_MANAGER ?= $(DOCKER_USERNAME)/openelb:$(RELEASE_TAG)
-IMG_AGENT ?= $(DOCKER_USERNAME)/openelb-agent:$(RELEASE_TAG)
-IMG_PROXY ?= $(DOCKER_USERNAME)/openelb-proxy:$(RELEASE_TAG)
-IMG_FORWARD ?= $(DOCKER_USERNAME)/openelb-forward:$(RELEASE_TAG)
-
-CRD_OPTIONS ?= "crd:trivialVersions=true"
-
-ifeq (,$(shell git status --porcelain 2>/dev/null))
-GIT_TREE_STATE="clean"
-else
-GIT_TREE_STATE="dirty"
-endif
-GIT_COMMIT = $(shell git rev-parse HEAD)
-GIT_REPO = $(shell git config --get remote.origin.url)
-DATE = $(shell date +"%Y-%m-%d_%H:%M:%S")
-LDFLAGS= " \
-	-X 'github.com/openelb/openelb/pkg/version.gitVersion=$(RELEASE_TAG)' \
-	-X 'github.com/openelb/openelb/pkg/version.gitCommit=$(GIT_COMMIT)' \
-	-X 'github.com/openelb/openelb/pkg/version.gitTreeState=$(GIT_TREE_STATE)' \
-	-X 'github.com/openelb/openelb/pkg/version.buildDate=$(DATE)' "
+CRD_OPTIONS ?= "crd:crdVersions=v1,allowDangerousTypes=true"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -31,49 +8,66 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager
+.PHONY: all
+all: test controller speaker
 
 # Run go fmt against code
 fmt:
-	go fmt ./pkg/... ./cmd/...   ./api/... ./pkg/controllers/...
+	go fmt ./pkg/... ./cmd/... ./api/... ./pkg/controllers/...
 
 # Run go vet against code
 vet:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/...  ./pkg/controllers/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go vet ./pkg/... ./cmd/...
 
 # Run tests
 test: fmt vet
-	KUBEBUILDER_ASSETS="$(shell $(GOBIN)/setup-envtest use -p path 1.19.x)" go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(GOBIN)/setup-envtest use -p path 1.26.x)" go test -v  ./api/... ./pkg/controllers/... ./pkg/...  -coverprofile cover.out
 
-# Build manager binary
-manager: fmt vet
-	#CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o bin/manager github.com/openelb/openelb/cmd/manager
-	CGO_ENABLED=0 go build  -o bin/manager -ldflags ${LDFLAGS} github.com/openelb/openelb/cmd/manager
+e2e: ;$(info $(M)...Run e2e test.) @ ## Run e2e test in kind.
+	hack/kind_e2e.sh
 
+.PHONY: binary
+# Build all of binary
+binary: | controller speaker; $(info $(M)...Build all of binary.) @ ## Build all of binary.
+
+# Build controller binary
+controller: ; $(info $(M)...Begin to build openelb-controller binary.)  @ ## Build controller.
+	hack/gobuild.sh cmd/controller;
+
+# Build speaker binary
+speaker: ; $(info $(M)...Begin to build openelb-speaker binary.)  @ ## Build speaker.
+	hack/gobuild.sh cmd/speaker;
+
+# Build apiserver binary
+apiserver: ; $(info $(M)...Begin to build openelb-apiserver binary.)  @ ## Build apiserver.
+	hack/gobuild.sh cmd/apiserver;
+
+
+# build in docker
+container: ;$(info $(M)...Begin to build the docker image.)  @ ## Build the docker image.
+	DRY_RUN=true hack/docker_build.sh
+
+container-push: ;$(info $(M)...Begin to build and push.)  @ ## Build and Push.
+	hack/docker_build.sh
+
+container-cross: ; $(info $(M)...Begin to build container images for multiple platforms.)  @ ## Build container images for multiple platforms. Currently, only linux/amd64,linux/arm64 are supported.
+	DRY_RUN=true hack/docker_build_multiarch.sh
+
+container-cross-push: ; $(info $(M)...Begin to build and push.)  @ ## Build and Push.
+	hack/docker_build_multiarch.sh
 
 deploy: generate
-ifeq ($(uname), Darwin)
-	sed -i '' -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/${BRANCH}/agent_image_patch.yaml
-	sed -i '' -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/${BRANCH}/manager_image_patch.yaml
-	sed -i '' -e 's@NodeProxyDefaultForwardImage      string = \".*\"@NodeProxyDefaultForwardImage      string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constant.go
-	sed -i '' -e 's@NodeProxyDefaultProxyImage        string = \".*\"@NodeProxyDefaultProxyImage        string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constant.go
-else
-	sed -i -e 's@image: .*@image: '"${IMG_AGENT}"'@' ./config/${BRANCH}/agent_image_patch.yaml
-	sed -i -e 's@image: .*@image: '"${IMG_MANAGER}"'@' ./config/${BRANCH}/manager_image_patch.yaml
-	sed -i -e 's@NodeProxyDefaultForwardImage      string = \".*\"@NodeProxyDefaultForwardImage      string = \"'"${IMG_FORWARD}"'\"@' ./pkg/constant/constant.go
-	sed -i -e 's@NodeProxyDefaultProxyImage        string = \".*\"@NodeProxyDefaultProxyImage        string = \"'"${IMG_PROXY}"'\"@' ./pkg/constant/constant.go
-endif
-	kustomize build config/${BRANCH} -o deploy/openelb.yaml
-	@echo "Done, the yaml is in deploy folder named 'openelb.yaml'"
+	hack/generate_manifests.sh
 
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=openelb-manager-role webhook paths="./api/..." paths="./pkg/controllers/..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./api/..." output:artifacts:config=config/crd/bases
+#	$(CONTROLLER_GEN) webhook paths="./api/..." paths="./pkg/controllers/..." output:artifacts:config=config/webhook
 
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.12.1
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -81,18 +75,6 @@ endif
 
 clean-up:
 	./hack/cleanup.sh
-
-release: deploy
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager-linux-amd64 github.com/openelb/openelb/cmd/manager
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/agent-linux-amd64 github.com/openelb/openelb/cmd/agent
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -o bin/gobgp-linux-amd64 github.com/osrg/gobgp/cmd/gobgp
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/manager-linux-arm64 github.com/openelb/openelb/cmd/manager
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/agent-linux-arm64 github.com/openelb/openelb/cmd/agent
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build  -o bin/gobgp-linux-arm64 github.com/osrg/gobgp/cmd/gobgp
-	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_AGENT} -f ./cmd/agent/Dockerfile .  --push
-	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_MANAGER} -f ./cmd/manager/Dockerfile .  --push
-	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_PROXY} -f ./images/proxy/Dockerfile . --push
-	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG_FORWARD} -f ./images/forward/Dockerfile . --push
 
 install-tools:
 	echo "install kubebuilder/kustomize etc."

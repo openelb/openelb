@@ -15,11 +15,11 @@ type Options struct {
 func NewOptions() *Options {
 	return &Options{
 		Options: zap.Options{
-			Development:     false,
+			Development:     true,
 			Encoder:         nil,
-			DestWritter:     nil,
-			Level:           zapcore.InfoLevel,
+			DestWriter:      nil,
 			StacktraceLevel: zapcore.PanicLevel,
+			TimeEncoder:     zapcore.RFC3339TimeEncoder,
 			ZapOpts:         nil,
 		}}
 }

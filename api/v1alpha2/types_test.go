@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -109,6 +109,23 @@ var _ = Describe("Test eip types", func() {
 		Expect(e.IsOverlap(e2)).Should(BeTrue())
 	})
 
+	It("Test Contains", func() {
+		e := &Eip{
+			TypeMeta:   metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{},
+			Spec: EipSpec{
+				Address: "192.168.0.100-192.168.0.200",
+			},
+			Status: EipStatus{},
+		}
+		Expect(e.Contains(net.ParseIP(""))).Should(BeFalse())
+		Expect(e.Contains(net.ParseIP("192.168.0.100"))).Should(BeTrue())
+		Expect(e.Contains(net.ParseIP("192.168.0.200"))).Should(BeTrue())
+		Expect(e.Contains(net.ParseIP("192.168.0.150"))).Should(BeTrue())
+		Expect(e.Contains(net.ParseIP("192.168.0.99"))).Should(BeFalse())
+		Expect(e.Contains(net.ParseIP("192.168.0.201"))).Should(BeFalse())
+	})
+
 	It("Test ValidateUpdate", func() {
 		e := &Eip{
 			TypeMeta:   metav1.TypeMeta{},
@@ -121,10 +138,12 @@ var _ = Describe("Test eip types", func() {
 
 		e2 := e.DeepCopy()
 		e2.Spec.Address = "192.168.0.100"
-		Expect(e2.ValidateUpdate(e)).Should(HaveOccurred())
+		_, err := e2.ValidateUpdate(e)
+		Expect(err).Should(HaveOccurred())
 
 		e2 = e.DeepCopy()
 		e2.Spec.Disable = true
-		Expect(e2.ValidateUpdate(e)).ShouldNot(HaveOccurred())
+		_, err = e2.ValidateUpdate(e)
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 })

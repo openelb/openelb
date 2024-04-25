@@ -50,8 +50,8 @@ func (r *ServiceReconciler) shouldReconcileDeDs(e metav1.Object) bool {
 	return IsOpenELBNPService(svc)
 }
 
-func (r *ServiceReconciler) newProxyResc(svc *corev1.Service) *runtime.Object {
-	var proxyResc runtime.Object
+func (r *ServiceReconciler) newProxyResc(svc *corev1.Service) *client.Object {
+	var proxyResc client.Object
 	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
 	case constant.NodeProxyTypeDeployment:
 		proxyResc = r.newProxyDe(svc)
@@ -148,7 +148,8 @@ func (r *ServiceReconciler) newProxyPoTepl(svc *corev1.Service) *corev1.PodTempl
 
 // User can config NodeProxy by ConfigMap to specify the proxy and forward images
 // If the ConfigMap exists and the configuration is set, use it,
-// 	otherwise, use the default image got from constants.
+//
+//	otherwise, use the default image got from constants.
 func (r *ServiceReconciler) getNPConfig() (*corev1.ConfigMap, error) {
 	NPCfgName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: constant.OpenELBImagesConfigMap}
 	cm := &corev1.ConfigMap{}
@@ -241,7 +242,7 @@ func (r *ServiceReconciler) newForwardCtn(name string) *corev1.Container {
 	}
 }
 
-// Main procedure for ProterLB NodeProxy
+// Main procedure for OpenELB NodeProxy
 func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result, error) {
 	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
 	log.Info("node-proxy reconciling")
@@ -286,7 +287,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	// Delete another kind of Proxy resource if exists
 	// Passes when resource not exist or successfully deleted
 	dpDsNamespacedName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
-	var proxyResc, shouldRmResc runtime.Object
+	var proxyResc, shouldRmResc client.Object
 	switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
 	case constant.NodeProxyTypeDeployment:
 		shouldRmResc = &appsv1.DaemonSet{}
@@ -394,7 +395,7 @@ func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result,
 
 	if util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
 		dpDsNamespacedName := types.NamespacedName{Namespace: util.EnvNamespace(), Name: proxyRescName(svc.Name, svc.Namespace)}
-		var proxyResc runtime.Object
+		var proxyResc client.Object
 		switch svc.Annotations[constant.NodeProxyTypeAnnotationKey] {
 		case constant.NodeProxyTypeDeployment:
 			proxyResc = &appsv1.Deployment{}

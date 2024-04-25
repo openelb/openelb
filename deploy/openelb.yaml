@@ -7,8 +7,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: bgpconfs.network.kubesphere.io
 spec:
   group: network.kubesphere.io
@@ -164,19 +163,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: bgppeers.network.kubesphere.io
 spec:
   group: network.kubesphere.io
@@ -437,6 +429,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               timers:
                 properties:
                   config:
@@ -596,19 +589,12 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: eips.network.kubesphere.io
 spec:
   group: network.kubesphere.io
@@ -716,6 +702,19 @@ spec:
                 type: boolean
               interface:
                 type: string
+              namespaceSelector:
+                additionalProperties:
+                  type: string
+                description: specify the namespace for allocation by selector
+                type: object
+              namespaces:
+                description: specify the namespace for the allocation by name
+                items:
+                  type: string
+                type: array
+              priority:
+                description: priority for automatically assigning addresses
+                type: integer
               protocol:
                 enum:
                 - bgp
@@ -754,18 +753,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kube-keepalived-vip
-  namespace: openelb-system
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -773,11 +760,49 @@ metadata:
   name: openelb-admission
   namespace: openelb-system
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openelb-controller
+  namespace: openelb-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openelb-speaker
+  namespace: openelb-system
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: leader-election-role
+  name: openelb-admission
   namespace: openelb-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openelb-admission
+rules:
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openelb-controller
 rules:
 - apiGroups:
   - coordination.k8s.io
@@ -802,65 +827,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  verbs:
-  - create
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: openelb-admission
-  namespace: openelb-system
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - create
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: kube-keepalived-vip
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - nodes
-  - endpoints
-  - services
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: openelb-admission
-rules:
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - validatingwebhookconfigurations
-  - mutatingwebhookconfigurations
-  verbs:
-  - get
-  - update
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  creationTimestamp: null
-  name: openelb-manager-role
-rules:
-- apiGroups:
-  - ""
-  resources:
   - configmaps
   verbs:
   - get
@@ -870,23 +836,6 @@ rules:
   - apps
   resources:
   - daemonsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets/status
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
   - deployments
   verbs:
   - create
@@ -897,32 +846,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps
-  resources:
-  - deployments/status
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - endpoints
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
   - ""
   resources:
   - events
@@ -933,30 +856,9 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - namespaces
   - nodes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
   - pods
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - pods/status
   verbs:
   - get
@@ -984,52 +886,7 @@ rules:
   - ""
   resources:
   - services/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgpconfs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgpconfs/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgpconfs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgppeers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - network.kubesphere.io
-  resources:
-  - bgppeers/status
+  - nodes/status
   verbs:
   - get
   - patch
@@ -1056,18 +913,99 @@ rules:
   - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRole
 metadata:
-  name: leader-election-rolebinding
-  namespace: openelb-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: leader-election-role
-subjects:
-- kind: ServiceAccount
-  name: openelb-admission
-  namespace: openelb-system
+  name: openelb-speaker
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - bgpconfs
+  - bgppeers
+  - eips
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - bgpconfs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - network.kubesphere.io
+  resources:
+  - bgppeers/status
+  - eips/status
+  - bgpconfs/status
+  verbs:
+  - get
+  - patch
+  - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -1086,19 +1024,6 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kube-keepalived-vip
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: kube-keepalived-vip
-subjects:
-- kind: ServiceAccount
-  name: kube-keepalived-vip
-  namespace: openelb-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
   name: openelb-admission
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -1112,20 +1037,41 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: openelb-manager-rolebinding
+  name: openelb-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: openelb-manager-role
+  name: openelb-controller
 subjects:
 - kind: ServiceAccount
-  name: openelb-admission
+  name: openelb-controller
+  namespace: openelb-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openelb-speaker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: openelb-speaker
+subjects:
+- kind: ServiceAccount
+  name: openelb-speaker
+  namespace: openelb-system
+---
+apiVersion: v1
+data:
+  key: b3BlbmVsYi1zcGVha2Vycw==
+kind: Secret
+metadata:
+  name: memberlist
   namespace: openelb-system
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: openelb-admission
+  name: openelb-controller
   namespace: openelb-system
 spec:
   ports:
@@ -1133,23 +1079,23 @@ spec:
     port: 443
     targetPort: webhook
   selector:
-    app: openelb-manager
-    control-plane: openelb-manager
+    app: openelb-controller
+    control-plane: openelb-controller
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: openelb-manager
-    control-plane: openelb-manager
-  name: openelb-manager
+    app: openelb-controller
+    control-plane: openelb-controller
+  name: openelb-controller
   namespace: openelb-system
 spec:
   selector:
     matchLabels:
-      app: openelb-manager
-      control-plane: openelb-manager
+      app: openelb-controller
+      control-plane: openelb-controller
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -1157,8 +1103,8 @@ spec:
   template:
     metadata:
       labels:
-        app: openelb-manager
-        control-plane: openelb-manager
+        app: openelb-controller
+        control-plane: openelb-controller
     spec:
       affinity:
         podAntiAffinity:
@@ -1168,15 +1114,15 @@ spec:
               - key: app
                 operator: In
                 values:
-                - openelb-manager
+                - openelb-controller
             topologyKey: kubernetes.io/hostname
       containers:
       - args:
-        - --api-hosts=:50051
         - --metrics-addr=:50052
         - --webhook-port=443
+        - --leader-elect
         command:
-        - openelb-manager
+        - openelb-controller
         env:
         - name: OPENELB_NAMESPACE
           valueFrom:
@@ -1186,13 +1132,93 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubesphere/openelb:v0.5.1
+        image: kubesphere/openelb-controller:v0.6.0
         imagePullPolicy: IfNotPresent
-        name: openelb-manager
+        name: openelb-controller
         ports:
         - containerPort: 443
           name: webhook
           protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 300Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs/
+          name: webhook-cert
+          readOnly: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      serviceAccountName: openelb-controller
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+      volumes:
+      - name: webhook-cert
+        secret:
+          items:
+          - key: key
+            path: tls.key
+          - key: cert
+            path: tls.crt
+          secretName: openelb-admission
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: openelb
+    component: speaker
+  name: openelb-speaker
+  namespace: openelb-system
+spec:
+  selector:
+    matchLabels:
+      app: openelb
+      component: speaker
+  template:
+    metadata:
+      labels:
+        app: openelb
+        component: speaker
+    spec:
+      containers:
+      - args:
+        - --api-hosts=:50051
+        - --zap-log-level=info
+        - --enable-keepalived-vip=false
+        - --enable-layer2=true
+        command:
+        - openelb-speaker
+        env:
+        - name: OPENELB_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: MEMBER_LIST_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: key
+              name: memberlist
+        - name: OPENELB_DSNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: kubesphere/openelb-speaker:v0.6.0
+        imagePullPolicy: IfNotPresent
+        name: openelb-speaker
         readinessProbe:
           exec:
             command:
@@ -1216,31 +1242,20 @@ spec:
             add:
             - NET_ADMIN
             - SYS_TIME
-        volumeMounts:
-        - mountPath: /tmp/k8s-webhook-server/serving-certs/
-          name: webhook-cert
-          readOnly: true
+            - NET_RAW
+            - NET_BIND_SERVICE
       hostNetwork: true
       nodeSelector:
         kubernetes.io/os: linux
-      serviceAccountName: openelb-admission
+      serviceAccountName: openelb-speaker
       terminationGracePeriodSeconds: 10
       tolerations:
-      - key: CriticalAddonsOnly
-        operator: Exists
       - effect: NoSchedule
         key: node-role.kubernetes.io/master
+        operator: Exists
       - effect: NoSchedule
         key: node-role.kubernetes.io/control-plane
-      volumes:
-      - name: webhook-cert
-        secret:
-          items:
-          - key: key
-            path: tls.key
-          - key: cert
-            path: tls.crt
-          secretName: openelb-admission
+        operator: Exists
 ---
 apiVersion: batch/v1
 kind: Job
@@ -1255,7 +1270,7 @@ spec:
       containers:
       - args:
         - create
-        - --host=openelb-admission,openelb-admission.$(POD_NAMESPACE).svc
+        - --host=openelb-controller,openelb-controller.$(POD_NAMESPACE).svc
         - --namespace=$(POD_NAMESPACE)
         - --secret-name=openelb-admission
         env:
@@ -1288,7 +1303,7 @@ spec:
         - patch
         - --webhook-name=openelb-admission
         - --namespace=$(POD_NAMESPACE)
-        - --patch-mutating=true
+        - --patch-mutating=false
         - --secret-name=openelb-admission
         - --patch-failure-policy=Fail
         env:
@@ -1307,34 +1322,6 @@ spec:
       serviceAccountName: openelb-admission
 ---
 apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  creationTimestamp: null
-  name: openelb-admission
-webhooks:
-- admissionReviewVersions:
-  - v1beta1
-  - v1
-  clientConfig:
-    service:
-      name: openelb-admission
-      namespace: openelb-system
-      path: /validate-network-kubesphere-io-v1alpha2-svc
-  failurePolicy: Fail
-  name: mutating.eip.network.kubesphere.io
-  rules:
-  - apiGroups:
-    - ""
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - services
-  sideEffects: NoneOnDryRun
----
-apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: openelb-admission
@@ -1344,7 +1331,7 @@ webhooks:
   - v1
   clientConfig:
     service:
-      name: openelb-admission
+      name: openelb-controller
       namespace: openelb-system
       path: /validate-network-kubesphere-io-v1alpha2-eip
   failurePolicy: Fail

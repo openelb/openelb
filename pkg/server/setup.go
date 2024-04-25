@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/openelb/openelb/pkg/manager/client"
+	"github.com/openelb/openelb/pkg/client"
 	"github.com/openelb/openelb/pkg/server/internal/handler"
 	"github.com/openelb/openelb/pkg/server/internal/lib"
 	"github.com/openelb/openelb/pkg/server/internal/router"

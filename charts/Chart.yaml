@@ -1,0 +1,12 @@
+apiVersion: v2
+appVersion: 0.6.0
+description: Bare Metal Load-balancer for Kubernetes Cluster
+icon: https://raw.githubusercontent.com/openelb/openelb/master/docs/logo/openelb-vertical.svg
+maintainers:
+- email: kubesphere@gmail.com
+  name: KubeSphere
+name: openelb
+version: 0.6.0
+sources:
+  - https://github.com/openelb/openelb
+type: application

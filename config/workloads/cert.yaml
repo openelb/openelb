@@ -1,4 +1,11 @@
 apiVersion: v1
+data:
+  key: b3BlbmVsYi1zcGVha2Vycw==
+kind: Secret
+metadata:
+  name: memberlist
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: openelb-admission
@@ -12,7 +19,6 @@ rules:
       - admissionregistration.k8s.io
     resources:
       - validatingwebhookconfigurations
-      - mutatingwebhookconfigurations
     verbs:
       - get
       - update
@@ -65,11 +71,12 @@ spec:
     spec:
       containers:
         - name: create
+        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubespheredev/kube-webhook-certgen"
           image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
           imagePullPolicy: IfNotPresent
           args:
             - create
-            - --host=openelb-admission,openelb-admission.$(POD_NAMESPACE).svc
+            - --host=openelb-controller,openelb-controller.$(POD_NAMESPACE).svc
             - --namespace=$(POD_NAMESPACE)
             - --secret-name=openelb-admission
           env:
@@ -94,13 +101,14 @@ spec:
     spec:
       containers:
         - name: patch
+        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubespheredev/kube-webhook-certgen"
           image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
           imagePullPolicy: IfNotPresent
           args:
             - patch
             - --webhook-name=openelb-admission
             - --namespace=$(POD_NAMESPACE)
-            - --patch-mutating=true
+            - --patch-mutating=false
             - --secret-name=openelb-admission
             - --patch-failure-policy=Fail
           env:

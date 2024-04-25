@@ -1,0 +1,33 @@
+global_defs {
+  vrrp_version 3
+  script_user root
+  enable_script_security
+  router_id {{ .name }}
+}
+
+
+#Check if the VIP list is empty
+
+{{ range $name, $instance := .instances }}
+{{ if $instance.Enabled }}
+vrrp_instance {{ $name }} {
+  state BACKUP
+  interface {{ $instance.Iface }}
+  virtual_router_id {{ $instance.RouteID }}
+  priority {{ $instance.Priority }}
+  nopreempt
+  advert_int 1
+
+  track_interface {
+    {{ $instance.Iface }}
+  }
+
+  virtual_ipaddress { {{ range $instance.Svcips }}
+    {{ . }}{{ end }}
+  }
+
+  notify /keepalived-check.sh
+}
+
+{{ end }}
+{{ end }}

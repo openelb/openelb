@@ -1,289 +1,352 @@
 package vip
 
 import (
-	"context"
+	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"reflect"
+	"html/template"
+	"io"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
 	"strings"
+	"syscall"
+	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker"
 	"github.com/openelb/openelb/pkg/util"
-	appv1 "k8s.io/api/apps/v1"
+	"github.com/openelb/openelb/pkg/util/idalloc"
+	"gopkg.in/natefinch/lumberjack.v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clientset "k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 )
 
+const (
+	keepalivedStarter = "keepalived"
+	keepalivedCfg     = "/etc/keepalived/keepalived.conf"
+	keepalivedPid     = "/var/run/keepalived/keepalived.pid"
+	keepalivedTmpl    = "keepalived.tmpl"
+)
+
+var _ speaker.Speaker = &KeepAlived{}
+
 type KeepAlived struct {
-	log    logr.Logger
-	client *clientset.Clientset
-	data   map[string]string
-	conf   *KeepAlivedConfig
+	client         *kubernetes.Clientset
+	logPath        string
+	args           string
+	cmd            *exec.Cmd
+	keepalivedTmpl *template.Template
+	instances      map[string]*instances
+	vips           map[string]string
+	configs        map[string]*speaker.Config
+	idAlloc        idalloc.IDAllocator
 }
 
-type KeepAlivedConfig struct {
-	Args []string
+type instances struct {
+	Name     string
+	Iface    string
+	RouteID  uint32
+	Svcips   []string
+	Priority int
+	Enabled  bool
 }
 
-func (k *KeepAlived) SetBalancer(vip string, _ []corev1.Node) error {
-	ip := strings.SplitN(vip, ":", 2)
-
-	if svc, ok := k.data[ip[0]]; ok {
-		//TODO: support proxy: https://github.com/aledbf/kube-keepalived-vip#proxy-protocol-mode
-		svcArray := strings.Split(svc, ";")
-		exist := false
-		for _, s := range svcArray {
-			if s == ip[1] {
-				exist = true
-				break
-			}
-		}
-		if !exist {
-			k.data[ip[0]] = svc + ";" + ip[1]
-		}
-	} else {
-		k.data[ip[0]] = ip[1]
+func NewKeepAlived(client *kubernetes.Clientset, logPath, args string) (*KeepAlived, error) {
+	tmpl, err := template.ParseFiles(keepalivedTmpl)
+	if err != nil {
+		return nil, err
 	}
 
-	return k.updateConfigMap()
+	return &KeepAlived{
+		client:         client,
+		keepalivedTmpl: tmpl,
+		logPath:        logPath,
+		args:           args,
+		idAlloc:        idalloc.New(256),
+		configs:        make(map[string]*speaker.Config),
+		instances:      make(map[string]*instances),
+		vips:           make(map[string]string),
+	}, nil
+}
+
+func (k *KeepAlived) SetBalancer(vip string, nodes []corev1.Node) error {
+	iface := k.getInterfaces(vip)
+	if iface == "" {
+		return fmt.Errorf("no interface found for VIP %s", vip)
+	}
+
+	// clean the old record
+	value, exist := k.vips[vip]
+	if exist {
+		k.cleanRecord(vip, value)
+	}
+
+	// generate new record
+	bytes := k.getNodeSha256Bytes(nodes)
+	instanceName := hex.EncodeToString(bytes[:]) + "-" + iface
+	klog.Infof("generate instanceName %s", instanceName)
+	instance, exist := k.instances[instanceName]
+	if !exist {
+		routeid, err := k.idAlloc.AllocateWithHash(bytes)
+		if err != nil {
+			return err
+		}
+
+		instance = &instances{
+			Name:     instanceName,
+			Iface:    iface,
+			RouteID:  routeid,
+			Priority: 100,
+		}
+		k.instances[instanceName] = instance
+	}
+	instance.Enabled = k.isNodeInList(nodes)
+	instance.Svcips = append(instance.Svcips, vip)
+	k.vips[vip] = instanceName
+
+	// write the configuration file and reload keepalived
+	if err := k.WriteCfg(); err != nil {
+		klog.Error(err)
+		return err
+	}
+	return k.Reload()
+}
+
+func (k *KeepAlived) cleanRecord(vip, instanceName string) {
+	instance, ok := k.instances[instanceName]
+	if !ok {
+		return
+	}
+
+	for i, ip := range instance.Svcips {
+		if ip == vip {
+			if i == 0 {
+				instance.Svcips = instance.Svcips[1:]
+			} else if i == len(instance.Svcips)-1 {
+				instance.Svcips = instance.Svcips[:len(instance.Svcips)-1]
+			} else {
+				instance.Svcips = append(instance.Svcips[:i], instance.Svcips[i+1:]...)
+			}
+
+			break
+		}
+	}
+
+	if len(instance.Svcips) == 0 {
+		delete(k.instances, instanceName)
+		k.idAlloc.Free(instance.RouteID)
+	}
+}
+
+// getInterfaces returns the interface name for the given VIP
+func (k *KeepAlived) getInterfaces(vip string) string {
+	for _, c := range k.configs {
+		if c.IPRange.Contains(net.ParseIP(vip)) {
+			return c.Iface
+		}
+	}
+	return ""
+}
+
+// getNodeSha256Bytes returns the sha256 hash of the node names
+func (k *KeepAlived) getNodeSha256Bytes(nodes []corev1.Node) [32]byte {
+	nodenames := []string{}
+	for _, node := range nodes {
+		nodenames = append(nodenames, node.Name)
+	}
+	sort.Slice(nodenames, func(i, j int) bool {
+		return nodenames[i] < nodenames[j]
+	})
+
+	klog.Infof("nodes %s", strings.Join(nodenames, ","))
+	bytes := sha256.Sum256([]byte(strings.Join(nodenames, ",")))
+	return bytes
+}
+
+// isNodeInList returns true if the node is in the nodes list
+func (k *KeepAlived) isNodeInList(nodes []corev1.Node) bool {
+	for _, node := range nodes {
+		if node.Name == util.GetNodeName() {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (k *KeepAlived) DelBalancer(vip string) error {
-	ip := strings.SplitN(vip, ":", 2)
-	if len(ip) == 1 {
-		delete(k.data, ip[0])
-		return k.updateConfigMap()
+	instanceName, exist := k.vips[vip]
+	if !exist {
+		return nil
 	}
+	delete(k.vips, vip)
 
-	if svc, ok := k.data[ip[0]]; ok {
-		svcArray := strings.Split(svc, ";")
-		if len(svcArray) == 1 {
-			delete(k.data, ip[0])
-		} else {
-			for i, s := range svcArray {
-				if s == ip[1] {
-					svcArray = append(svcArray[:i], svcArray[i+1:]...)
-					break
-				}
-			}
-			k.data[ip[0]] = strings.Join(svcArray, ";")
-		}
+	instance, exist := k.instances[instanceName]
+	if !exist {
+		return nil
 	}
+	delete(k.instances, instanceName)
+	k.idAlloc.Free(instance.RouteID)
 
-	return k.updateConfigMap()
-}
-
-func (k *KeepAlived) updateConfigMap() error {
-	ctx := context.Background()
-	cm, err := k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Get(ctx, constant.OpenELBVipConfigMap, metav1.GetOptions{})
-	if err == nil {
-		if reflect.DeepEqual(cm.Data, k.data) {
-			return nil
-		}
-
-		cm.Data = k.data
-		_, err = k.client.CoreV1().ConfigMaps(util.EnvNamespace()).Update(ctx, cm, metav1.UpdateOptions{})
+	if err := k.WriteCfg(); err != nil {
+		klog.Error(err)
 		return err
 	}
-
-	if errors.IsNotFound(err) {
-		cm = &corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "ConfigMap",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      constant.OpenELBVipConfigMap,
-				Namespace: util.EnvNamespace(),
-			},
-			Data: k.data,
-		}
-
-		k.log.Info(fmt.Sprintf("not found configmap:%s, so create it", cm.Name))
-		_, err = k.client.CoreV1().ConfigMaps(cm.Namespace).Create(ctx, cm, metav1.CreateOptions{})
-		return err
-	}
-
-	k.log.Error(err, fmt.Sprintf("get configmap:%s error", cm.Name))
-	return err
+	return k.Reload()
 }
 
 func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
-	dsClient := k.client.AppsV1().DaemonSets(util.EnvNamespace())
-	ds, err := dsClient.Get(context.TODO(), constant.OpenELBVipName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			ds, err = dsClient.Create(context.TODO(), k.generateVIPDaemonSet(), metav1.CreateOptions{})
-			if err != nil {
-				k.log.Error(err, "keepalived daemonSet create error")
-				return err
-			}
-			k.log.Info(fmt.Sprintf("keepalived daemonSet %s created successfully", ds.Name))
-		} else {
-			k.log.Error(err, "keepalived daemonSet get error")
-			return err
-		}
-	}
-
-	cmClient := k.client.CoreV1().ConfigMaps(util.EnvNamespace())
-	cm := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      constant.OpenELBVipConfigMap,
-			Namespace: util.EnvNamespace(),
-		},
-	}
-	k.log.Info(fmt.Sprintf("create ConfigMap %s", cm.Name))
-	_, err = cmClient.Create(context.TODO(), cm, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
-		k.log.Error(err, fmt.Sprintf("create cm:%s error", cm.Name))
+	if err := k.WriteCfg(); err != nil {
+		klog.Error(err)
 		return err
 	}
 
+	started := make(chan bool, 1)
 	go func() {
-		select {
-		case <-stopCh:
-			deletePolicy := metav1.DeletePropagationForeground
-			deleteOpt := metav1.DeleteOptions{
-				PropagationPolicy: &deletePolicy,
+		for {
+			var logWriter io.WriteCloser
+			if k.logPath != "" {
+				logWriter = &lumberjack.Logger{
+					Filename:   k.logPath,
+					MaxSize:    100,
+					MaxBackups: 3,
+					MaxAge:     28,
+					Compress:   true,
+				}
+			} else {
+				logWriter = newKeepalivedLogPiper()
 			}
-			if err = dsClient.Delete(context.TODO(), ds.Name, deleteOpt); err != nil {
-				k.log.Error(err, "keepalived daemonSet delete error")
-			}
+			defer logWriter.Close()
 
-			if err = cmClient.Delete(context.TODO(), cm.Name, deleteOpt); err != nil {
-				k.log.Error(err, "keepalived configMap delete error")
+			args := []string{"--dont-fork", "--log-console", "--log-detail", "--vrrp", "--release-vips"}
+			if k.args != "" {
+				argArray := strings.Split(k.args, " ")
+				args = append(args, argArray...)
 			}
+			k.cmd = exec.Command(keepalivedStarter, args...)
+			k.cmd.Stdout = logWriter
+			k.cmd.Stderr = logWriter
+			if err := k.cmd.Start(); err != nil {
+				klog.Errorf("Error starting keepalived: %v", err)
+				select {
+				case started <- false:
+				default:
+				}
+				return
+			}
+			select {
+			case started <- true:
+			default:
+			}
+			klog.Infof("Keepalived: started with pid %d", k.cmd.Process.Pid)
 
-			return
+			crashCh := make(chan struct{})
+			go func() {
+				if err := k.cmd.Wait(); err != nil {
+					klog.Errorf("Keepalived: crashed, err: %s", err.Error())
+					// Avoid busy loop & hogging CPU resources by waiting before restarting keepalived.
+					time.Sleep(500 * time.Millisecond)
+				}
+				klog.Warning("Keepalived: crashed")
+				close(crashCh)
+			}()
+
+			<-crashCh
 		}
 	}()
+
+	<-started
 
 	return nil
 }
 
-// User can config Keepalived by ConfigMap to specify the images
-// If the ConfigMap exists and the configuration is set, use it,
-// 	otherwise, use the default image got from constants.
-func (k *KeepAlived) getConfig() (*corev1.ConfigMap, error) {
-	return k.client.CoreV1().ConfigMaps(util.EnvNamespace()).
-		Get(context.Background(), constant.OpenELBImagesConfigMap, metav1.GetOptions{})
+func (k *KeepAlived) ConfigureWithEIP(config speaker.Config, deleted bool) error {
+	netif, err := speaker.ParseInterface(config.Iface, true)
+	if err != nil || netif == nil {
+		return err
+	}
+
+	if err := speaker.ValidateInterface(netif, config.IPRange); err != nil {
+		return err
+	}
+
+	if deleted {
+		delete(k.configs, config.Name)
+	} else {
+		k.configs[config.Name] = &config
+	}
+	return nil
 }
 
-func (k *KeepAlived) getImage() string {
-	cm, err := k.getConfig()
+// Reload sends SIGHUP to keepalived to reload the configuration.
+func (k *KeepAlived) Reload() error {
+	klog.Info("Waiting for keepalived to start")
+	for !k.IsRunning() {
+		time.Sleep(time.Second)
+	}
+
+	klog.Info("reloading keepalived")
+	err := syscall.Kill(k.cmd.Process.Pid, syscall.SIGHUP)
 	if err != nil {
-		return constant.OpenELBDefaultKeepAliveImage
+		return fmt.Errorf("error reloading keepalived: %v", err)
 	}
 
-	image, exist := cm.Data[constant.OpenELBKeepAliveImage]
-	if !exist {
-		return constant.OpenELBDefaultKeepAliveImage
-	}
-	return image
+	return nil
 }
 
-func (k *KeepAlived) generateVIPDaemonSet() *appv1.DaemonSet {
-	var privileged = true
-	return &appv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      constant.OpenELBVipName,
-			Namespace: util.EnvNamespace(),
-			Labels: map[string]string{
-				"app": constant.OpenELBVipName,
-			},
-		},
-		Spec: appv1.DaemonSetSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": constant.OpenELBVipName,
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-					"app": constant.OpenELBVipName,
-				}},
-				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{
-						{
-							Name: "modules",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/lib/modules",
-								},
-							},
-						},
-						{
-							Name: "dev",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/dev",
-								},
-							},
-						},
-					},
-					Containers: []corev1.Container{
-						{
-							Image:           k.getImage(),
-							Name:            constant.OpenELBVipName,
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							SecurityContext: &corev1.SecurityContext{
-								Privileged: &privileged,
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									MountPath: "/lib/modules",
-									Name:      "modules",
-									ReadOnly:  true,
-								},
-								{
-									MountPath: "/dev",
-									Name:      "dev",
-								},
-							},
-							Env: []corev1.EnvVar{
-								{
-									Name: "POD_NAME",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
-										},
-									},
-								},
-								{
-									Name: "POD_NAMESPACE",
-									ValueFrom: &corev1.EnvVarSource{
-										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
-								},
-							},
-							Args: k.conf.Args,
-						},
-					},
-					ServiceAccountName: constant.OpenELBServiceAccountName,
-					HostNetwork:        true,
-				},
-			},
-		},
+// Whether keepalived process is currently running
+func (k *KeepAlived) IsRunning() bool {
+	if _, err := os.Stat(keepalivedPid); os.IsNotExist(err) {
+		klog.Error("Missing keepalived.pid")
+		return false
 	}
+
+	return true
 }
 
-var _ speaker.Speaker = &KeepAlived{}
-
-func NewKeepAlived(client *clientset.Clientset, conf *KeepAlivedConfig) *KeepAlived {
-	return &KeepAlived{
-		log:    ctrl.Log.WithName("keepalived"),
-		client: client,
-		conf:   conf,
-		data:   map[string]string{},
+// WriteCfg creates a new keepalived configuration file.
+// In case of an error with the generation it returns the error
+func (k *KeepAlived) WriteCfg() error {
+	dir := filepath.Dir(keepalivedCfg)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
 	}
+
+	w, err := os.Create(keepalivedCfg)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	if err = k.keepalivedTmpl.Execute(w, map[string]interface{}{
+		"name":      util.GetNodeName(),
+		"instances": k.instances,
+	}); err != nil {
+		return fmt.Errorf("unexpected error creating keepalived.cfg: %v", err)
+	}
+
+	return nil
+}
+
+// newKeepalivedLogPiper creates a writer that parses and logs log messages written by Keepalived.
+func newKeepalivedLogPiper() io.WriteCloser {
+	reader, writer := io.Pipe()
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(nil, 1024*1024)
+	klog.Info("start scanning keepalived logs")
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			klog.Info(line)
+		}
+		if err := scanner.Err(); err != nil {
+			klog.Error("Error while parsing keepalived logs")
+		}
+		reader.Close()
+	}()
+	return writer
 }

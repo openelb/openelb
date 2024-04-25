@@ -23,16 +23,18 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/openelb/openelb/pkg/client"
 	"github.com/openelb/openelb/pkg/util"
 	"github.com/openelb/openelb/pkg/validate"
 
 	"github.com/openelb/openelb/pkg/constant"
-	"github.com/openelb/openelb/pkg/manager/client"
-	cnet "github.com/projectcalico/libcalico-go/lib/net"
+
+	cnet "github.com/openelb/openelb/pkg/util/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (e Eip) IPToOrdinal(ip net.IP) int {
@@ -54,13 +56,7 @@ func (e Eip) GetSpeakerName() string {
 		return constant.OpenELBProtocolDummy
 	}
 
-	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
-		return e.Spec.Interface
-	}
-	if e.Spec.Protocol == constant.OpenELBProtocolVip {
-		return constant.OpenELBProtocolVip
-	}
-	return constant.OpenELBProtocolBGP
+	return e.GetProtocol()
 }
 
 func (e Eip) GetProtocol() string {
@@ -115,6 +111,12 @@ type EipSpec struct {
 	Interface     string `json:"interface,omitempty"`
 	Disable       bool   `json:"disable,omitempty"`
 	UsingKnownIPs bool   `json:"usingKnownIPs,omitempty"`
+	// priority for automatically assigning addresses
+	Priority int `json:"priority,omitempty"`
+	// specify the namespace for the allocation by name
+	Namespaces []string `json:"namespaces,omitempty"`
+	// specify the namespace for allocation by selector
+	NamespaceSelector map[string]string `json:"namespaceSelector,omitempty"`
 }
 
 // EipStatus defines the observed state of EIP
@@ -130,6 +132,7 @@ type EipStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="cidr",type=string,JSONPath=`.spec.address`
@@ -147,6 +150,7 @@ type Eip struct {
 }
 
 // +kubebuilder:object:root=true
+
 // EipList contains a list of Eip
 type EipList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -154,7 +158,7 @@ type EipList struct {
 	Items           []Eip `json:"items"`
 }
 
-// +kubebuilder:webhook:path=/validate-network-kubesphere-io-v1alpha2-eip,mutating=false,sideEffects=NoneOnDryRun,failurePolicy=fail,groups=network.kubesphere.io,resources=eips,verbs=create;update;delete,versions=v1alpha2,name=validate.eip.network.kubesphere.io
+// +kubebuilder:webhook:admissionReviewVersions=v1,path=/validate-network-kubesphere-io-v1alpha2-eip,mutating=false,sideEffects=NoneOnDryRun,failurePolicy=fail,groups=network.kubesphere.io,resources=eips,verbs=create;update;delete,versions=v1alpha2,name=validate.eip.network.kubesphere.io
 
 func (e Eip) IsOverlap(eip Eip) bool {
 	base, size, _ := e.GetSize()
@@ -170,50 +174,109 @@ func (e Eip) IsOverlap(eip Eip) bool {
 	return true
 }
 
-func (e Eip) ValidateCreate() error {
+func (e Eip) Contains(ip net.IP) bool {
+	base, size, _ := e.GetSize()
+
+	return cnet.IPToBigInt(cnet.IP{IP: ip}).Cmp(cnet.IPToBigInt(cnet.IP{IP: base})) >= 0 &&
+		cnet.IPToBigInt(cnet.IP{IP: ip}).Cmp(big.NewInt(0).Add(cnet.IPToBigInt(cnet.IP{IP: base}), big.NewInt(size-1))) <= 0
+}
+
+func (e Eip) IsDefault() bool {
+	return e.Annotations[constant.OpenELBEIPAnnotationDefaultPool] == "true"
+}
+
+func (e Eip) ValidateCreate() (admission.Warnings, error) {
 	_, _, err := e.GetSize()
 	if err != nil {
+		return nil, err
+	}
+
+	if (e.Spec.Protocol == constant.OpenELBProtocolLayer2 || e.Spec.Protocol == constant.OpenELBProtocolVip) && e.Spec.Interface == "" {
+		return nil, fmt.Errorf("if protocol is layer2 or vip, interface should not be empty")
+	}
+	return nil, e.validate(true)
+}
+
+func (e Eip) validate(overlap bool) error {
+	eips := &EipList{}
+	if err := client.Client.List(context.Background(), eips); err != nil {
 		return err
 	}
 
-	eips := EipList{}
-	err = client.Client.List(context.Background(), &eips)
-	if err != nil {
-		return err
+	if overlap {
+		if err := e.validateOverlap(eips); err != nil {
+			return err
+		}
 	}
-	existDefaultEip := false
+
+	return e.validateDefault(eips)
+
+}
+
+func (e Eip) validateDefault(eips *EipList) error {
+	if eips == nil {
+		return nil
+	}
+
+	if !validate.HasOpenELBDefaultEipAnnotation(e.Annotations) {
+		return nil
+	}
+
 	for _, eip := range eips.Items {
+		if eip.Name == e.Name {
+			continue
+		}
+
+		if validate.HasOpenELBDefaultEipAnnotation(eip.Annotations) {
+			return fmt.Errorf("already exists a default EIP")
+		}
+	}
+
+	return nil
+}
+
+func (e Eip) validateOverlap(eips *EipList) error {
+	if eips == nil {
+		return nil
+	}
+
+	for _, eip := range eips.Items {
+		if eip.Name == e.Name {
+			continue
+		}
+
 		if e.IsOverlap(eip) {
 			return fmt.Errorf("eip address overlap with %s", eip.Name)
 		}
-		if validate.HasOpenELBDefaultEipAnnotation(eip.Annotations) {
-			existDefaultEip = true
-		}
 	}
 
-	if e.Spec.Protocol == constant.OpenELBProtocolLayer2 {
-		if e.Spec.Interface == "" {
-			return fmt.Errorf("field spec.interface should not be empty")
-		}
-	}
-	if validate.HasOpenELBDefaultEipAnnotation(e.Annotations) && existDefaultEip {
-		return fmt.Errorf("already exists a default EIP")
-	}
 	return nil
 }
 
-func (e Eip) ValidateUpdate(old runtime.Object) error {
+func (e Eip) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	oldE := old.(*Eip)
-	if !reflect.DeepEqual(e.Spec, oldE.Spec) {
-		if e.Spec.Disable == oldE.Spec.Disable {
-			return fmt.Errorf("only allow modify field disable")
+	if !reflect.DeepEqual(e.Annotations, oldE.Annotations) {
+		if err := e.validate(false); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+
+	if !reflect.DeepEqual(e.Spec, oldE.Spec) {
+		if e.Spec.Address != oldE.Spec.Address {
+			return nil, fmt.Errorf("the address field is not allowed to be modified")
+		}
+	}
+
+	if (e.Spec.Protocol == constant.OpenELBProtocolLayer2 || e.Spec.Protocol == constant.OpenELBProtocolVip) && e.Spec.Interface == "" {
+		return nil, fmt.Errorf("if protocol is layer2 or vip, interface should not be empty")
+	}
+
+	return nil, nil
 }
 
-func (e Eip) ValidateDelete() error {
-	return nil
+// TODO :validate eip is not used:
+func (e Eip) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }
 
 func (e Eip) SetupWebhookWithManager(mgr ctrl.Manager) error {
