@@ -8,7 +8,7 @@ global:
 admission:
   image:
     # registry: docker.io
-    repository: kubespheredev/kube-webhook-certgen
+    repository: kubesphere/kube-webhook-certgen
     tag: v1.1.1
     pullPolicy: IfNotPresent
 
@@ -18,8 +18,8 @@ controller:
   webhookPort: 443
   image:
     # registry: docker.io
-    repository: rykren/openelb-controller
-    tag: test
+    repository: kubesphere/openelb-controller
+    tag: v0.6.0
     pullPolicy: IfNotPresent
   resources:
     limits:
@@ -56,8 +56,8 @@ speaker:
   monitorPort: 50052
   image:
     # registry: docker.io
-    repository: rykren/openelb-speaker
-    tag: test
+    repository: kubesphere/openelb-speaker
+    tag: v0.6.0
     pullPolicy: IfNotPresent
   resources:
     limits:

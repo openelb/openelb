@@ -23,7 +23,7 @@ kustomize build config/${BRANCH} -o deploy/openelb.yaml
 
 # patch comment
 images="image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1"
-comment="# If you cannot access \"registry.k8s.io/ingress-nginx/kube-webhook-certgen\", you can replace it with \"kubespheredev/kube-webhook-certgen\"\n        $images"
+comment="# If you cannot access \"registry.k8s.io/ingress-nginx/kube-webhook-certgen\", you can replace it with \"kubesphere/kube-webhook-certgen\"\n        $images"
 sed -i -e "s|$images|$comment|g" deploy/openelb.yaml
 
 echo "Done, the yaml is in deploy folder named 'openelb.yaml'"
