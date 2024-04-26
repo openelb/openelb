@@ -1278,7 +1278,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubespheredev/kube-webhook-certgen"
+        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubesphere/kube-webhook-certgen"
         image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
         imagePullPolicy: IfNotPresent
         name: create
@@ -1311,7 +1311,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubespheredev/kube-webhook-certgen"
+        # If you cannot access "registry.k8s.io/ingress-nginx/kube-webhook-certgen", you can replace it with "kubesphere/kube-webhook-certgen"
         image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.1.1
         imagePullPolicy: IfNotPresent
         name: patch
