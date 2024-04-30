@@ -1132,7 +1132,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubesphere/openelb-controller:v0.6.0
+        image: kubesphere/openelb-controller:master
         imagePullPolicy: IfNotPresent
         name: openelb-controller
         ports:
@@ -1193,7 +1193,6 @@ spec:
       containers:
       - args:
         - --api-hosts=:50051
-        - --zap-log-level=info
         - --enable-keepalived-vip=false
         - --enable-layer2=true
         command:
@@ -1216,7 +1215,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: kubesphere/openelb-speaker:v0.6.0
+        image: kubesphere/openelb-speaker:master
         imagePullPolicy: IfNotPresent
         name: openelb-speaker
         readinessProbe:

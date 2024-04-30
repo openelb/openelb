@@ -8,7 +8,7 @@ import (
 
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/packet/bgp"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/klog/v2"
 
 	"github.com/openelb/openelb/pkg/speaker/bgp/bgp/config"
 )
@@ -282,7 +282,7 @@ func NewAPIPolicyAssignmentFromTableStruct(t *PolicyAssignment) *api.PolicyAssig
 			case POLICY_DIRECTION_EXPORT:
 				return api.PolicyDirection_EXPORT
 			}
-			ctrl.Log.Error(fmt.Errorf("invalid policy-type: %d", t.Type), "error while converting policy assignment")
+			klog.Errorf("error while converting policy assignment: invalid policy-type: %d", t.Type)
 			return api.PolicyDirection_UNKNOWN
 		}(),
 		DefaultAction: func() api.RouteAction {

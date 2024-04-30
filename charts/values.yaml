@@ -19,7 +19,7 @@ controller:
   image:
     # registry: docker.io
     repository: kubesphere/openelb-controller
-    tag: v0.6.0
+    tag: master
     pullPolicy: IfNotPresent
   resources:
     limits:
@@ -57,7 +57,7 @@ speaker:
   image:
     # registry: docker.io
     repository: kubesphere/openelb-speaker
-    tag: v0.6.0
+    tag: master
     pullPolicy: IfNotPresent
   resources:
     limits:

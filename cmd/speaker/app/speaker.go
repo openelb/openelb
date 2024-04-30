@@ -23,15 +23,14 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/term"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 )
 
 func init() {
@@ -84,7 +83,7 @@ func NewOpenELBSpeakerCommand() *cobra.Command {
 }
 
 func Run(opt *options.OpenELBSpeakerOptions) error {
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opt.LogOptions.Options)))
+	ctrl.SetLogger(klog.NewKlogr())
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Metrics: metricsserver.Options{
 			BindAddress: opt.MetricsAddr,
@@ -92,8 +91,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		Scheme: scheme,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to new manager")
-		return err
+		klog.Fatalf("unable to new manager: %v", err)
 	}
 
 	spmanager := speaker.NewSpeakerManager(mgr.GetClient(), mgr.GetEventRecorderFor("speakerManager"))
@@ -101,18 +99,15 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 	//For gobgp
 	bgpServer := bgpd.NewGoBgpd(opt.Bgp)
 	if err := bgp.SetupBgpConfReconciler(bgpServer, mgr); err != nil {
-		setupLog.Error(err, "unable to setup bgpconf")
-		return err
+		klog.Fatalf("unable to setup bgpconf: %v", err)
 	}
 
 	if err := bgp.SetupBgpPeerReconciler(bgpServer, mgr); err != nil {
-		setupLog.Error(err, "unable to setup bgppeer")
-		return err
+		klog.Fatalf("unable to setup bgppeer: %v", err)
 	}
 
 	if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer); err != nil {
-		setupLog.Error(err, "unable to register bgp speaker")
-		return err
+		klog.Fatalf("unable to register bgp speaker: %v", err)
 	}
 
 	//For keepalive
@@ -120,12 +115,10 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 	if opt.Vip.EnableVIP {
 		keepalive, err := vip.NewKeepAlived(k8sClient, opt.Vip.LogPath, opt.Vip.KeepAlivedArgs)
 		if err != nil {
-			setupLog.Error(err, "unable to new vip speaker")
-			return err
+			klog.Fatalf("unable to new vip speaker: %v", err)
 		}
 		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolVip, keepalive); err != nil {
-			setupLog.Error(err, "unable to register keepalive speaker")
-			return err
+			klog.Fatalf("unable to register vip speaker: %v", err)
 		}
 	}
 
@@ -134,13 +127,11 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 	if opt.Layer2.EnableLayer2 {
 		layer2speaker, err := layer2.NewSpeaker(k8sClient, opt.Layer2, reloadChan)
 		if err != nil {
-			setupLog.Error(err, "unable to new layer2 speaker")
-			return err
+			klog.Fatalf("unable to new layer2 speaker: %v", err)
 		}
 
 		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolLayer2, layer2speaker); err != nil {
-			setupLog.Error(err, "unable to register layer2 speaker")
-			return err
+			klog.Fatalf("unable to register layer2 speaker: %v", err)
 		}
 	}
 
@@ -149,8 +140,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("lb"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to setup lb")
-		return err
+		klog.Fatalf("unable to setup lbcontroller: %v", err)
 	}
 
 	if err := (&speaker.EIPReconciler{
@@ -160,13 +150,11 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("eip"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to setup lb")
-		return err
+		klog.Fatalf("unable to setup eipcontroller: %v", err)
 	}
 
 	if err = mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "unable to run the manager")
-		return err
+		klog.Fatalf("unable to run the manager: %v", err)
 	}
 
 	return nil

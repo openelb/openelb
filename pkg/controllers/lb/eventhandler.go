@@ -7,13 +7,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-var nodeEnqueueLog = ctrl.Log.WithName("eventhandler").WithName("EnqueueRequestForNode")
 
 type EnqueueRequestForNode struct {
 	client.Client
@@ -23,7 +21,7 @@ func (e *EnqueueRequestForNode) getServices() []corev1.Service {
 	var svcs corev1.ServiceList
 
 	if err := e.List(context.Background(), &svcs); err != nil {
-		nodeEnqueueLog.Error(err, "Failed to list services")
+		klog.Errorf("Failed to list services: %v", err)
 		return nil
 	}
 
@@ -40,7 +38,7 @@ func (e *EnqueueRequestForNode) getServices() []corev1.Service {
 // Create implements EventHandler
 func (e *EnqueueRequestForNode) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
-		nodeEnqueueLog.Error(nil, "CreateEvent received with no metadata", "event", evt)
+		klog.Error("CreateEvent received with no metadata", "event", evt)
 		return
 	}
 
@@ -85,11 +83,11 @@ func nodeInternalAndExternalIP(obj runtime.Object) (externalIP, internalIP strin
 // Update implements EventHandler
 func (e *EnqueueRequestForNode) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if evt.ObjectOld == nil {
-		nodeEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
+		klog.Error("UpdateEvent received with no old metadata", "event", evt)
 	}
 
 	if evt.ObjectNew == nil {
-		nodeEnqueueLog.Error(nil, "UpdateEvent received with no new metadata", "event", evt)
+		klog.Error("UpdateEvent received with no new metadata", "event", evt)
 	}
 
 	for _, svc := range e.getServices() {
@@ -103,7 +101,7 @@ func (e *EnqueueRequestForNode) Update(ctx context.Context, evt event.UpdateEven
 // Delete implements EventHandler
 func (e *EnqueueRequestForNode) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
-		nodeEnqueueLog.Error(nil, "DeleteEvent received with no metadata", "event", evt)
+		klog.Error("DeleteEvent received with no metadata", "event", evt)
 		return
 	}
 	for _, svc := range e.getServices() {
@@ -119,8 +117,6 @@ func (e *EnqueueRequestForNode) Generic(ctx context.Context, evt event.GenericEv
 
 }
 
-var deAndDsEnqueueLog = ctrl.Log.WithName("eventhandler").WithName("EnqueueRequestForDeAndDs")
-
 // Enqueue requests for Deployments and DaemonSets type
 // Only OpenELB NodeProxy needs this
 type EnqueueRequestForDeAndDs struct {
@@ -133,7 +129,7 @@ func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 	var svcs corev1.ServiceList
 
 	if err := e.List(context.Background(), &svcs); err != nil {
-		deAndDsEnqueueLog.Error(err, "Failed to list services")
+		klog.Errorf("Failed to list services: %v", err)
 		return nil
 	}
 
@@ -150,7 +146,7 @@ func (e *EnqueueRequestForDeAndDs) getServices() []corev1.Service {
 // Create implements EventHandler
 func (e *EnqueueRequestForDeAndDs) Create(ctx context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
-		deAndDsEnqueueLog.Error(nil, "CreateEvent received with no metadata", "event", evt)
+		klog.Error("CreateEvent received with no metadata", "event", evt)
 		return
 	}
 
@@ -165,11 +161,11 @@ func (e *EnqueueRequestForDeAndDs) Create(ctx context.Context, evt event.CreateE
 // Update implements EventHandler
 func (e *EnqueueRequestForDeAndDs) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if evt.ObjectOld == nil {
-		deAndDsEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
+		klog.Error("UpdateEvent received with no old metadata", "event", evt)
 	}
 
 	if evt.ObjectNew == nil {
-		deAndDsEnqueueLog.Error(nil, "UpdateEvent received with no new metadata", "event", evt)
+		klog.Error("UpdateEvent received with no new metadata", "event", evt)
 	}
 
 	for _, svc := range e.getServices() {
@@ -183,7 +179,7 @@ func (e *EnqueueRequestForDeAndDs) Update(ctx context.Context, evt event.UpdateE
 // Delete implements EventHandler
 func (e *EnqueueRequestForDeAndDs) Delete(ctx context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	if evt.Object == nil {
-		deAndDsEnqueueLog.Error(nil, "DeleteEvent received with no metadata", "event", evt)
+		klog.Error("DeleteEvent received with no metadata", "event", evt)
 		return
 	}
 	for _, svc := range e.getServices() {

@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -169,7 +170,7 @@ var _ = BeforeSuite(func(done Done) {
 	go func() {
 		err := mgr.Start(stopCh)
 		if err != nil {
-			ctrl.Log.Error(err, "failed to start manager")
+			klog.Errorf("failed to start manager: %v", err)
 		}
 	}()
 

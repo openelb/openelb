@@ -9,7 +9,6 @@ import (
 	"github.com/openelb/openelb/cmd/controller/app/options"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/controllers/lb"
-	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/manager"
 	_ "github.com/openelb/openelb/pkg/metrics"
 	"github.com/openelb/openelb/pkg/version"
@@ -18,6 +17,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/term"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -75,33 +75,27 @@ func NewOpenELBManagerCommand() *cobra.Command {
 }
 
 func Run(c *options.OpenELBManagerOptions) error {
-	log.InitLog(c.LogOptions)
-	setupLog := ctrl.Log.WithName("manager")
-
+	ctrl.SetLogger(klog.NewKlogr())
 	mgr, err := manager.NewManager(ctrl.GetConfigOrDie(), c.GenericOptions)
 	if err != nil {
-		setupLog.Error(err, "unable to new manager")
-		return err
+		klog.Fatalf("unable to new manager: %v", err)
 	}
 
 	// Setup all Controllers
 	err = ipam.SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to setup ipam")
-		return err
+		klog.Fatalf("unable to setup ipam: %v", err)
 	}
 	networkv1alpha2.Eip{}.SetupWebhookWithManager(mgr)
 
 	if err = lb.SetupServiceReconciler(mgr); err != nil {
-		setupLog.Error(err, "unable to setup lb controller")
-		return err
+		klog.Fatalf("unable to setup lb controller: %v", err)
 	}
 
 	stopCh := ctrl.SetupSignalHandler()
 	if err = mgr.Start(stopCh); err != nil {
-		setupLog.Error(err, "unable to run the manager")
-		return err
+		klog.Fatalf("unable to run the manager: %v", err)
 	}
 
-	return err
+	return nil
 }

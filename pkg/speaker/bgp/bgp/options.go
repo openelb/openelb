@@ -1,7 +1,6 @@
 package bgp
 
 import (
-	"github.com/go-logr/logr"
 	"github.com/osrg/gobgp/pkg/server"
 	"github.com/spf13/pflag"
 )
@@ -23,5 +22,4 @@ func (options *BgpOptions) AddFlags(fs *pflag.FlagSet) {
 type Bgp struct {
 	bgpServer *server.BgpServer
 	rack      string
-	log       logr.Logger
 }

@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -70,8 +71,6 @@ func peerMatchNode(peer *v1alpha2.BgpPeer, node *corev1.Node) (bool, error) {
 // +kubebuilder:rbac:groups=network.kubesphere.io,resources=bgppeers/status,verbs=get;update;patch
 
 func (r BgpPeerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.Log.WithValues("request", req.NamespacedName)
-
 	matchNode := true
 
 	bgpPeer := &v1alpha2.BgpPeer{}
@@ -102,7 +101,7 @@ func (r BgpPeerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
 		err := r.BgpServer.HandleBgpPeer(clone, true)
 		if err != nil {
-			log.Error(err, "cannot delete bgp peer, maybe need to delete manually")
+			klog.Error(err, "cannot delete bgp peer, maybe need to delete manually")
 		}
 
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)

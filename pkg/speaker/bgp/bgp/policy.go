@@ -9,6 +9,7 @@ import (
 	api "github.com/osrg/gobgp/api"
 	"github.com/osrg/gobgp/pkg/server"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/speaker/bgp/bgp/config"
@@ -21,7 +22,7 @@ func (b *Bgp) updatePolicy(cm *corev1.ConfigMap) error {
 	}
 	policyConf, ok := cm.Data[constant.OpenELBBgpName]
 	if !ok {
-		b.log.Info("invalid configmap, %s missing", constant.OpenELBBgpName)
+		klog.Infof("invalid configmap, %s missing", constant.OpenELBBgpName)
 		return nil
 	}
 	path, err := writeToTempFile(policyConf)
@@ -79,7 +80,7 @@ func (b *Bgp) assignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServe
 		}),
 	})
 	if err != nil {
-		b.log.Error(err, "failed setting import policy assignment")
+		klog.Errorf("failed setting import policy assignment: %v", err)
 		return err
 	}
 	def = toDefaultTable(a.DefaultExportPolicy)
@@ -93,7 +94,7 @@ func (b *Bgp) assignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServe
 		}),
 	})
 	if err != nil {
-		b.log.Error(err, "failed setting export policy assignment")
+		klog.Errorf("failed setting export policy assignment: %v", err)
 		return err
 	}
 	return nil

@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"time"
 
-	"github.com/go-logr/logr"
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/util"
@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -25,7 +26,6 @@ import (
 
 type EIPController struct {
 	client.Client
-	log logr.Logger
 	record.EventRecorder
 }
 
@@ -33,7 +33,6 @@ const name = "EIPController"
 
 func SetupWithManager(mgr ctrl.Manager) error {
 	reconcile := &EIPController{
-		log:           ctrl.Log.WithName(name),
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor(name),
 	}
@@ -62,8 +61,11 @@ func SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
 
 func (i *EIPController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	i.log.Info("start setup openelb eip")
-	defer i.log.Info("finish reconcile openelb eip")
+	klog.V(4).Infof("start setup openelb eip %s", req.Name)
+	startTime := time.Now()
+	defer func() {
+		klog.V(4).Infof("finish reconcile openelb eip %s in %s", req.Name, time.Since(startTime))
+	}()
 
 	eip := &networkv1alpha2.Eip{}
 	err := i.Get(ctx, req.NamespacedName, eip)
