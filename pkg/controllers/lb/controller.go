@@ -18,8 +18,8 @@ package lb
 import (
 	"context"
 	"reflect"
+	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/util"
@@ -27,10 +27,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -40,6 +39,8 @@ import (
 )
 
 const (
+	controllerName = "EIPController"
+
 	ReasonDeleteLoadBalancer = "deleteLoadBalancer"
 	ReasonAddLoadBalancer    = "addLoadBalancer"
 	AddLoadBalancerMsg       = "success to add nexthops %v"
@@ -63,27 +64,7 @@ const (
 type ServiceReconciler struct {
 	client.Client
 	ipmanager *ipam.Manager
-	log       logr.Logger
 	record.EventRecorder
-}
-
-func (r *ServiceReconciler) shouldReconcileEP(e metav1.Object) bool {
-	if e.GetAnnotations() != nil {
-		if e.GetAnnotations()["control-plane.alpha.kubernetes.io/leader"] != "" {
-			return false
-		}
-	}
-
-	svc := &corev1.Service{}
-	err := r.Get(context.TODO(), types.NamespacedName{Namespace: e.GetNamespace(), Name: e.GetName()}, svc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return false
-		}
-		return true
-	}
-
-	return IsOpenELBService(svc)
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -159,9 +140,12 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.Log.WithValues("service", req.NamespacedName)
-	log.Info("start setup openelb service")
-	defer log.Info("finish reconcile openelb service")
+	klog.V(4).Infof("Starting to setup service %s/%s", req.Namespace, req.Name)
+	startTime := time.Now()
+
+	defer func() {
+		klog.V(4).Infof("Finished reconcile service %s/%s in %s", req.Namespace, req.Name, time.Since(startTime))
+	}()
 
 	svc := &corev1.Service{}
 	err := r.Get(ctx, req.NamespacedName, svc)
@@ -179,6 +163,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	request, err := r.ipmanager.ConstructRequest(ctx, svc)
 	if err != nil {
+		r.Eventf(svc, corev1.EventTypeWarning, "ConstructRequest", "failed to construct request: %s", err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -191,7 +176,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if request.Release != nil {
 		err = r.ipmanager.ReleaseIP(ctx, request.Release)
 		if err != nil {
-			log.Error(err, "release ip", "request", request)
+			klog.Errorf("%s release ip[%s] form eip[%s] error :%s", request.Release.Key, request.Release.IP, request.Release.Eip, err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "ReleaseIPFailed", err.Error())
 			return ctrl.Result{}, err
 		}
@@ -201,12 +186,13 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)
 		delete(clone.Labels, constant.OpenELBEIPAnnotationKeyV1Alpha2)
 		r.Eventf(svc, corev1.EventTypeNormal, "ReleaseIP", "success to release ip: %s", request.Release.IP)
+		klog.Infof("release ip[%s] from eip[%s] for service %s successfully", request.Release.IP, request.Release.Eip, request.Release.Key)
 	}
 
 	if request.Allocate != nil {
 		err = r.ipmanager.AssignIP(ctx, request.Allocate)
 		if err != nil {
-			log.Error(err, "assign ip", "request", request)
+			klog.Errorf("%s assign ip[%s] form eip[%s] error :%s", request.Allocate.Key, request.Allocate.IP, request.Allocate.Eip, err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "AssignIPFailed", err.Error())
 			return ctrl.Result{}, err
 		}
@@ -221,12 +207,13 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		clone.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2] = request.Allocate.Eip
 		statusIPs = []corev1.LoadBalancerIngress{{IP: request.Allocate.IP}}
 		r.Eventf(svc, corev1.EventTypeNormal, "AssignIP", "success to assign ip: %s", request.Allocate.IP)
+		klog.Infof("assign ip[%s] from eip[%s] for service %s successfully", request.Allocate.IP, request.Allocate.Eip, request.Allocate.Key)
 	}
 
 	// update service resource
 	if !reflect.DeepEqual(svc.Labels, clone.Labels) {
 		if err := r.Update(ctx, clone); err != nil {
-			log.Error(err, "update update labels")
+			klog.Errorf("update update labels error:%s", err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -234,7 +221,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	clone.Status.LoadBalancer.Ingress = statusIPs
 	if !reflect.DeepEqual(svc.Status, clone.Status) {
 		if err := r.Status().Update(context.Background(), clone); err != nil {
-			log.Error(err, "update service status")
+			klog.Errorf("update service status error:%s", err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "UpdateServiceStatus", err.Error())
 			return ctrl.Result{}, err
 		}
@@ -247,8 +234,7 @@ func SetupServiceReconciler(mgr ctrl.Manager) error {
 	lb := &ServiceReconciler{
 		ipmanager:     ipam.NewManager(mgr.GetClient()),
 		Client:        mgr.GetClient(),
-		log:           ctrl.Log.WithName("Manager"),
-		EventRecorder: mgr.GetEventRecorderFor("Manager"),
+		EventRecorder: mgr.GetEventRecorderFor("OpenELBController"),
 	}
 	return lb.SetupWithManager(mgr)
 }

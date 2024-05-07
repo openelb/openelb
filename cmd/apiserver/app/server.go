@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/openelb/openelb/cmd/apiserver/app/options"
-	"github.com/openelb/openelb/pkg/log"
 	"github.com/openelb/openelb/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -69,19 +68,12 @@ func NewOpenELBApiServerCommand() *cobra.Command {
 }
 
 func Run(c *options.OpenELBApiServerOptions) error {
-	log.InitLog(c.LogOptions)
+	// client, err := client.NewClient(ctrl.GetConfigOrDie())
+	// stopCh := ctrl.SetupSignalHandler()
+	// err = server.SetupHTTPServer(stopCh, client, c.HTTPOptions)
+	// if err != nil {
+	// 	klog.Fatalf("unable to setup http server: %v", err)
+	// }
 
-	//client, err := client.NewClient(ctrl.GetConfigOrDie())
-	//
-	//setupLog := ctrl.Log.WithName("apiserver")
-	//
-	//stopCh := ctrl.SetupSignalHandler()
-	//
-	//err = server.SetupHTTPServer(stopCh, client, c.HTTPOptions)
-	//if err != nil {
-	//	setupLog.Error(err, "unable to setup http server")
-	//}
-
-	//return err
 	return nil
 }

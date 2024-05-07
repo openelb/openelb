@@ -5,6 +5,7 @@ import (
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 )
 
 func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete bool, cm *corev1.ConfigMap) error {
@@ -28,7 +29,7 @@ func (b *Bgp) HandleBgpGlobalConfig(global *bgpapi.BgpConf, rack string, delete 
 	}
 	err = b.updatePolicy(cm)
 	if err != nil {
-		b.log.Error(err, "failed to update bgp policy")
+		klog.Errorf("failed to update bgp policy: %v", err)
 	}
-	return nil
+	return err
 }

@@ -6,7 +6,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/go-logr/logr"
 	"github.com/j-keck/arping"
 	"github.com/mdlayher/arp"
 	"github.com/mdlayher/ethernet"
@@ -15,7 +14,6 @@ import (
 	"github.com/openelb/openelb/pkg/util/iprange"
 	"github.com/vishvananda/netlink"
 	"k8s.io/klog/v2"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -27,8 +25,6 @@ const (
 var _ Announcer = &arpAnnouncer{}
 
 type arpAnnouncer struct {
-	logger logr.Logger
-
 	intf  *net.Interface
 	addrs []netlink.Addr
 	conn  *arp.Client
@@ -109,7 +105,6 @@ func newARPAnnouncer(ifi *net.Interface) (*arpAnnouncer, error) {
 	link, _ := netlink.LinkByIndex(ifi.Index)
 	addrs, _ := netlink.AddrList(link, netlink.FAMILY_V4)
 	ret := &arpAnnouncer{
-		logger:   ctrl.Log.WithName("arpSpeaker"),
 		intf:     ifi,
 		addrs:    addrs,
 		conn:     client,
@@ -196,20 +191,18 @@ func (a *arpAnnouncer) gratuitous(ip, nodeIP net.IP) error {
 		return fmt.Errorf("failed to resolve ip %s, err=%v", nodeIP, err)
 	}
 	a.setMac(ip.String(), hwAddr)
-	a.logger.Info("map ingress ip", "ingress", ip.String(), "nodeIP", nodeIP.String(), "nodeMac", hwAddr.String())
-
+	klog.Infof("store ingress ip related node ip and mac. %s-%s-%s", ip.String(), nodeIP.String(), hwAddr.String())
 	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
-		a.logger.Info("send gratuitous arp packet",
-			"eip", ip, "nodeIP", nodeIP, "hwAddr", hwAddr)
+		klog.Infof("send gratuitous arp packet: %s-%s-%s", ip, nodeIP, hwAddr)
 
 		fb, err := generateArp(a.intf.HardwareAddr, op, hwAddr, ip, ethernet.Broadcast, ip)
 		if err != nil {
-			a.logger.Error(err, "generate gratuitous arp packet")
+			klog.Errorf("generate gratuitous arp packet: %v", err)
 			return err
 		}
 
 		if _, err = a.p.WriteTo(fb, &raw.Addr{HardwareAddr: ethernet.Broadcast}); err != nil {
-			a.logger.Error(err, "send gratuitous arp packet")
+			klog.Errorf("send gratuitous arp packet: %v", err)
 			return err
 		}
 	}
@@ -277,11 +270,11 @@ func (a *arpAnnouncer) processRequest() dropReason {
 	pkt, _, err := a.conn.Read()
 	if err != nil {
 		if err == io.EOF {
-			a.logger.Info("arp speaker closed", "interface", a.intf.Name)
+			klog.Infof("arp speaker interface %s closed", a.intf.Name)
 			return dropReasonClosed
 		}
 
-		a.logger.Error(err, "arp speaker read error", "interface", a.intf.Name)
+		klog.Errorf("arp speaker read interface %s error: %v", a.intf.Name, err)
 		return dropReasonError
 	}
 
@@ -296,19 +289,16 @@ func (a *arpAnnouncer) processRequest() dropReason {
 	}
 
 	metrics.UpdateRequestsReceivedMetrics(pkt.TargetIP.String())
-	a.logger.Info("got ARP request, sending response",
-		"interface", a.intf.Name,
-		"ip", pkt.TargetIP, "senderIP", pkt.SenderIP,
-		"senderMAC", pkt.SenderHardwareAddr, "responseMAC", *hwAddr)
-
+	klog.Infof("interface %s got ARP request, send response %s-%s to %s-%s .",
+		a.intf.Name, pkt.TargetIP, *hwAddr, pkt.SenderIP, pkt.SenderHardwareAddr)
 	fb, err := generateArp(a.intf.HardwareAddr, arp.OperationReply, *hwAddr, pkt.TargetIP, pkt.SenderHardwareAddr, pkt.SenderIP)
 	if err != nil {
-		a.logger.Error(err, "generate arp reply packet error")
+		klog.Errorf("generate arp reply packet error: %v", err)
 		return dropReasonError
 	}
 
 	if _, err := a.p.WriteTo(fb, &raw.Addr{HardwareAddr: pkt.SenderHardwareAddr}); err != nil {
-		a.logger.Error(err, "failed to send response")
+		klog.Errorf("failed to send response: %v", err)
 		return dropReasonError
 	}
 

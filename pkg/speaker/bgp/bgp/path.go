@@ -16,7 +16,6 @@ import (
 	bgppacket "github.com/osrg/gobgp/pkg/packet/bgp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func getPathIdentifier(nexthop string) uint32 {
@@ -196,7 +195,7 @@ func (b *Bgp) SetBalancer(ip string, nodes []corev1.Node) error {
 		}
 	}
 
-	ctrl.Log.Info("bgp setBalancer", "ip", ip, "nexthops", nexthops)
+	klog.Infof("bgp setBalancer ip:%s nexthops:%s", ip, nexthops)
 	return b.setBalancer(ip, nexthops)
 }
 
@@ -274,7 +273,7 @@ func (b *Bgp) DelBalancer(ip string) error {
 		return errDelete
 	}
 
-	ctrl.Log.Info("bgp delBalancer", "ip address", ip)
+	klog.Infof("bgp delBalancer ip:%s", ip)
 	peerList := b.getPeers()
 	if peerList != nil && existPath {
 		for _, peer := range peerList {

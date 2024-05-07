@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -73,7 +74,7 @@ func (r *BgpConfReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	clone := instance.DeepCopy()
 	if util.IsDeletionCandidate(clone, constant.FinalizerName) {
 		if err := r.BgpServer.HandleBgpGlobalConfig(clone, "", true, nil); err != nil {
-			ctrl.Log.Error(err, "cannot delete bgp conf, maybe need to delete manually")
+			klog.Errorf("cannot delete bgp conf, maybe need to delete manually: %v", err)
 		}
 
 		controllerutil.RemoveFinalizer(clone, constant.FinalizerName)

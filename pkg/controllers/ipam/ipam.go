@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go-logr/logr"
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/metrics"
@@ -22,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,7 +32,6 @@ const (
 
 type Manager struct {
 	client.Client
-	log logr.Logger
 	record.EventRecorder
 }
 
@@ -60,7 +57,6 @@ type Request struct {
 
 func NewManager(client client.Client) *Manager {
 	return &Manager{
-		log:    ctrl.Log.WithName("IPAM"),
 		Client: client,
 	}
 }
@@ -210,7 +206,7 @@ func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (Reques
 	if svcSpecifyEIP == "" {
 		eip, err := i.getEIP(context.Background(), svc.Namespace, svcSpecifyLBIP, svcSpecifyEIP)
 		if err != nil || eip == nil {
-			i.log.Error(err, "get eip error")
+			klog.Errorf("get eip error:%s", err.Error())
 			return req, err
 		}
 		svcSpecifyEIP = eip.Name
@@ -375,7 +371,12 @@ func (i *Manager) getDefaultEIP(ctx context.Context, name string) (*networkv1alp
 			return nseips[i].Spec.Priority < nseips[j].Spec.Priority
 		})
 
-		i.log.V(1).Info("auto select eip for allocation", "eip", nseips[0].Name, "all eip", nseips)
+		allEIPStr := []string{}
+		for _, e := range nseips {
+			allEIPStr = append(allEIPStr, e.Name)
+		}
+		klog.V(1).Infof("all available eips in weight order is: %s", strings.Join(allEIPStr, ","))
+		klog.V(1).Infof("auto select eip[%s] for allocation", nseips[0].Name)
 		return nseips[0], nil
 	}
 
@@ -431,7 +432,6 @@ func (i *Manager) AssignIP(ctx context.Context, allocate *svcRecord) error {
 	}
 
 	allocate.IP = addr
-	i.log.Info("assign ip", "allocate Record", allocate, "eip status", clone.Status)
 	return nil
 }
 
@@ -456,7 +456,6 @@ func (i *Manager) ReleaseIP(ctx context.Context, release *svcRecord) error {
 		}
 	}
 
-	i.log.Info("release ip", "release Record", release, "eip status", clone.Status)
 	return nil
 }
 

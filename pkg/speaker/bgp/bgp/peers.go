@@ -10,7 +10,7 @@ import (
 	"github.com/openelb/openelb/pkg/util"
 	api "github.com/osrg/gobgp/api"
 	"golang.org/x/net/context"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/klog/v2"
 )
 
 func defaultFamily(ip net.IP) *bgpapi.Family {
@@ -37,7 +37,7 @@ func (b *Bgp) HandleBgpPeerStatus(bgpPeers []bgpapi.BgpPeer) []*bgpapi.BgpPeer {
 	fn := func(peer *api.Peer) {
 		tmp, err := bgpapi.GetStatusFromGoBgpPeer(peer)
 		if err != nil {
-			ctrl.Log.Error(err, "failed to GetStatusFromGoBgpPeer", "peer", peer)
+			klog.Errorf("failed to GetStatusFromGoBgpPeer: %v", err)
 			return
 		}
 
@@ -70,7 +70,7 @@ func (b *Bgp) HandleBgpPeerStatus(bgpPeers []bgpapi.BgpPeer) []*bgpapi.BgpPeer {
 	}, fn)
 
 	for _, del := range dels {
-		ctrl.Log.Info("delete useless bgp peer", "peer", del)
+		klog.Infof("delete useless bgp peer: %s", del.Conf.NeighborAddress)
 		b.bgpServer.DeletePeer(context.Background(), &api.DeletePeerRequest{
 			Address:   del.Conf.NeighborAddress,
 			Interface: del.Conf.NeighborInterface,
@@ -83,7 +83,7 @@ func (b *Bgp) HandleBgpPeerStatus(bgpPeers []bgpapi.BgpPeer) []*bgpapi.BgpPeer {
 func (b *Bgp) GetBgpConfStatus() bgpapi.BgpConf {
 	result, err := b.bgpServer.GetBgp(context.Background(), nil)
 	if err != nil {
-		ctrl.Log.Error(err, "failed to get bgpconf status")
+		klog.Errorf("failed to get bgpconf status: %v", err)
 		return bgpapi.BgpConf{
 			Status: bgpapi.BgpConfStatus{
 				NodesConfStatus: map[string]bgpapi.NodeConfStatus{

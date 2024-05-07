@@ -6,7 +6,7 @@ require (
 	github.com/coreos/go-iptables v0.4.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/golang/protobuf v1.5.4
 	github.com/j-keck/arping v1.0.1
 	github.com/mdlayher/arp v0.0.0-20191213142603-f72070a231fc
@@ -22,7 +22,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/vishvananda/netlink v1.1.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/net v0.19.0
 	google.golang.org/grpc v1.58.3
 	k8s.io/api v0.29.2

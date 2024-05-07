@@ -31,7 +31,6 @@ spec:
             - openelb-speaker
           args:
             - --api-hosts=:50051
-            - --zap-log-level=info
             - --enable-keepalived-vip=false
             - --enable-layer2=true
           image: speaker:latest

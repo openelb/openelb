@@ -8,7 +8,7 @@ import (
 	"github.com/osrg/gobgp/pkg/server"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/klog/v2"
 )
 
 var _ speaker.Speaker = &Bgp{}
@@ -21,20 +21,17 @@ func NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
 
 	return &Bgp{
 		bgpServer: bgpServer,
-		log:       ctrl.Log.WithName("bgpserver"),
 	}
 }
 
 func (b *Bgp) run(stopCh <-chan struct{}) {
-	log := ctrl.Log.WithName("gobgpd")
-
-	log.Info("gobgpd starting")
+	klog.Info("gobgpd starting")
 	go b.bgpServer.Serve()
 	<-stopCh
-	log.Info("gobgpd ending")
+	klog.Info("gobgpd ending")
 	err := b.bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
 	if err != nil {
-		log.Error(err, "failed to stop gobgpd")
+		klog.Errorf("failed to stop gobgpd: %v", err)
 	}
 }
 

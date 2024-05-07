@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -244,14 +245,13 @@ func (r *ServiceReconciler) newForwardCtn(name string) *corev1.Container {
 
 // Main procedure for OpenELB NodeProxy
 func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result, error) {
-	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
-	log.Info("node-proxy reconciling")
+	klog.Info("node-proxy reconciling")
 	var err error
 
 	if !util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
 		controllerutil.AddFinalizer(svc, constant.NodeProxyFinalizerName)
 		if err := r.Update(context.Background(), svc); err != nil {
-			log.Error(err, "can't register finalizer")
+			klog.Errorf("can't register finalizer: %v", err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -260,7 +260,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	// Labeled nodes are prefered for OpenELB to deploy to
 	nodeList := &corev1.NodeList{}
 	if err = r.List(context.TODO(), nodeList); err != nil {
-		log.Error(err, "can't get node information")
+		klog.Errorf("can't get node information: %v", err)
 		return ctrl.Result{}, err
 	}
 	// use map for efficiency
@@ -273,7 +273,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 				if _, ok := node.Labels[constant.LabelNodeProxyExternalIPPreffered]; !ok {
 					node.Labels[constant.LabelNodeProxyExternalIPPreffered] = ""
 					if err = r.Update(context.Background(), &node); err != nil {
-						log.Error(err, "can't label node")
+						klog.Errorf("can't label node: %v", err)
 						return ctrl.Result{}, err
 					}
 				}
@@ -294,18 +294,18 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 	case constant.NodeProxyTypeDaemonSet:
 		shouldRmResc = &appsv1.Deployment{}
 	default:
-		log.Info("unsupport OpenELB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
+		klog.Info("unsupport OpenELB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 		return ctrl.Result{}, nil
 	}
 
 	if err = r.Get(context.TODO(), dpDsNamespacedName, shouldRmResc); err == nil {
 		if err = r.Delete(context.Background(), shouldRmResc); err != nil {
-			log.Error(err, "can't remove another kind of proxy resource")
+			klog.Errorf("can't remove another kind of proxy resource: %v", err)
 			return ctrl.Result{}, err
 		}
 	} else {
 		if !errors.IsNotFound(err) {
-			log.Error(err, "can't get another kind of proxy resource")
+			klog.Errorf("can't get another kind of proxy resource: %v", err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -322,7 +322,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 		// Update Service pod template by svc
 		proxyResc = *r.newProxyResc(svc)
 		if err = r.Update(context.Background(), proxyResc); err != nil {
-			log.Error(err, "can't patch proxy resc")
+			klog.Errorf("can't patch proxy resc: %v", err)
 			return ctrl.Result{}, err
 		}
 		// External-ip updating procedure
@@ -334,12 +334,12 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 		}
 		if err = r.List(context.TODO(), podList, opts...); err != nil {
 			if !errors.IsNotFound(err) {
-				log.Error(err, "can't list proxy pod")
+				klog.Errorf("can't list proxy pod: %v", err)
 				return ctrl.Result{}, err
 			}
 		}
 		if len(podList.Items) == 0 {
-			log.Info("no proxy pod available")
+			klog.Info("no proxy pod available")
 			return ctrl.Result{}, err
 		}
 		// Find suitable proxy pods which in nodes with external-ip or internal-ip
@@ -369,17 +369,17 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 		}
 
 		if err = r.Update(context.Background(), svc); err != nil {
-			log.Error(err, "can't update svc exposed ips annotations")
+			klog.Errorf("can't update svc exposed ips annotations: %v", err)
 			return ctrl.Result{}, err
 		}
 	} else {
 		if !errors.IsNotFound(err) {
-			log.Error(err, "can't get proxy resource")
+			klog.Errorf("can't get proxy resource: %v", err)
 			return ctrl.Result{}, err
 		}
 		// If not exists, create Proxy resource
 		if err = r.Create(context.TODO(), *r.newProxyResc(svc)); err != nil {
-			log.Error(err, "can't create proxy resource")
+			klog.Errorf("can't create proxy resource: %v", err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -389,8 +389,7 @@ func (r *ServiceReconciler) reconcileNPNormal(svc *corev1.Service) (ctrl.Result,
 
 // Called when OpenELB NodeProxy Service was deleted
 func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result, error) {
-	log := ctrl.Log.WithValues("service", types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name})
-	log.Info("node proxy reconciling deletion finalizing")
+	klog.Info("node proxy reconciling deletion finalizing")
 	var err error
 
 	if util.ContainsString(svc.GetFinalizers(), constant.NodeProxyFinalizerName) {
@@ -402,7 +401,7 @@ func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result,
 		case constant.NodeProxyTypeDaemonSet:
 			proxyResc = &appsv1.DaemonSet{}
 		default:
-			log.Info("unsupport OpenELB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
+			klog.Info("unsupport OpenELB NodeProxy annotation value:" + svc.Annotations[constant.NodeProxyTypeAnnotationKey])
 			return ctrl.Result{}, nil
 		}
 		err = r.Get(context.TODO(), dpDsNamespacedName, proxyResc)
@@ -410,16 +409,16 @@ func (r *ServiceReconciler) reconcileNPDelete(svc *corev1.Service) (ctrl.Result,
 			if errors.IsNotFound(err) {
 				return ctrl.Result{}, nil
 			}
-			log.Error(err, "can't get deployment/daemonset for deletion")
+			klog.Errorf("can't get deployment/daemonset for deletion: %v", err)
 			return ctrl.Result{}, err
 		}
 		if err = r.Delete(context.Background(), proxyResc); err != nil {
-			log.Error(err, "can't remove deployment/daemonset")
+			klog.Errorf("can't remove deployment/daemonset: %v", err)
 			return ctrl.Result{}, err
 		}
 		controllerutil.RemoveFinalizer(svc, constant.NodeProxyFinalizerName)
 		if err = r.Update(context.Background(), svc); err != nil {
-			log.Error(err, "can't remove finalizer")
+			klog.Errorf("can't remove finalizer: %v", err)
 			return ctrl.Result{}, err
 		}
 	}

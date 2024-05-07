@@ -6,13 +6,11 @@ import (
 	"github.com/openelb/openelb/api/v1alpha2"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-var nodeEnqueueLog = ctrl.Log.WithName("eventhandler").WithName("EnqueueRequestForNode")
 
 type EnqueueRequestForNode struct {
 	client.Client
@@ -46,11 +44,11 @@ func (e *EnqueueRequestForNode) Create(ctx context.Context, evt event.CreateEven
 // Update implements EventHandler
 func (e *EnqueueRequestForNode) Update(ctx context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if evt.ObjectOld == nil {
-		nodeEnqueueLog.Error(nil, "UpdateEvent received with no old metadata", "event", evt)
+		klog.Error("UpdateEvent received with no old metadata", "event", evt)
 	}
 
 	if evt.ObjectNew == nil {
-		nodeEnqueueLog.Error(nil, "UpdateEvent received with no new metadata", "event", evt)
+		klog.Error("UpdateEvent received with no new metadata", "event", evt)
 	}
 
 	if !e.peer {
