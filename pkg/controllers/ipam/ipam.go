@@ -44,6 +44,10 @@ type svcRecord struct {
 	Eip string
 }
 
+func (s svcRecord) String() string {
+	return fmt.Sprintf("service:%s, ip:%s, eip:%s", s.Key, s.IP, s.Eip)
+}
+
 // The result of ip allocation
 type Result *svcRecord
 
@@ -151,6 +155,10 @@ func (i *Manager) getAllocatedEIPInfo(ctx context.Context, svcInfo string) (stri
 	}
 
 	for _, eip := range eips.Items {
+		if !eip.DeletionTimestamp.IsZero() {
+			continue
+		}
+
 		for addr, used := range eip.Status.Used {
 			svcs := strings.Split(used, ";")
 			for _, svc := range svcs {
@@ -179,7 +187,7 @@ func (i *info) needUpdate() bool {
 	}
 
 	if i.svcSpecifyEIP == i.allocatedEip {
-		if i.svcSpecifyLBIP == i.allocatedIP {
+		if i.svcSpecifyLBIP == i.allocatedIP && i.svcStatusLBIP != "" {
 			return false
 		}
 
@@ -191,69 +199,55 @@ func (i *info) needUpdate() bool {
 	return true
 }
 
-func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (Request, error) {
-	req := Request{}
+func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (req Request, err error) {
 	if svc == nil || svc.Annotations == nil {
-		return req, nil
+		return Request{}, nil
 	}
 
-	svcSpecifyLBIP := svc.Spec.LoadBalancerIP
-	if value, ok := svc.Annotations[constant.OpenELBEIPAnnotationKey]; ok {
-		svcSpecifyLBIP = value
-	}
-
-	svcSpecifyEIP := svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
-	if svcSpecifyEIP == "" {
-		eip, err := i.getEIP(context.Background(), svc.Namespace, svcSpecifyLBIP, svcSpecifyEIP)
-		if err != nil || eip == nil {
-			klog.Errorf("get eip error:%s", err.Error())
-			return req, err
-		}
-		svcSpecifyEIP = eip.Name
-	}
-
-	eip, addr, err := i.getAllocatedEIPInfo(ctx, types.NamespacedName{
-		Namespace: svc.Namespace, Name: svc.Name}.String())
+	info := info{svcName: types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}.String()}
+	info.allocatedEip, info.allocatedIP, err = i.getAllocatedEIPInfo(ctx, info.svcName)
 	if err != nil {
-		return req, nil
+		return Request{}, err
 	}
 
-	lbIP := ""
+	info.svcStatusLBIP = ""
 	if len(svc.Status.LoadBalancer.Ingress) > 0 {
 		var ips []string
 		for _, i := range svc.Status.LoadBalancer.Ingress {
 			ips = append(ips, i.IP)
 		}
 
-		lbIP = strings.Join(ips, ";")
-	}
-
-	info := info{
-		svcName:        types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}.String(),
-		svcSpecifyEIP:  svcSpecifyEIP,
-		svcSpecifyLBIP: svcSpecifyLBIP,
-		allocatedIP:    addr,
-		allocatedEip:   eip,
-		svcStatusLBIP:  lbIP,
-	}
-
-	if needRelease(svc) {
-		req.Release = i.constructRelease(info)
-		return req, nil
-	}
-
-	if !info.needUpdate() {
-		if _, exist := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]; !exist {
-			req.Allocate = &svcRecord{
-				Key: info.svcName,
-				Eip: info.allocatedEip,
-				IP:  info.allocatedIP,
-			}
-		}
-		return req, nil
+		info.svcStatusLBIP = strings.Join(ips, ";")
 	}
 
 	req.Release = i.constructRelease(info)
+	if needRelease(svc) {
+		klog.V(4).Infof("Only need Release service loadbalanceip")
+		return req, nil
+	}
+
+	info.svcSpecifyLBIP = svc.Spec.LoadBalancerIP
+	if value, ok := svc.Annotations[constant.OpenELBEIPAnnotationKey]; ok {
+		info.svcSpecifyLBIP = value
+	}
+
+	info.svcSpecifyEIP = svc.Annotations[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	if info.svcSpecifyEIP == "" {
+		eip, err := i.getEIP(context.Background(), svc.Namespace, info.svcSpecifyLBIP, info.svcSpecifyEIP)
+		if err != nil {
+			i.Eventf(svc, v1.EventTypeWarning, "ConstructRequest", "failed to construct allocate request: %s", err.Error())
+			klog.Errorf("get eip error:%s", err.Error())
+			return req, nil
+		}
+		info.svcSpecifyEIP = eip.Name
+	}
+
+	_, exist := svc.Labels[constant.OpenELBEIPAnnotationKeyV1Alpha2]
+	if !info.needUpdate() && exist {
+		klog.V(4).Info("no need update service loadbalanceip")
+		return Request{}, nil
+	}
+
 	req.Allocate = &svcRecord{
 		Key: info.svcName,
 		Eip: info.svcSpecifyEIP,
@@ -295,6 +289,14 @@ func (i *Manager) getEIP(ctx context.Context, ns string, svcip string, specifyEi
 		return nil, err
 	}
 
+	if !eip.DeletionTimestamp.IsZero() {
+		return nil, fmt.Errorf("eip:%s is deleting", eip.Name)
+	}
+
+	if eip.Spec.Disable {
+		return nil, fmt.Errorf("eip:%s is disabled", eip.Name)
+	}
+
 	if svcip != "" && !eip.Contains(net.ParseIP(svcip)) {
 		return nil, fmt.Errorf(EipNotContainIP+":[%s]", svcip)
 	}
@@ -310,6 +312,14 @@ func (i *Manager) getEIPBasedOnIP(ctx context.Context, ip string) (*networkv1alp
 
 	for _, e := range eips.Items {
 		if e.Contains(net.ParseIP(ip)) {
+			if !e.DeletionTimestamp.IsZero() {
+				return nil, fmt.Errorf("eip:%s is deleting", e.Name)
+			}
+
+			if e.Spec.Disable {
+				return nil, fmt.Errorf("eip:%s is disabled", e.Name)
+			}
+
 			return e.DeepCopy(), nil
 		}
 	}
@@ -333,6 +343,10 @@ func (i *Manager) getDefaultEIP(ctx context.Context, name string) (*networkv1alp
 	var defaultEip *networkv1alpha2.Eip
 	nseips := make([]*networkv1alpha2.Eip, 0)
 	for _, e := range eips.Items {
+		if !e.DeletionTimestamp.IsZero() || e.Spec.Disable {
+			continue
+		}
+
 		for _, n := range e.Spec.Namespaces {
 			if n == name {
 				nseips = append(nseips, e.DeepCopy())
@@ -360,10 +374,6 @@ func (i *Manager) getDefaultEIP(ctx context.Context, name string) (*networkv1alp
 
 	if len(nseips) != 0 {
 		sort.Slice(nseips, func(i, j int) bool {
-			if nseips[i].Spec.Disable != nseips[j].Spec.Disable {
-				return !nseips[i].Spec.Disable
-			}
-
 			if nseips[i].Status.Occupied != nseips[j].Status.Occupied {
 				return !nseips[i].Status.Occupied
 			}

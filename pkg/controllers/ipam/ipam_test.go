@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -176,7 +177,12 @@ func TestManager_ConstructAllocate(t *testing.T) {
 				},
 				Status: v1.ServiceStatus{},
 			},
-			wantErr: true,
+			wantErr: false,
+			wantRelease: &svcRecord{
+				Key: "default/testsvc",
+				Eip: "eip",
+				IP:  "192.168.1.0",
+			},
 		},
 
 		{
@@ -986,6 +992,7 @@ func TestManager_ConstructAllocate(t *testing.T) {
 			cl.WithScheme(scheme).WithObjects(objs...)
 
 			m := NewManager(cl.Build())
+			m.EventRecorder = &record.FakeRecorder{}
 			request, err := m.ConstructRequest(context.Background(), tt.svc)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Request.ConstructAllocate() error = %v, wantErr %v", err, tt.wantErr)

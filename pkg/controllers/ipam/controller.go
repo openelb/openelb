@@ -102,7 +102,7 @@ func (i *EIPController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 	//i.updateMetrics(eip)
-	return ctrl.Result{}, i.Client.Status().Update(ctx, clone)
+	return ctrl.Result{}, i.Status().Update(ctx, clone)
 }
 
 func (i *EIPController) updateEip(ctx context.Context, e *networkv1alpha2.Eip) error {

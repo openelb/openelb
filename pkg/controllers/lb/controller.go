@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
 	"github.com/openelb/openelb/pkg/controllers/ipam"
 	"github.com/openelb/openelb/pkg/util"
@@ -85,6 +86,26 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(p).
 		Named("LBController").
 		Build(r)
+	if err != nil {
+		return err
+	}
+
+	eipfun := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldEip := e.ObjectOld.(*v1alpha2.Eip)
+			newEip := e.ObjectNew.(*v1alpha2.Eip)
+			emptyStatus := v1alpha2.EipStatus{}
+
+			return reflect.DeepEqual(oldEip.Status, emptyStatus) && !reflect.DeepEqual(newEip.Status, emptyStatus)
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+	err = ctl.Watch(source.Kind(mgr.GetCache(), &v1alpha2.Eip{}), &EnqueueRequestForNode{Client: r.Client}, eipfun)
 	if err != nil {
 		return err
 	}
@@ -163,7 +184,6 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	request, err := r.ipmanager.ConstructRequest(ctx, svc)
 	if err != nil {
-		r.Eventf(svc, corev1.EventTypeWarning, "ConstructRequest", "failed to construct request: %s", err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -174,6 +194,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	clone := svc.DeepCopy()
 	statusIPs := svc.Status.LoadBalancer.Ingress
 	if request.Release != nil {
+		klog.V(4).Infof("Release service loadbalanceip %s", request.Release.String())
 		err = r.ipmanager.ReleaseIP(ctx, request.Release)
 		if err != nil {
 			klog.Errorf("%s release ip[%s] form eip[%s] error :%s", request.Release.Key, request.Release.IP, request.Release.Eip, err.Error())
@@ -190,10 +211,13 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if request.Allocate != nil {
+		klog.V(4).Infof("Allocate service loadbalanceip %s", request.Allocate.String())
 		err = r.ipmanager.AssignIP(ctx, request.Allocate)
 		if err != nil {
 			klog.Errorf("%s assign ip[%s] form eip[%s] error :%s", request.Allocate.Key, request.Allocate.IP, request.Allocate.Eip, err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "AssignIPFailed", err.Error())
+			clone.Status.LoadBalancer.Ingress = statusIPs
+			r.updateReconcileResult(ctx, svc, clone)
 			return ctrl.Result{}, err
 		}
 
@@ -210,24 +234,30 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		klog.Infof("assign ip[%s] from eip[%s] for service %s successfully", request.Allocate.IP, request.Allocate.Eip, request.Allocate.Key)
 	}
 
-	// update service resource
-	if !reflect.DeepEqual(svc.Labels, clone.Labels) {
+	clone.Status.LoadBalancer.Ingress = statusIPs
+	return ctrl.Result{}, r.updateReconcileResult(ctx, svc, clone)
+}
+
+// updateReconcileResult update service resource and status
+func (r *ServiceReconciler) updateReconcileResult(ctx context.Context, svc, resultSvc *corev1.Service) error {
+	clone := resultSvc.DeepCopy()
+	if !reflect.DeepEqual(svc.Labels, resultSvc.Labels) {
 		if err := r.Update(ctx, clone); err != nil {
 			klog.Errorf("update update labels error:%s", err.Error())
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
-	clone.Status.LoadBalancer.Ingress = statusIPs
-	if !reflect.DeepEqual(svc.Status, clone.Status) {
+	if !reflect.DeepEqual(svc.Status, resultSvc.Status) {
+		clone.Status = resultSvc.Status
 		if err := r.Status().Update(context.Background(), clone); err != nil {
 			klog.Errorf("update service status error:%s", err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "UpdateServiceStatus", err.Error())
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func SetupServiceReconciler(mgr ctrl.Manager) error {
@@ -236,6 +266,7 @@ func SetupServiceReconciler(mgr ctrl.Manager) error {
 		Client:        mgr.GetClient(),
 		EventRecorder: mgr.GetEventRecorderFor("OpenELBController"),
 	}
+	lb.ipmanager.EventRecorder = lb.EventRecorder
 	return lb.SetupWithManager(mgr)
 }
 
