@@ -2,7 +2,6 @@ package bgp
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -102,11 +101,11 @@ func (b *Bgp) assignGlobalpolicy(ctx context.Context, bgpServer *server.BgpServe
 
 func writeToTempFile(val string) (string, error) {
 	var path string
-	temp, err := ioutil.TempFile(os.TempDir(), "temp")
+	temp, err := os.CreateTemp(os.TempDir(), "temp")
 	if err != nil {
 		return path, err
 	}
-	err = ioutil.WriteFile(temp.Name(), []byte(val), 0644)
+	err = os.WriteFile(temp.Name(), []byte(val), 0644)
 	if err != nil {
 		return path, err
 	}
