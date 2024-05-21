@@ -136,21 +136,18 @@ func (l *layer2Speaker) Start(stopCh <-chan struct{}) error {
 		return err
 	}
 
-	go func() {
-		for {
-			select {
-			case <-stopCh:
-				l.unregisterAllAnnouncers()
-			case <-l.eventCh:
-				evt := v1alpha2.Eip{}
-				evt.Name = constant.Layer2ReloadEIPName
-				evt.Namespace = constant.Layer2ReloadEIPNamespace
-				l.reloadChan <- event.GenericEvent{Object: &evt}
-			}
+	for {
+		select {
+		case <-stopCh:
+			l.unregisterAllAnnouncers()
+			return nil
+		case <-l.eventCh:
+			evt := v1alpha2.Eip{}
+			evt.Name = constant.Layer2ReloadEIPName
+			evt.Namespace = constant.Layer2ReloadEIPNamespace
+			l.reloadChan <- event.GenericEvent{Object: &evt}
 		}
-	}()
-
-	return nil
+	}
 }
 
 func (l *layer2Speaker) ConfigureWithEIP(config speaker.Config, deleted bool) error {

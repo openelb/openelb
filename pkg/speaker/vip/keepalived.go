@@ -32,9 +32,9 @@ const (
 	keepalivedTmpl    = "keepalived.tmpl"
 )
 
-var _ speaker.Speaker = &KeepAlived{}
+var _ speaker.Speaker = &keepAlived{}
 
-type KeepAlived struct {
+type keepAlived struct {
 	client         *kubernetes.Clientset
 	logPath        string
 	args           string
@@ -55,13 +55,13 @@ type instances struct {
 	Enabled  bool
 }
 
-func NewKeepAlived(client *kubernetes.Clientset, logPath, args string) (*KeepAlived, error) {
+func NewKeepAlived(client *kubernetes.Clientset, logPath, args string) (*keepAlived, error) {
 	tmpl, err := template.ParseFiles(keepalivedTmpl)
 	if err != nil {
 		return nil, err
 	}
 
-	return &KeepAlived{
+	return &keepAlived{
 		client:         client,
 		keepalivedTmpl: tmpl,
 		logPath:        logPath,
@@ -73,7 +73,7 @@ func NewKeepAlived(client *kubernetes.Clientset, logPath, args string) (*KeepAli
 	}, nil
 }
 
-func (k *KeepAlived) SetBalancer(vip string, nodes []corev1.Node) error {
+func (k *keepAlived) SetBalancer(vip string, nodes []corev1.Node) error {
 	iface := k.getInterfaces(vip)
 	if iface == "" {
 		return fmt.Errorf("no interface found for VIP %s", vip)
@@ -116,7 +116,7 @@ func (k *KeepAlived) SetBalancer(vip string, nodes []corev1.Node) error {
 	return k.Reload()
 }
 
-func (k *KeepAlived) cleanRecord(vip, instanceName string) {
+func (k *keepAlived) cleanRecord(vip, instanceName string) {
 	instance, ok := k.instances[instanceName]
 	if !ok {
 		return
@@ -143,7 +143,7 @@ func (k *KeepAlived) cleanRecord(vip, instanceName string) {
 }
 
 // getInterfaces returns the interface name for the given VIP
-func (k *KeepAlived) getInterfaces(vip string) string {
+func (k *keepAlived) getInterfaces(vip string) string {
 	for _, c := range k.configs {
 		if c.IPRange.Contains(net.ParseIP(vip)) {
 			return c.Iface
@@ -153,7 +153,7 @@ func (k *KeepAlived) getInterfaces(vip string) string {
 }
 
 // getNodeSha256Bytes returns the sha256 hash of the node names
-func (k *KeepAlived) getNodeSha256Bytes(nodes []corev1.Node) [32]byte {
+func (k *keepAlived) getNodeSha256Bytes(nodes []corev1.Node) [32]byte {
 	nodenames := []string{}
 	for _, node := range nodes {
 		nodenames = append(nodenames, node.Name)
@@ -168,7 +168,7 @@ func (k *KeepAlived) getNodeSha256Bytes(nodes []corev1.Node) [32]byte {
 }
 
 // isNodeInList returns true if the node is in the nodes list
-func (k *KeepAlived) isNodeInList(nodes []corev1.Node) bool {
+func (k *keepAlived) isNodeInList(nodes []corev1.Node) bool {
 	for _, node := range nodes {
 		if node.Name == util.GetNodeName() {
 			return true
@@ -178,7 +178,7 @@ func (k *KeepAlived) isNodeInList(nodes []corev1.Node) bool {
 	return false
 }
 
-func (k *KeepAlived) DelBalancer(vip string) error {
+func (k *keepAlived) DelBalancer(vip string) error {
 	instanceName, exist := k.vips[vip]
 	if !exist {
 		return nil
@@ -199,72 +199,62 @@ func (k *KeepAlived) DelBalancer(vip string) error {
 	return k.Reload()
 }
 
-func (k *KeepAlived) Start(stopCh <-chan struct{}) error {
+func (k *keepAlived) Start(stopCh <-chan struct{}) error {
 	if err := k.WriteCfg(); err != nil {
 		klog.Error(err)
 		return err
 	}
 
-	started := make(chan bool, 1)
-	go func() {
-		for {
-			var logWriter io.WriteCloser
-			if k.logPath != "" {
-				logWriter = &lumberjack.Logger{
-					Filename:   k.logPath,
-					MaxSize:    100,
-					MaxBackups: 3,
-					MaxAge:     28,
-					Compress:   true,
-				}
-			} else {
-				logWriter = newKeepalivedLogPiper()
-			}
-			defer logWriter.Close()
-
-			args := []string{"--dont-fork", "--log-console", "--log-detail", "--vrrp", "--release-vips"}
-			if k.args != "" {
-				argArray := strings.Split(k.args, " ")
-				args = append(args, argArray...)
-			}
-			k.cmd = exec.Command(keepalivedStarter, args...)
-			k.cmd.Stdout = logWriter
-			k.cmd.Stderr = logWriter
-			if err := k.cmd.Start(); err != nil {
-				klog.Errorf("Error starting keepalived: %v", err)
-				select {
-				case started <- false:
-				default:
-				}
-				return
-			}
-			select {
-			case started <- true:
-			default:
-			}
-			klog.Infof("Keepalived: started with pid %d", k.cmd.Process.Pid)
-
-			crashCh := make(chan struct{})
-			go func() {
-				if err := k.cmd.Wait(); err != nil {
-					klog.Errorf("Keepalived: crashed, err: %s", err.Error())
-					// Avoid busy loop & hogging CPU resources by waiting before restarting keepalived.
-					time.Sleep(500 * time.Millisecond)
-				}
-				klog.Warning("Keepalived: crashed")
-				close(crashCh)
-			}()
-
-			<-crashCh
+	var logWriter io.WriteCloser
+	if k.logPath != "" {
+		logWriter = &lumberjack.Logger{
+			Filename:   k.logPath,
+			MaxSize:    100,
+			MaxBackups: 3,
+			MaxAge:     28,
+			Compress:   true,
 		}
-	}()
+	} else {
+		logWriter = newKeepalivedLogPiper()
+	}
+	defer logWriter.Close()
 
-	<-started
+	for {
+		args := []string{"--dont-fork", "--log-console", "--log-detail", "--vrrp", "--release-vips"}
+		if k.args != "" {
+			argArray := strings.Split(k.args, " ")
+			args = append(args, argArray...)
+		}
+		k.cmd = exec.Command(keepalivedStarter, args...)
+		k.cmd.Stdout = logWriter
+		k.cmd.Stderr = logWriter
+		if err := k.cmd.Start(); err != nil {
+			klog.Errorf("Keepalived start err: %s", err.Error())
+			return err
+		}
 
-	return nil
+		klog.Infof("Keepalived: started with pid %d", k.cmd.Process.Pid)
+		crashCh := make(chan struct{})
+		go func() {
+			if err := k.cmd.Wait(); err != nil {
+				klog.Errorf("Keepalived: crashed, err: %s", err.Error())
+				// Avoid busy loop & hogging CPU resources by waiting before restarting keepalived.
+				time.Sleep(500 * time.Millisecond)
+			}
+			klog.Warning("Keepalived: crashed")
+			close(crashCh)
+		}()
+
+		select {
+		case <-stopCh:
+			klog.Infof("stop keepalived process: %d", k.cmd.Process.Pid)
+			return syscall.Kill(k.cmd.Process.Pid, syscall.SIGTERM)
+		case <-crashCh:
+		}
+	}
 }
 
-func (k *KeepAlived) ConfigureWithEIP(config speaker.Config, deleted bool) error {
+func (k *keepAlived) ConfigureWithEIP(config speaker.Config, deleted bool) error {
 	netif, err := speaker.ParseInterface(config.Iface, true)
 	if err != nil || netif == nil {
 		return err
@@ -283,7 +273,7 @@ func (k *KeepAlived) ConfigureWithEIP(config speaker.Config, deleted bool) error
 }
 
 // Reload sends SIGHUP to keepalived to reload the configuration.
-func (k *KeepAlived) Reload() error {
+func (k *keepAlived) Reload() error {
 	klog.Info("Waiting for keepalived to start")
 	for !k.IsRunning() {
 		time.Sleep(time.Second)
@@ -299,7 +289,7 @@ func (k *KeepAlived) Reload() error {
 }
 
 // Whether keepalived process is currently running
-func (k *KeepAlived) IsRunning() bool {
+func (k *keepAlived) IsRunning() bool {
 	if _, err := os.Stat(keepalivedPid); os.IsNotExist(err) {
 		klog.Error("Missing keepalived.pid")
 		return false
@@ -310,7 +300,7 @@ func (k *KeepAlived) IsRunning() bool {
 
 // WriteCfg creates a new keepalived configuration file.
 // In case of an error with the generation it returns the error
-func (k *KeepAlived) WriteCfg() error {
+func (k *keepAlived) WriteCfg() error {
 	dir := filepath.Dir(keepalivedCfg)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err

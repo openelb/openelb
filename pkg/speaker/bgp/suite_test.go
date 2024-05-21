@@ -161,7 +161,12 @@ var _ = BeforeSuite(func(done Done) {
 
 	// Setup all Controllers
 	bgpServer = bgpd.NewGoBgpd(bgpd.NewBgpOptions())
-	bgpServer.Start(stopCh.Done())
+	go func() {
+		err := bgpServer.Start(stopCh.Done())
+		if err != nil {
+			klog.Errorf("failed to start manager: %v", err)
+		}
+	}()
 	err = SetupBgpPeerReconciler(bgpServer, mgr)
 	Expect(err).ToNot(HaveOccurred())
 	err = SetupBgpConfReconciler(bgpServer, mgr)
