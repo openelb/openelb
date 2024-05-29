@@ -24,19 +24,16 @@ func NewGoBgpd(bgpOptions *BgpOptions) *Bgp {
 	}
 }
 
-func (b *Bgp) run(stopCh <-chan struct{}) {
+func (b *Bgp) Start(stopCh <-chan struct{}) error {
 	klog.Info("gobgpd starting")
 	go b.bgpServer.Serve()
+
 	<-stopCh
 	klog.Info("gobgpd ending")
 	err := b.bgpServer.StopBgp(context.Background(), &api.StopBgpRequest{})
 	if err != nil {
 		klog.Errorf("failed to stop gobgpd: %v", err)
 	}
-}
-
-func (b *Bgp) Start(stopCh <-chan struct{}) error {
-	go b.run(stopCh)
 	return nil
 }
 

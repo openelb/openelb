@@ -94,7 +94,8 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		klog.Fatalf("unable to new manager: %v", err)
 	}
 
-	spmanager := speaker.NewSpeakerManager(mgr.GetClient(), mgr.GetEventRecorderFor("speakerManager"))
+	ctx := ctrl.SetupSignalHandler()
+	spmanager := speaker.NewSpeakerManager(mgr)
 
 	//For gobgp
 	bgpServer := bgpd.NewGoBgpd(opt.Bgp)
@@ -106,7 +107,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		klog.Fatalf("unable to setup bgppeer: %v", err)
 	}
 
-	if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolBGP, bgpServer); err != nil {
+	if err := spmanager.RegisterSpeaker(ctx, constant.OpenELBProtocolBGP, bgpServer); err != nil {
 		klog.Fatalf("unable to register bgp speaker: %v", err)
 	}
 
@@ -117,7 +118,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		if err != nil {
 			klog.Fatalf("unable to new vip speaker: %v", err)
 		}
-		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolVip, keepalive); err != nil {
+		if err := spmanager.RegisterSpeaker(ctx, constant.OpenELBProtocolVip, keepalive); err != nil {
 			klog.Fatalf("unable to register vip speaker: %v", err)
 		}
 	}
@@ -130,7 +131,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 			klog.Fatalf("unable to new layer2 speaker: %v", err)
 		}
 
-		if err := spmanager.RegisterSpeaker(constant.OpenELBProtocolLayer2, layer2speaker); err != nil {
+		if err := spmanager.RegisterSpeaker(ctx, constant.OpenELBProtocolLayer2, layer2speaker); err != nil {
 			klog.Fatalf("unable to register layer2 speaker: %v", err)
 		}
 	}
@@ -153,7 +154,7 @@ func Run(opt *options.OpenELBSpeakerOptions) error {
 		klog.Fatalf("unable to setup eipcontroller: %v", err)
 	}
 
-	if err = mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err = spmanager.Start(ctx); err != nil {
 		klog.Fatalf("unable to run the manager: %v", err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
@@ -17,59 +18,105 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-type speaker struct {
+type speakerWithCancelFunc struct {
 	Speaker
-	ch chan struct{}
+	cancel context.CancelFunc
 }
 
 type Manager struct {
 	client.Client
 	record.EventRecorder
 
-	speakers map[string]speaker
-	pools    map[string]*v1alpha2.Eip
+	mgr       manager.Manager
+	speakers  map[string]speakerWithCancelFunc
+	pools     map[string]*v1alpha2.Eip
+	waitGroup sync.WaitGroup
+	errChan   chan error
 }
 
-func NewSpeakerManager(c client.Client, record record.EventRecorder) *Manager {
+func NewSpeakerManager(mgr manager.Manager) *Manager {
 	return &Manager{
-		Client:        c,
-		EventRecorder: record,
-		speakers:      make(map[string]speaker, 0),
+		mgr:           mgr,
+		Client:        mgr.GetClient(),
+		EventRecorder: mgr.GetEventRecorderFor("speakerManager"),
+		speakers:      make(map[string]speakerWithCancelFunc, 0),
 		pools:         make(map[string]*v1alpha2.Eip, 0),
+		errChan:       make(chan error),
 	}
 }
 
-func (m *Manager) RegisterSpeaker(name string, s Speaker) error {
-	t := speaker{
-		Speaker: s,
-		ch:      make(chan struct{}),
+func (m *Manager) Start(ctx context.Context) (err error) {
+	ictx, cancelFunc := context.WithCancel(context.TODO())
+	errCh := make(chan error)
+	defer close(errCh)
+
+	m.waitGroup.Add(1)
+	go func() {
+		defer m.waitGroup.Done()
+		if err := m.mgr.Start(ictx); err != nil {
+			errCh <- err
+		}
+	}()
+
+	// The ctx (signals.SetupSignalHandler()) is to control the entire program life cycle,
+	// The ictx(internal context)  is created here to control the life cycle of the controller-manager(all controllers, sharedInformer, webhook etc.)
+	// when config changed, stop server and renew context, start new server
+	for {
+		select {
+		case <-ctx.Done():
+			cancelFunc()
+			m.waitGroup.Wait()
+			return nil
+		case err = <-errCh:
+		case err = <-m.errChan:
+			cancelFunc()
+			for _, s := range m.speakers {
+				if s.cancel != nil {
+					s.cancel()
+				}
+			}
+			m.waitGroup.Wait()
+			return err
+		}
+	}
+}
+
+// TODO: Dynamically configure the speaker through configmap
+func (m *Manager) RegisterSpeaker(ctx context.Context, name string, speaker Speaker) error {
+	if s, exist := m.speakers[name]; exist && s.cancel != nil {
+		s.cancel()
 	}
 
-	if err := s.Start(t.ch); err != nil {
-		return err
-	}
+	m.waitGroup.Add(1)
+	ctxChild, cancel := context.WithCancel(ctx)
+	s := speakerWithCancelFunc{Speaker: speaker, cancel: cancel}
 
-	m.speakers[name] = t
+	go func() {
+		defer m.waitGroup.Done()
+		if err := s.Start(ctxChild.Done()); err != nil {
+			s.cancel()
+			klog.Errorf("speaker %s start failed: %s", name, err.Error())
+			m.errChan <- err
+		}
+	}()
+
+	m.speakers[name] = s
 	return nil
 }
 
 func (m *Manager) UnRegisterSpeaker(name string) {
-	t, ok := m.speakers[name]
-	if ok {
-		close(t.ch)
+	if s, exist := m.speakers[name]; exist && s.cancel != nil {
+		s.cancel()
 	}
+
 	delete(m.speakers, name)
 }
 
 func (m *Manager) GetSpeaker(name string) Speaker {
-	t, ok := m.speakers[name]
-	if ok {
-		return t.Speaker
-	}
-
-	return nil
+	return m.speakers[name]
 }
 
 func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
