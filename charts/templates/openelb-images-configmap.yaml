@@ -12,8 +12,4 @@ data:
   {{ if (ne .Values.customImage.proxyImage "") }}
   proxy-image:  {{ .Values.customImage.proxyImage }}
   {{ end }}
-
-  {{ if (ne .Values.customImage.vipImage "") }}
-  keepalived-vip-image: {{ .Values.customImage.vipImage }}
-  {{ end }}
 {{ end }}
