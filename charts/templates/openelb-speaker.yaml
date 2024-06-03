@@ -24,7 +24,6 @@ spec:
             - openelb-speaker
           args:
             - --api-hosts={{ .Values.speaker.apiHosts }}
-            - --zap-log-level=info
             - --enable-keepalived-vip={{ .Values.speaker.vip }}
             - --enable-layer2={{ .Values.speaker.layer2 }}
           image: {{ template "speaker.image" . }}
