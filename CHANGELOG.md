@@ -1,6 +1,73 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [ 0.6.0 ]
+
+### Changes
+
+* Split Manager into Speaker and Controller. [#332](https://github.com/openelb/openelb/pull/332)  [#335](https://github.com/openelb/openelb/pull/335)  [#338](https://github.com/openelb/openelb/pull/338) [#380](https://github.com/openelb/openelb/pull/380) [#402](https://github.com/openelb/openelb/pull/402) [#408](https://github.com/openelb/openelb/pull/408)
+    * Controller: Focuses on IP allocation and reclamation for LoadBalancer type services.
+    * Speaker: Focuses on announcing the allocated IPs. Now supports three modes: BGP, Layer 2, and VIP.
+
+### New Features
+
+* Eip supports binding to namespaces. [#352](https://github.com/openelb/openelb/pull/352)
+* Eip supports priority configuration for IPAM. [#352](https://github.com/openelb/openelb/pull/352)
+* Added dynamic enable switches for VIP and Layer 2 modes. 
+* Added support for multiple network interfaces in VIP and Layer 2 modes. [#408](https://github.com/openelb/openelb/pull/408)
+
+### Bug Fixes
+
+* Introduced memberlist for node failure detection in Layer 2 mode to resolve single point of failure issues. [#380](https://github.com/openelb/openelb/pull/380)
+* Fixed support for `externalTrafficPolicy` configuration in VIP mode. [#408](https://github.com/openelb/openelb/pull/408)
+* Fixed data residue issues after uninstalling VIP mode.  [#420](https://github.com/openelb/openelb/pull/420)
+
+### Optimizations
+
+* Optimized the IPAM process in the controller.
+* Reduced the number of required annotations for services.
+* Improved compatibility with other CNI plugins.
+
+## [ 0.5.1 ] - 2022-07-17
+
+### New Feature
+* Add uninstall script. [#276](https://github.com/openelb/openelb/pull/276)
+* Add some metrics. [#293](https://github.com/openelb/openelb/pull/293)
+* Support config for container image. [#285](https://github.com/openelb/openelb/pull/285)
+
+### Enhancements
+* Add github templates. [#279](https://github.com/openelb/openelb/pull/279)
+* Fix wrong image on Makefile. [#284](https://github.com/openelb/openelb/pull/284)
+* Minor changes to codebase. [#294](https://github.com/openelb/openelb/pull/294)
+
+## [ 0.5.0 ] - 2022-05-20
+
+### Feature
+- Support vip mode. [#252](https://github.com/openelb/openelb/pull/252) 
+
+### Upgrade
+* Use constants of gobgp api. [#253](https://github.com/openelb/openelb/pull/253)
+* Add all contributors. [#261](https://github.com/openelb/openelb/pull/261)
+
+## [ 0.4.4 ] - 2022-02-26
+
+### Cleanup
+- Rename PorterLB to OpenELB. [#242](https://github.com/openelb/openelb/pull/242)
+
+## [ 0.4.3 ] - 2022-01-29
+
+### Feature
+- Support assign EIP by default with a config to controller. [#236](https://github.com/openelb/openelb/pull/236)
+
+### Upgrade
+- Upgrade kube-webhook-certgen. [#234](https://github.com/openelb/openelb/pull/234)
+
+## [ 0.4.2 ] - 2021-07-8
+
+### Feature
+- Using the CNI plugin as a speaker for synchronous routes. [#199](https://github.com/kubesphere/porterlb/pull/199)
+- Rename PorterLB to OpenELB. [#207](https://github.com/kubesphere/openelb/pull/207)
+
 ## [ 0.4.1 ] - 2021-03-18
 
 ### **BugFix:**
