@@ -84,19 +84,12 @@ func parseRange(s string) Range {
 }
 
 func parseCIDR(s string) Range {
-	ip, network, err := net.ParseCIDR(s)
+	_, network, err := net.ParseCIDR(s)
 	if err != nil {
 		return nil
 	}
 
 	start, end := cidr.AddressRange(network)
-	prefixLen, _ := network.Mask.Size()
-
-	if isV4IP(ip) && prefixLen < 31 || isV6IP(ip) && prefixLen < 127 {
-		start = cidr.Inc(start)
-		end = cidr.Dec(end)
-	}
-
 	return parseRange(fmt.Sprintf("%s-%s", start, end))
 }
 
