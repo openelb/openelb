@@ -81,7 +81,7 @@ func (i *Manager) assignIPFromEip(allocate *svcRecord, eip *networkv1alpha2.Eip)
 	for addr, svcs := range eip.Status.Used {
 		tmp := strings.Split(svcs, ";")
 		for _, svc := range tmp {
-			if svc == allocate.Key {
+			if svc == allocate.Key && allocate.IP == addr {
 				return addr, nil
 			}
 		}
