@@ -28,29 +28,31 @@ controller:
     requests:
       cpu: 100m
       memory: 100Mi
-  affinity:
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchExpressions:
-              - key: app
-                operator: In
-                values:
-                  - openelb-controller
-          topologyKey: "kubernetes.io/hostname"
   tolerations:
     - key: CriticalAddonsOnly
       operator: Exists
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
-  nodeSelector:
-    kubernetes.io/os: linux
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+  # nodeSelector:
+  #   node-role.kubernetes.io/control-plane: ""
+  # affinity:
+  #   podAntiAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #       - weight: 100
+  #         podAffinityTerm:
+  #           labelSelector:
+  #             matchLabels:
+  #               app: openelb
+  #               component: controller
+  #           topologyKey: kubernetes.io/hostname
       
 speaker:
   enable: true
   vip: false
-  layer2: true
-  memberlistSecret: "" # openelb-speakers
+  layer2: false
+  # memberlistSecret: "" # default: openelb-speakers
   apiHosts: ":50051"
   monitorEnable: false
   monitorPort: 50052
@@ -66,13 +68,22 @@ speaker:
     requests:
       cpu: 100m
       memory: 100Mi
-  tolerations:
-    - key: CriticalAddonsOnly
-      operator: Exists
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/master
-  nodeSelector:
-    kubernetes.io/os: linux
+  # nodeSelector:
+  #   kubernetes.io/os: linux
+  # affinity:
+  #   nodeAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       nodeSelectorTerms:
+  #       - matchExpressions:
+  #         - key: openelb.io/speaker-node
+  #           operator: Exists
+  # tolerations:
+  #   - key: CriticalAddonsOnly
+  #     operator: Exists
+  #   - effect: NoSchedule
+  #     key: node-role.kubernetes.io/master
+  #   - effect: NoSchedule
+  #     key: node-role.kubernetes.io/control-plane
 
 customImage:
   enable: true
