@@ -19,8 +19,8 @@ func TestV4Range_String(t *testing.T) {
 	}{
 		"IP":    {input: "192.0.2.0", wantString: "192.0.2.0-192.0.2.0"},
 		"Range": {input: "192.0.2.0-192.0.2.10", wantString: "192.0.2.0-192.0.2.10"},
-		"CIDR":  {input: "192.0.2.0/24", wantString: "192.0.2.1-192.0.2.254"},
-		"Mask":  {input: "192.0.2.0/255.255.255.0", wantString: "192.0.2.1-192.0.2.254"},
+		"CIDR":  {input: "192.0.2.0/24", wantString: "192.0.2.0-192.0.2.255"},
+		"Mask":  {input: "192.0.2.0/255.255.255.0", wantString: "192.0.2.0-192.0.2.255"},
 	}
 
 	for name, test := range tests {
@@ -60,10 +60,10 @@ func TestV4Range_Size(t *testing.T) {
 	}{
 		"IP":      {input: "192.0.2.0", wantSize: big.NewInt(1)},
 		"Range":   {input: "192.0.2.0-192.0.2.10", wantSize: big.NewInt(11)},
-		"CIDR":    {input: "192.0.2.0/24", wantSize: big.NewInt(254)},
+		"CIDR":    {input: "192.0.2.0/24", wantSize: big.NewInt(256)},
 		"CIDR 31": {input: "192.0.2.0/31", wantSize: big.NewInt(2)},
 		"CIDR 32": {input: "192.0.2.0/32", wantSize: big.NewInt(1)},
-		"Mask":    {input: "192.0.2.0/255.255.255.0", wantSize: big.NewInt(254)},
+		"Mask":    {input: "192.0.2.0/255.255.255.0", wantSize: big.NewInt(256)},
 		"Mask 31": {input: "192.0.2.0/255.255.255.254", wantSize: big.NewInt(2)},
 		"Mask 32": {input: "192.0.2.0/255.255.255.255", wantSize: big.NewInt(1)},
 	}
@@ -84,11 +84,12 @@ func TestV4Range_Contains(t *testing.T) {
 		ip       string
 		wantFail bool
 	}{
-		"inside":   {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.5"},
-		"outside":  {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.55", wantFail: true},
-		"eq start": {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.0"},
-		"eq end":   {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.10"},
-		"v6":       {input: "192.0.2.0-192.0.2.10", ip: "2001:db8::", wantFail: true},
+		"inside-cidr": {input: "192.0.2.0/24", ip: "192.0.2.0"},
+		"inside":      {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.5"},
+		"outside":     {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.55", wantFail: true},
+		"eq start":    {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.0"},
+		"eq end":      {input: "192.0.2.0-192.0.2.10", ip: "192.0.2.10"},
+		"v6":          {input: "192.0.2.0-192.0.2.10", ip: "2001:db8::", wantFail: true},
 	}
 
 	for name, test := range tests {
@@ -115,7 +116,7 @@ func TestV6Range_String(t *testing.T) {
 	}{
 		"IP":    {input: "2001:db8::", wantString: "2001:db8::-2001:db8::"},
 		"Range": {input: "2001:db8::-2001:db8::10", wantString: "2001:db8::-2001:db8::10"},
-		"CIDR":  {input: "2001:db8::/126", wantString: "2001:db8::1-2001:db8::2"},
+		"CIDR":  {input: "2001:db8::/126", wantString: "2001:db8::-2001:db8::3"},
 	}
 
 	for name, test := range tests {
@@ -154,7 +155,7 @@ func TestV6Range_Size(t *testing.T) {
 	}{
 		"IP":       {input: "2001:db8::", wantSize: big.NewInt(1)},
 		"Range":    {input: "2001:db8::-2001:db8::10", wantSize: big.NewInt(17)},
-		"CIDR":     {input: "2001:db8::/120", wantSize: big.NewInt(254)},
+		"CIDR":     {input: "2001:db8::/120", wantSize: big.NewInt(256)},
 		"CIDR 127": {input: "2001:db8::/127", wantSize: big.NewInt(2)},
 		"CIDR 128": {input: "2001:db8::/128", wantSize: big.NewInt(1)},
 	}

@@ -27,8 +27,8 @@ func TestParseRanges(t *testing.T) {
 			wantRanges: []Range{
 				prepareRange("2001:db8::0", "2001:db8::0"),
 				prepareRange("192.0.2.0", "192.0.2.10"),
-				prepareRange("2001:db8::1", "2001:db8::2"),
-				prepareRange("192.0.2.1", "192.0.2.254"),
+				prepareRange("2001:db8::", "2001:db8::3"),
+				prepareRange("192.0.2.0", "192.0.2.255"),
 			},
 		},
 		"single invalid syntax": {
@@ -100,15 +100,15 @@ func TestParseRange(t *testing.T) {
 		},
 		"v4 CIDR: /0": {
 			input:     "192.0.2.0/0",
-			wantRange: prepareRange("0.0.0.1", "255.255.255.254"),
+			wantRange: prepareRange("0.0.0.0", "255.255.255.255"),
 		},
 		"v4 CIDR: /24": {
 			input:     "192.0.2.0/24",
-			wantRange: prepareRange("192.0.2.1", "192.0.2.254"),
+			wantRange: prepareRange("192.0.2.0", "192.0.2.255"),
 		},
 		"v4 CIDR: /30": {
 			input:     "192.0.2.0/30",
-			wantRange: prepareRange("192.0.2.1", "192.0.2.2"),
+			wantRange: prepareRange("192.0.2.0", "192.0.2.3"),
 		},
 		"v4 CIDR: /31": {
 			input:     "192.0.2.0/31",
@@ -120,7 +120,7 @@ func TestParseRange(t *testing.T) {
 		},
 		"v4 CIDR: ip instead of host address": {
 			input:     "192.0.2.10/24",
-			wantRange: prepareRange("192.0.2.1", "192.0.2.254"),
+			wantRange: prepareRange("192.0.2.0", "192.0.2.255"),
 		},
 		"v4 CIDR: missing prefix length": {
 			input:   "192.0.2.0/",
@@ -132,15 +132,15 @@ func TestParseRange(t *testing.T) {
 		},
 		"v4 Mask: /0": {
 			input:     "192.0.2.0/0.0.0.0",
-			wantRange: prepareRange("0.0.0.1", "255.255.255.254"),
+			wantRange: prepareRange("0.0.0.0", "255.255.255.255"),
 		},
 		"v4 Mask: /24": {
 			input:     "192.0.2.0/255.255.255.0",
-			wantRange: prepareRange("192.0.2.1", "192.0.2.254"),
+			wantRange: prepareRange("192.0.2.0", "192.0.2.255"),
 		},
 		"v4 Mask: /30": {
 			input:     "192.0.2.0/255.255.255.252",
-			wantRange: prepareRange("192.0.2.1", "192.0.2.2"),
+			wantRange: prepareRange("192.0.2.0", "192.0.2.3"),
 		},
 		"v4 Mask: /31": {
 			input:     "192.0.2.0/255.255.255.254",
@@ -205,15 +205,15 @@ func TestParseRange(t *testing.T) {
 		},
 		"v6 CIDR: /0": {
 			input:     "2001:db8::/0",
-			wantRange: prepareRange("::1", "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe"),
+			wantRange: prepareRange("::", "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"),
 		},
 		"v6 CIDR: /64": {
 			input:     "2001:db8::/64",
-			wantRange: prepareRange("2001:db8::1", "2001:db8::ffff:ffff:ffff:fffe"),
+			wantRange: prepareRange("2001:db8::", "2001:db8::ffff:ffff:ffff:ffff"),
 		},
 		"v6 CIDR: /126": {
 			input:     "2001:db8::/126",
-			wantRange: prepareRange("2001:db8::1", "2001:db8::2"),
+			wantRange: prepareRange("2001:db8::", "2001:db8::3"),
 		},
 		"v6 CIDR: /127": {
 			input:     "2001:db8::/127",
@@ -225,7 +225,7 @@ func TestParseRange(t *testing.T) {
 		},
 		"v6 CIDR: ip instead of host address": {
 			input:     "2001:db8::10/64",
-			wantRange: prepareRange("2001:db8::1", "2001:db8::ffff:ffff:ffff:fffe"),
+			wantRange: prepareRange("2001:db8::", "2001:db8::ffff:ffff:ffff:ffff"),
 		},
 		"v6 CIDR: missing prefix length": {
 			input:   "2001:db8::/",
