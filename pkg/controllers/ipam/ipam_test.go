@@ -1216,6 +1216,28 @@ func TestManager_AssignIP(t *testing.T) {
 				}(),
 			},
 		},
+		{
+			name:         "Allocation records that already exist but specify a different IP",
+			wantErr:      false,
+			wantAllocate: true,
+			args: args{
+				allocate: &svcRecord{
+					Key: "default/svc",
+					Eip: "eip",
+					IP:  "192.168.1.110",
+				},
+			},
+			fields: fields{
+				eip: func() *networkv1alpha2.Eip {
+					clone := eip.DeepCopy()
+					clone.Status.Usage = 1
+					clone.Status.Used = map[string]string{
+						"192.168.1.100": "default/svc",
+					}
+					return clone
+				}(),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
