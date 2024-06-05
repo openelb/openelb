@@ -115,16 +115,12 @@ func (m *Manager) UnRegisterSpeaker(name string) {
 	delete(m.speakers, name)
 }
 
-func (m *Manager) GetSpeaker(name string) Speaker {
-	return m.speakers[name]
-}
-
 func (m *Manager) HandleEIP(ctx context.Context, eip *v1alpha2.Eip) error {
 	if eip == nil {
 		return nil
 	}
 
-	if m.GetSpeaker(eip.GetProtocol()) == nil {
+	if _, exist := m.speakers[eip.GetProtocol()]; !exist {
 		return fmt.Errorf("no registered speaker:[%s] eip:[%s]", eip.GetProtocol(), eip.GetName())
 	}
 
