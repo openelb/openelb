@@ -185,13 +185,11 @@ func (k *keepAlived) DelBalancer(vip string) error {
 	}
 	delete(k.vips, vip)
 
-	instance, exist := k.instances[instanceName]
-	if !exist {
+	if _, exist := k.instances[instanceName]; !exist {
 		return nil
 	}
-	delete(k.instances, instanceName)
-	k.idAlloc.Free(instance.RouteID)
 
+	k.cleanRecord(vip, instanceName)
 	if err := k.WriteCfg(); err != nil {
 		klog.Error(err)
 		return err
