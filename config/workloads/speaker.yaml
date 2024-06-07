@@ -32,7 +32,7 @@ spec:
           args:
             - --api-hosts=:50051
             - --enable-keepalived-vip=false
-            - --enable-layer2=true
+            - --enable-layer2=false
           image: speaker:latest
           imagePullPolicy: IfNotPresent
           readinessProbe:

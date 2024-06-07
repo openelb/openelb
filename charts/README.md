@@ -21,9 +21,32 @@ OpenELB is an open source load balancer designed for bare metal Kubernetes clust
 > Note: this chart is only supported by helm3
 
 ```bash
-helm repo add stable https://charts.kubesphere.io/stable
-help repo update
-helm install openelb stable/openelb
+$ helm repo add openelb https://openelb.github.io/openelb
+"openelb" has been added to your repositories
+
+$ helm repo list
+NAME    URL                                 
+openelb https://openelb.github.io/openelb
+$ 
+$ helm repo update
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "openelb" chart repository
+Update Complete. ⎈Happy Helming!⎈
+$ 
+$ helm search repo openelb
+NAME            CHART VERSION   APP VERSION     DESCRIPTION                                    
+openelb/openelb 0.6.0           0.6.0           Bare Metal Load-balancer for Kubernetes Cluster
+$ 
+$ helm install openelb openelb/openelb -n openelb-system --create-namespace --set speaker.layer2=true --set speaker.vip=true
+NAME: openelbLAST DEPLOYED: Fri May 31 18:04:37 2024
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+The OpenELB has been installed.
+
+More info on the official site: https://openelb.io
 ```
 
 ## Uninstalling the Chart
@@ -31,7 +54,7 @@ helm install openelb stable/openelb
 To uninstall/delete the `openelb` release:
 
 ```bash
-helm del openelb
+helm del openelb -n openelb-system
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.
@@ -40,27 +63,48 @@ The command removes all the Kubernetes components associated with the chart and 
 
 The following table lists the configurable parameters of the OpenELB chart and their default values.
 
-| Parameter | Description  | Default              |
-| -----------------------    | -----------------------|----------------------|
-| `manager.image.repository`| `manager` image name.        | `kubesphere/openelb` |
-| `manager.image.tag`       | `manager` image tag.         | `v0.6.0`             |
-| `manager.image.pullPolicy`| `manager` image pull Policy. | `IfNotPresent`       |
-| `manager.resources`       | openelb manager resource requests and limits      | `{}`                 |
-| `manager.nodeSelector`     | Node labels for pod assignment             | `{}`                 |
-| `manager.terminationGracePeriodSeconds`  | Wait up to this many seconds for a broker to shut down gracefully, after which it is killed   | `10`                 |
-| `manager.tolerations` | List of node tolerations for the pods. https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/  | `[]`                 |
-| `manager.serviceAccount.name`    | Name of Kubernetes serviceAccount.   | `default`            |
-| `manager.serviceAccount.create`    | Whether to create a serviceaccount   | `false`              |
-| `manager.apiHosts`    | GoBGP will listen to the address.   | `:50051`             |
-| `manager.readinessPort`    | The openelb manager readinessprobe listens to addresses.   | `8000`               |
+
+| Parameter                     | Description                                                  | Default                           |
+| ----------------------------- | ------------------------------------------------------------ | --------------------------------- |
+| `global.imageRegistry`        | The default image registry to pull images from.              | `docker.io`                       |
+| `global.tag`                  | The global tag for images.                                   |                                   |
+| `global.imagePullSecrets`     | Secrets for pulling images from private registries.          | `[]`                              |
+| `admission.image.repository`  | The repository for the admission webhook image.              | `kubesphere/kube-webhook-certgen` |
+| `admission.image.tag`         | The tag for the admission webhook image.                     | `v1.1.1`                          |
+| `admission.image.pullPolicy`  | The image pull policy for the admission webhook image.       | `IfNotPresent`                    |
+| `controller.monitorEnable`    | Enable or disable monitoring for the controller              | `false`                           |
+| `controller.monitorPort`      | The port to use for monitoring the controller.               | `50052`                           |
+| `controller.webhookPort`      | The port to use for the webhook server.                      | `443`                             |
+| `controller.image.repository` | The repository for the openelb-controller image.             | `kubesphere/openelb-controller`   |
+| `controller.image.tag`        | The tag for the openelb-controller image.                    | `master`                          |
+| `controller.image.pullPolicy` | The image pull policy for the openelb-controller image.      | `IfNotPresent`                    |
+| `controller.resources`        | The resource limits and requests for the openelb-controller. |                                   |
+| `controller.affinity`         | The affinity settings  for the openelb-controller.           |                                   |
+| `controller.tolerations`      | The tolerations for the openelb-controller.                  |                                   |
+| `controller.nodeSelector`     | The node selector for the openelb-controller.                |                                   |
+| `speaker.enable`              | Enable or disable the speaker component.                     | `true`                            |
+| `speaker.vip`                 | Enable or disable VIP mode for the speaker.                  | `false`                           |
+| `speaker.layer2`              | Enable or disable Layer2 mode for the speaker.               | `false`                            |
+| `speaker.memberlistSecret`    | The secret for the member list, if any.                      |                                   |
+| `speaker.apiHosts`            | The API hosts for the speaker.                               | `:50051`                          |
+| `speaker.monitorEnable`       | Enable or disable monitoring for the speaker.                | `false`                           |
+| `speaker.monitorPort`         | The port to use for monitoring the speaker.                  | `50052`                           |
+| `speaker.image.repository`    | The repository for the openelb-speaker image.                | `kubesphere/openelb-speaker`      |
+| `speaker.image.tag`           | The tag for the openelb-speaker image.                       | `master`                          |
+| `speaker.image.pullPolicy`    | The image pull policy for the openelb-speaker image.         | `IfNotPresent`                    |
+| `speaker.resources`           | The resource limits and requests for the openelb-speaker.    |                                   |
+| `speaker.affinity`            | The affinity settings for the openelb-speaker.               |                                   |
+| `speaker.tolerations`         | The tolerations for the openelb-speaker.                     |                                   |
+| `speaker.nodeSelector`        | The node selector for the openelb-speaker                    |                                   |
+| `customImage.enable`          | Enable or disable the use of custom images.                  | `false`                           |
+| `customImage.forwardImage`    | The custom image for the openelb-forward component.          |                                   |
+| `customImage.proxyImage`      | The custom image for the openelb-proxy component.            |                                   |
+
 
 Specify parameters using `--set key=value[,key=value]` argument to `helm install`
 
 Alternatively a YAML file that specifies the values for the parameters can be provided like this:
 
 ```bash
-$ helm install --name my-openelb -f values.yaml stable/openelb
+$ helm install --name openelb -f values.yaml openelb/openelb -n openelb-system --create-namespace
 ```
-
-
-

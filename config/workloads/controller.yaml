@@ -3,13 +3,13 @@ kind: Deployment
 metadata:
   name: openelb-controller
   labels:
-    control-plane: openelb-controller
-    app: openelb-controller
+    component: controller
+    app: openelb
 spec:
   selector:
     matchLabels:
-      control-plane: openelb-controller
-      app: openelb-controller
+      component: controller
+      app: openelb
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -17,8 +17,8 @@ spec:
   template:
     metadata:
       labels:
-        control-plane: openelb-controller
-        app: openelb-controller
+        component: controller
+        app: openelb
     spec:
       affinity:
         podAntiAffinity:
@@ -91,6 +91,6 @@ spec:
       port: 443
       targetPort: webhook
   selector:
-      control-plane: openelb-controller
-      app: openelb-controller
+      component: controller
+      app: openelb
 
