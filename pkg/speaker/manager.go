@@ -310,6 +310,10 @@ func (m *Manager) HandleService(ctx context.Context, svc *corev1.Service) error 
 	ingress := map[string]string{}
 	for _, ip := range svc.Status.LoadBalancer.Ingress {
 		value, ok := eip.Status.Used[ip.IP]
+		if value == svc.GetNamespace()+"/"+svc.GetName() {
+			continue
+		}
+
 		if ok {
 			value += ";"
 		}
