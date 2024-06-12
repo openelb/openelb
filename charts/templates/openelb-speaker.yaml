@@ -5,15 +5,23 @@ metadata:
   name: {{ template "openelb.speaker.fullname" . }}
   namespace: {{ template "openelb.namespace" . }}
   labels:
+    app: openelb
+    component: speaker
     {{- include "openelb.speaker.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
+      app: openelb
+      component: speaker
       {{- include "openelb.speaker.labels" . | nindent 6 }}
   template:
     metadata:
-      labels: {{- include "openelb.speaker.labels" . | nindent 8 }}
+      labels: 
+        app: openelb
+        component: speaker
+        {{- include "openelb.speaker.labels" . | nindent 8 }}
     spec:
+      affinity: {{- toYaml .Values.speaker.affinity | nindent 8 }}
       tolerations: {{- toYaml .Values.speaker.tolerations | nindent 8 }}
       nodeSelector:
         {{- toYaml .Values.speaker.nodeSelector | nindent 8 }}
@@ -51,12 +59,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            {{- if (ne .Values.speaker.memberlistSecret "") }}
+            {{- if (and (default "" .Values.speaker.memberlistSecret | trim | ne "")) }}
             - name: MEMBER_LIST_SECRET
               valueFrom:
-              secretKeyRef:
-                name: memberlist
-                key: key
+                secretKeyRef:
+                  name: memberlist
+                  key: key
             {{- end }}
             - name: OPENELB_DSNAME
               valueFrom:

@@ -1079,23 +1079,23 @@ spec:
     port: 443
     targetPort: webhook
   selector:
-    app: openelb-controller
-    control-plane: openelb-controller
+    app: openelb
+    component: controller
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: openelb-controller
-    control-plane: openelb-controller
+    app: openelb
+    component: controller
   name: openelb-controller
   namespace: openelb-system
 spec:
   selector:
     matchLabels:
-      app: openelb-controller
-      control-plane: openelb-controller
+      app: openelb
+      component: controller
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -1103,8 +1103,8 @@ spec:
   template:
     metadata:
       labels:
-        app: openelb-controller
-        control-plane: openelb-controller
+        app: openelb
+        component: controller
     spec:
       affinity:
         podAntiAffinity:
@@ -1194,7 +1194,7 @@ spec:
       - args:
         - --api-hosts=:50051
         - --enable-keepalived-vip=false
-        - --enable-layer2=true
+        - --enable-layer2=false
         command:
         - openelb-speaker
         env:

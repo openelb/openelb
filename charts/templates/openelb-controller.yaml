@@ -4,10 +4,14 @@ metadata:
   name: {{ template "openelb.fullname" . }}-controller
   namespace: {{ template "openelb.namespace" . }}
   labels:
+    app: openelb
+    component: controller
     {{- include "openelb.controller.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
+      app: openelb
+      component: controller
       {{- include "openelb.controller.labels" . | nindent 6 }}
   strategy:
     rollingUpdate:
@@ -15,7 +19,10 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      labels: {{- include "openelb.controller.labels" . | nindent 8 }}
+      labels:
+        app: openelb
+        component: controller
+        {{- include "openelb.controller.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ template "openelb.controller.serviceAccountName" . }}
       affinity: {{- toYaml .Values.controller.affinity | nindent 8 }}
@@ -70,11 +77,15 @@ kind: Service
 metadata:
   name: {{ template "openelb.controller.fullname" . }}
   labels:
-  {{- include "openelb.controller.labels" . | nindent 4 }}
+    app: openelb
+    component: controller
+    {{- include "openelb.controller.labels" . | nindent 4 }}
   namespace: {{ template "openelb.namespace" . }}
 spec:
   selector:
-  {{- include "openelb.controller.labels" . | nindent 4 }}
+    app: openelb
+    component: controller
+    {{- include "openelb.controller.labels" . | nindent 4 }}
   ports:
     - name: https-webhook
       port: 443
