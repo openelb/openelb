@@ -1132,7 +1132,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: kubesphere/openelb-controller:master
+        image: kubesphere/openelb-controller:v0.6.0
         imagePullPolicy: IfNotPresent
         name: openelb-controller
         ports:
@@ -1215,7 +1215,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: kubesphere/openelb-speaker:master
+        image: kubesphere/openelb-speaker:v0.6.0
         imagePullPolicy: IfNotPresent
         name: openelb-speaker
         readinessProbe:
