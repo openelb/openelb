@@ -1,103 +1,47 @@
-name: Docker
+name: BuildContainerImage
 
 on:
   push:
-    branches: [ master ]
-    tags: ['*']
+    branches: 
+      - 'master'
+      - 'release-*'
+    tags: 
+      - 'v*'
 
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - name: Prepare
-        id: prep
-        run: |
-          DOCKER_CONTROLLER_IMAGE=kubesphere/openelb-controller
-          DOCKER_SPEAKER_IMAGE=kubesphere/openelb-speaker
-          DOCKER_FORWARD_IMAGE=kubesphere/openelb-forward
-          DOCKER_PROXY_IMAGE=kubesphere/openelb-proxy
-          VERSION=$(cat VERSION)
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          elif [[ $GITHUB_REF == refs/heads/* ]]; then
-            VERSION=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
-          elif [[ $GITHUB_REF == refs/pull/* ]]; then
-            VERSION=pr-${{ github.event.number }}
-          fi
-          CONTROLLER_TAGS="${DOCKER_CONTROLLER_IMAGE}:${VERSION}"
-          SPEAKER_TAGS="${DOCKER_SPEAKER_IMAGE}:${VERSION}"
-          FORWARD_TAGS="${DOCKER_FORWARD_IMAGE}:${VERSION}"
-          PROXY_TAGS="${DOCKER_PROXY_IMAGE}:${VERSION}"
-          if [ "${{ github.event_name }}" = "push" ]; then
-            CONTROLLER_TAGS="$CONTROLLER_TAGS,${DOCKER_CONTROLLER_IMAGE}:sha-${GITHUB_SHA::8}"
-            SPEAKER_TAGS="$SPEAKER_TAGS,${DOCKER_SPEAKER_IMAGE}:sha-${GITHUB_SHA::8}"
-            FORWARD_TAGS="$FORWARD_TAGS,${DOCKER_FORWARD_IMAGE}:sha-${GITHUB_SHA::8}"
-            PROXY_TAGS="$PROXY_TAGS,${DOCKER_PROXY_IMAGE}:sha-${GITHUB_SHA::8}"
-          fi
-          echo ::set-output name=version::${VERSION}
-          echo ::set-output name=controller-tags::${CONTROLLER_TAGS}
-          echo ::set-output name=speaker-tags::${SPEAKER_TAGS}
-          echo ::set-output name=forward-tags::${FORWARD_TAGS}
-          echo ::set-output name=proxy-tags::${PROXY_TAGS}
-          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: Build and push openelb-controller
-        uses: docker/build-push-action@v2
+
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
         with:
-          context: .
-          file: ./build/controller/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.prep.outputs.controller-tags }}
-          labels: |
-            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
-            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-      - name: Build and push openelb-speaker
-        uses: docker/build-push-action@v2
+          registry: registry.cn-beijing.aliyuncs.com
+          username: ${{ secrets.ALIYUNCS_USERNAME }}
+          password: ${{ secrets.ALIYUNCS_PASSWORD }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
         with:
-          context: .
-          file: ./build/speaker/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.prep.outputs.speaker-tags }}
-          labels: |
-            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
-            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-      - name: Build and push openelb-proxy
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./build/proxy/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.prep.outputs.proxy-tags }}
-          labels: |
-            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
-            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-      - name: Build and push openelb-forward
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./build/forward/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.prep.outputs.forward-tags }}
-          labels: |
-            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
-            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
+          platforms: all
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build and push docker images
+        if: github.event_name == 'push'
+        run: |
+          REPO=registry.cn-beijing.aliyuncs.com/kubesphereio TAG="${GITHUB_REF#refs/*/}" make container-cross-push
+          REPO=kubesphere TAG="${GITHUB_REF#refs/*/}" make container-cross-push
