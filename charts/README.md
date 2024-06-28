@@ -21,12 +21,12 @@ OpenELB is an open source load balancer designed for bare metal Kubernetes clust
 > Note: this chart is only supported by helm3
 
 ```bash
-$ helm repo add openelb https://openelb.github.io/openelb
+$ helm repo add openelb https://openelb.io/openelb
 "openelb" has been added to your repositories
 
 $ helm repo list
 NAME    URL                                 
-openelb https://openelb.github.io/openelb
+openelb https://openelb.io/openelb
 $ 
 $ helm repo update
 Hang tight while we grab the latest from your chart repositories...

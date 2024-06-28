@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://openelb.github.io/"><img src="docs/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
+<a href="https://openelb.io/"><img src="docs/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
 </p>
 
 <p align="center">
@@ -39,13 +39,13 @@ OpenELB 项目最初由 [KubeSphere 社区](https://kubesphere.io) 发起，目�
 
 ## 快速入门
 
-- [在 Kubernetes 中安装 OpenELB](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-kubernetes/)
-- [在 K3s 中安装 OpenELB](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-k3s/)
-- [在 KubeSphere 中安装 OpenELB](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-kubesphere/)
+- [在 Kubernetes 中安装 OpenELB](https://openelb.io/docs/getting-started/installation/install-openelb-on-kubernetes/)
+- [在 K3s 中安装 OpenELB](https://openelb.io/docs/getting-started/installation/install-openelb-on-k3s/)
+- [在 KubeSphere 中安装 OpenELB](https://openelb.io/docs/getting-started/installation/install-openelb-on-kubesphere/)
 
 ## 文档
 
-您可以按照[OpenELB 文档](https://openelb.github.io/docs/)中的步骤来学习如何在云服务 K8S 中部署 OpenELB。
+您可以按照[OpenELB 文档](https://openelb.io/docs/)中的步骤来学习如何在云服务 K8S 中部署 OpenELB。
 
 ## 采用者
 
@@ -58,7 +58,7 @@ OpenELB 已经被采用在[很多公司](./ADOPTERS.md)，如果您也正在使�
 ## 参与贡献以及讨论
 
 - 加入 [Slack Channel](https://kubesphere.slack.com/join/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE#/)来咨询问题或告诉我们您正在使用 OpenELB（很快将会有 Kubernetes 下的 Slack Channel）
-- 欢迎任何文档完善以及代码贡献!具体可以看[贡献指南](https://openelb.github.io/docs/building-and-contributing/)
+- 欢迎任何文档完善以及代码贡献!具体可以看[贡献指南](https://openelb.io/docs/building-and-contributing/)
 
 ## License
 

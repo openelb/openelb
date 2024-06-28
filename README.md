@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://openelb.github.io/"><img src="docs/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
+<a href="https://openelb.io/"><img src="docs/logo/openelb-vertical.svg" alt="banner" width="70px"></a>
 </p>
 
 <p align="center">
@@ -37,13 +37,13 @@ In cloud-based Kubernetes clusters, Services are usually exposed by using load b
 
 ## Quickstart
 
-- [Install OpenELB on Kubernetes](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-kubernetes/)
-- [Install OpenELB on K3s](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-k3s/)
-- [Install OpenELB on KubeSphere](https://openelb.github.io/docs/getting-started/installation/install-openelb-on-kubesphere/)
+- [Install OpenELB on Kubernetes](https://openelb.io/docs/getting-started/installation/install-openelb-on-kubernetes/)
+- [Install OpenELB on K3s](https://openelb.io/docs/getting-started/installation/install-openelb-on-k3s/)
+- [Install OpenELB on KubeSphere](https://openelb.io/docs/getting-started/installation/install-openelb-on-kubesphere/)
 
 ## Documentation
 
-You can learn how to use OpenELB in a cloud-based Kubernetes cluster by following the [OpenELB Documentation](https://openelb.github.io/docs/).
+You can learn how to use OpenELB in a cloud-based Kubernetes cluster by following the [OpenELB Documentation](https://openelb.io/docs/).
 
 ## Adopters
 
@@ -56,7 +56,7 @@ OpenELB has been adopted by [many companies](./ADOPTERS.md) all over the world. 
 ## Support, Discussion and Contributing
 
 - Join us at the [KubeSphere Slack Channel](https://kubesphere.slack.com/join/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE#/) to get support or simply tell us that you are using OpenELB.(openelb slack channel from kubernetes will be soon)
-- You have code or documents for OpenELB? Contributions are always welcome! See [Building and Contributing](https://openelb.github.io/docs/building-and-contributing/) to obtain guidance.
+- You have code or documents for OpenELB? Contributions are always welcome! See [Building and Contributing](https://openelb.io/docs/building-and-contributing/) to obtain guidance.
 
 ## License
 
