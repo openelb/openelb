@@ -6,7 +6,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/j-keck/arping"
 	"github.com/mdlayher/arp"
 	"github.com/mdlayher/ethernet"
 	"github.com/mdlayher/raw"
@@ -144,58 +143,17 @@ func generateArp(intfHW net.HardwareAddr, op arp.Operation, srcHW net.HardwareAd
 	return fb, err
 }
 
-func (a *arpAnnouncer) resolveIP(nodeIP net.IP) (hwAddr net.HardwareAddr, err error) {
-	routers, err := netlink.RouteGet(nodeIP)
-	if err != nil {
-		return nil, err
-	}
-
-	iface, err := net.InterfaceByIndex(routers[0].LinkIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	if iface.Name == "lo" {
-		hwAddr = a.intf.HardwareAddr
-	} else {
-		//Resolve mac
-		for i := 0; i < 3; i++ {
-			hwAddr, _, err = arping.PingOverIface(nodeIP, *iface)
-			if err != nil {
-				hwAddr, _, err = arping.Ping(nodeIP)
-				if err != nil {
-					continue
-				} else {
-					break
-				}
-			} else {
-				break
-			}
-		}
-	}
-
-	if hwAddr != nil {
-		return hwAddr, nil
-	}
-
-	return nil, err
-}
-
-func (a *arpAnnouncer) gratuitous(ip, nodeIP net.IP) error {
+func (a *arpAnnouncer) gratuitous(ip net.IP) error {
 	if a.getMac(ip.String()) != nil {
 		return nil
 	}
 
-	hwAddr, err := a.resolveIP(nodeIP)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ip %s, err=%v", nodeIP, err)
-	}
-	a.setMac(ip.String(), hwAddr)
-	klog.Infof("store ingress ip related node ip and mac. %s-%s-%s", ip.String(), nodeIP.String(), hwAddr.String())
+	a.setMac(ip.String(), a.intf.HardwareAddr)
+	klog.Infof("store ingress ip related mac: %s-%s", ip.String(), a.intf.HardwareAddr.String())
 	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
-		klog.Infof("send gratuitous arp packet: %s-%s-%s", ip, nodeIP, hwAddr)
+		klog.Infof("send gratuitous arp packet: %s-%s", ip, a.intf.HardwareAddr)
 
-		fb, err := generateArp(a.intf.HardwareAddr, op, hwAddr, ip, ethernet.Broadcast, ip)
+		fb, err := generateArp(a.intf.HardwareAddr, op, a.intf.HardwareAddr, ip, ethernet.Broadcast, ip)
 		if err != nil {
 			klog.Errorf("generate gratuitous arp packet: %v", err)
 			return err
@@ -211,18 +169,7 @@ func (a *arpAnnouncer) gratuitous(ip, nodeIP net.IP) error {
 }
 
 func (a *arpAnnouncer) AddAnnouncedIP(ip net.IP) error {
-	nexthops := ""
-	for _, addr := range a.addrs {
-		if addr.Contains(ip) {
-			nexthops = addr.IP.String()
-		}
-	}
-
-	if nexthops == "" {
-		return fmt.Errorf("arpAnnouncer add announced IP error : %s", ERROR_NotContainsIP)
-	}
-
-	if err := a.gratuitous(ip, net.ParseIP(nexthops)); err != nil {
+	if err := a.gratuitous(ip); err != nil {
 		return err
 	}
 
