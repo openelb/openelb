@@ -171,13 +171,9 @@ func (l *layer2Speaker) registerAnnouncer(eipName string, netif *net.Interface, 
 	if !exist {
 		// no announcer for the interface, create a new one
 		var err error
-		if r.Family() == iprange.V4Family {
-			a, err = newAnnouncer(netif, true)
-			klog.Infof("use interface %s to announce eip[%s]'s arp", netif.Name, eipName)
-		} else {
-			a, err = newAnnouncer(netif, false)
-			klog.Infof("use interface %s to announce eip[%s]'s ndp", netif.Name, eipName)
-		}
+		a, err = newAnnouncer(netif, r.Family())
+		... ...
+	klog.Infof("use interface %s to announce eip[%s]", netif.Name, eipName)
 		if err != nil {
 			return fmt.Errorf("new Announcer error. interface %s, error %s", netif.Name, err.Error())
 		}
