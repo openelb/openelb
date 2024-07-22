@@ -9,7 +9,7 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func ParseInterface(ifaceName string, v4 bool) (iface *net.Interface, err error) {
+func ParseInterface(ifaceName string) (iface *net.Interface, err error) {
 	strs := strings.SplitN(ifaceName, ":", 2)
 	if len(strs) == 1 {
 		return net.InterfaceByName(ifaceName)
@@ -55,6 +55,11 @@ func ValidateInterface(netif *net.Interface, r iprange.Range) error {
 		}
 
 		if ip.To4() != nil {
+			if cidrnet.Contains(r.Start()) && cidrnet.Contains(r.End()) {
+				return nil
+			}
+		}
+		if ip.To16() != nil {
 			if cidrnet.Contains(r.Start()) && cidrnet.Contains(r.End()) {
 				return nil
 			}

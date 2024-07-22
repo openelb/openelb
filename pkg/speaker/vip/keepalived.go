@@ -253,7 +253,7 @@ func (k *keepAlived) Start(stopCh <-chan struct{}) error {
 }
 
 func (k *keepAlived) ConfigureWithEIP(config speaker.Config, deleted bool) error {
-	netif, err := speaker.ParseInterface(config.Iface, true)
+	netif, err := speaker.ParseInterface(config.Iface)
 	if err != nil || netif == nil {
 		return err
 	}

@@ -1,7 +1,6 @@
 package layer2
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/openelb/openelb/pkg/util/iprange"
@@ -18,9 +17,9 @@ type Announcer interface {
 	Size() int
 }
 
-func newAnnouncer(iface *net.Interface, v4 bool) (Announcer, error) {
-	if v4 {
+func newAnnouncer(iface *net.Interface, family iprange.Family) (Announcer, error) {
+	if family == iprange.V4Family {
 		return newARPAnnouncer(iface)
 	}
-	return nil, fmt.Errorf("cannot create layer2 announcer, only support ipv4 now")
+	return newNDPAnnouncer(iface)
 }
