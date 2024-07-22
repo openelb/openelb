@@ -151,7 +151,7 @@ func (l *layer2Speaker) Start(stopCh <-chan struct{}) error {
 }
 
 func (l *layer2Speaker) ConfigureWithEIP(config speaker.Config, deleted bool) error {
-	netif, err := speaker.ParseInterface(config.Iface, true)
+	netif, err := speaker.ParseInterface(config.Iface)
 	if err != nil || netif == nil {
 		return err
 	}
@@ -171,7 +171,13 @@ func (l *layer2Speaker) registerAnnouncer(eipName string, netif *net.Interface, 
 	if !exist {
 		// no announcer for the interface, create a new one
 		var err error
-		a, err = newAnnouncer(netif, true)
+		if r.Family() == iprange.V4Family {
+			a, err = newAnnouncer(netif, true)
+			klog.Infof("use interface %s to announce eip[%s]'s arp", netif.Name, eipName)
+		} else {
+			a, err = newAnnouncer(netif, false)
+			klog.Infof("use interface %s to announce eip[%s]'s ndp", netif.Name, eipName)
+		}
 		if err != nil {
 			return fmt.Errorf("new Announcer error. interface %s, error %s", netif.Name, err.Error())
 		}
@@ -182,7 +188,6 @@ func (l *layer2Speaker) registerAnnouncer(eipName string, netif *net.Interface, 
 		l.announcers[netif.Name] = a
 	}
 
-	klog.Infof("use interface %s to announce eip[%s]'s arp", netif.Name, eipName)
 	a.RegisterIPRange(eipName, r)
 	return nil
 }
