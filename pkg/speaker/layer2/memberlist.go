@@ -170,7 +170,8 @@ func (l *layer2Speaker) registerAnnouncer(eipName string, netif *net.Interface, 
 	a, exist := l.announcers[netif.Name]
 	if !exist {
 		// no announcer for the interface, create a new one
-		a, err := newAnnouncer(netif, r.Family())
+		var err error
+		a, err = newAnnouncer(netif, r.Family())
 		if err != nil {
 			return fmt.Errorf("new Announcer error. interface %s, error %s", netif.Name, err.Error())
 		}
