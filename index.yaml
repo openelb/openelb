@@ -3,9 +3,25 @@ entries:
   openelb:
   - apiVersion: v2
     appVersion: 0.6.0
+    created: "2024-07-24T14:28:17.032265254+08:00"
+    description: Bare Metal Load-balancer for Kubernetes Cluster
+    digest: e1163ff00ce3bcf934ee8fc7d0cd6c8f50ba67000d1f5d8d2420a3edec1a3b32
+    icon: https://raw.githubusercontent.com/openelb/openelb/master/docs/logo/openelb-vertical.svg
+    maintainers:
+    - email: kubesphere@gmail.com
+      name: KubeSphere
+    name: openelb
+    sources:
+    - https://github.com/openelb/openelb
+    type: application
+    urls:
+    - openelb-0.6.1.tgz
+    version: 0.6.1
+  - apiVersion: v2
+    appVersion: 0.6.0
     created: "2024-05-31T18:01:28.995333324+08:00"
     description: Bare Metal Load-balancer for Kubernetes Cluster
-    digest: 31aaa6bfccf70f03cef8546cd99602311056a1b374388ea48f092ea76c158e79
+    digest: 6cf7fe86f40edacdf348c68c356e43b73645b5394f9ba0bd8d4be4054572dfcd
     icon: https://raw.githubusercontent.com/openelb/openelb/master/docs/logo/openelb-vertical.svg
     maintainers:
     - email: kubesphere@gmail.com
