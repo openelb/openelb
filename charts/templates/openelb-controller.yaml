@@ -60,7 +60,6 @@ spec:
               mountPath: /tmp/k8s-webhook-server/serving-certs/
               readOnly: true
       terminationGracePeriodSeconds: 10
-      tolerations: {{- toYaml .Values.controller.tolerations | nindent 8 }}
       volumes:
         - name: webhook-cert
           secret:
@@ -95,3 +94,4 @@ spec:
       name: metrics
       {{ end }}
   type: ClusterIP
+  
