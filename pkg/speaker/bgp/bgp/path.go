@@ -137,6 +137,10 @@ func (b *Bgp) ready() error {
 
 func (b *Bgp) setBalancer(ip string, nexthops []string) error {
 	prefix := uint32(32)
+	if net.ParseIP(ip).To4() == nil {
+		prefix = 128
+	}
+
 	err, toAdd, toDelete := b.retriveRoutes(ip, prefix, nexthops)
 	if err != nil {
 		return err
