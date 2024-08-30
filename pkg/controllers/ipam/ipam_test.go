@@ -1249,7 +1249,7 @@ func TestManager_AssignIP(t *testing.T) {
 			cl.WithStatusSubresource(objs...).WithScheme(scheme).WithObjects(objs...)
 
 			m := NewManager(cl.Build())
-			err := m.AssignIP(context.Background(), tt.args.allocate)
+			err := m.AssignIP(context.Background(), []v1.IPFamily{"IPv4"}, tt.args.allocate)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Manager.AssignIP() error = %v, wantErr %v", err, tt.wantErr)
 				return

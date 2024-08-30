@@ -212,7 +212,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if request.Allocate != nil {
 		klog.V(4).Infof("Allocate service loadbalanceip %s", request.Allocate.String())
-		err = r.ipmanager.AssignIP(ctx, request.Allocate)
+		err = r.ipmanager.AssignIP(ctx, svc.Spec.IPFamilies, request.Allocate)
 		if err != nil {
 			klog.Errorf("%s assign ip[%s] form eip[%s] error :%s", request.Allocate.Key, request.Allocate.IP, request.Allocate.Eip, err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "AssignIPFailed", err.Error())

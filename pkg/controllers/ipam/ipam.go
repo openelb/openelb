@@ -3,6 +3,7 @@ package ipam
 import (
 	"context"
 	"fmt"
+	"github.com/openelb/openelb/pkg/util/iprange"
 	"math/big"
 	"net"
 	"reflect"
@@ -417,7 +418,7 @@ func (i *Manager) constructRelease(info info) *svcRecord {
 	return r
 }
 
-func (i *Manager) AssignIP(ctx context.Context, allocate *svcRecord) error {
+func (i *Manager) AssignIP(ctx context.Context, ipFamilies []v1.IPFamily, allocate *svcRecord) error {
 	if allocate == nil {
 		return nil
 	}
@@ -427,6 +428,15 @@ func (i *Manager) AssignIP(ctx context.Context, allocate *svcRecord) error {
 	err := i.Get(ctx, types.NamespacedName{Name: allocate.Eip}, eip)
 	if err != nil {
 		return err
+	}
+
+	parseRange, err := iprange.ParseRange(eip.Spec.Address)
+	if err != nil {
+		return err
+	}
+	eipFamily := parseRange.Family()
+	if !IsSameFamily(eipFamily, ipFamilies) {
+		return fmt.Errorf("service can't use different family eip")
 	}
 
 	clone := eip.DeepCopy()
@@ -478,4 +488,16 @@ func (i *Manager) updateMetrics(eip *networkv1alpha2.Eip) {
 	}
 
 	metrics.UpdateEipMetrics(eip.Name, total, used, svcCount)
+}
+
+func IsSameFamily(eipFamily iprange.Family, ipFamilies []v1.IPFamily) bool {
+	for _, ipFamily := range ipFamilies {
+		if ipFamily == v1.IPv4Protocol && eipFamily == iprange.V4Family {
+			return true
+		}
+		if ipFamily == v1.IPv6Protocol && eipFamily == iprange.V6Family {
+			return true
+		}
+	}
+	return false
 }
