@@ -146,7 +146,13 @@ func (k *keepAlived) cleanRecord(vip, instanceName string) {
 func (k *keepAlived) getInterfaces(vip string) string {
 	for _, c := range k.configs {
 		if c.IPRange.Contains(net.ParseIP(vip)) {
-			return c.Iface
+			parseInterface, err := speaker.ParseInterface(c.Iface)
+			if err != nil {
+				klog.Error(err)
+				return ""
+			}
+			klog.Info("get interface", parseInterface.Name)
+			return parseInterface.Name
 		}
 	}
 	return ""
