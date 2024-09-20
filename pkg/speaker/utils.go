@@ -5,7 +5,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/openelb/openelb/pkg/util/iprange"
 	"github.com/vishvananda/netlink"
 )
 
@@ -40,31 +39,4 @@ func ParseInterface(ifaceName string) (iface *net.Interface, err error) {
 	}
 
 	return iface, nil
-}
-
-func ValidateInterface(netif *net.Interface, r iprange.Range) error {
-	addrs, err := netif.Addrs()
-	if err != nil {
-		return err
-	}
-
-	for _, addr := range addrs {
-		ip, cidrnet, err := net.ParseCIDR(addr.String())
-		if err != nil {
-			return err
-		}
-
-		if ip.To4() != nil {
-			if cidrnet.Contains(r.Start()) && cidrnet.Contains(r.End()) {
-				return nil
-			}
-		}
-		if ip.To16() != nil {
-			if cidrnet.Contains(r.Start()) && cidrnet.Contains(r.End()) {
-				return nil
-			}
-		}
-	}
-
-	return fmt.Errorf("%s's ip and the eip[%s] are not in the same network segment", netif.Name, r.String())
 }
