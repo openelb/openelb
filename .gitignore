@@ -27,3 +27,4 @@ bin
 *.coverprofile
 # log
 *.porterlog
+.nocalhost

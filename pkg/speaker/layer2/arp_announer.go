@@ -192,8 +192,8 @@ func (a *arpAnnouncer) gratuitous(ip, nodeIP net.IP) error {
 	}
 	a.setMac(ip.String(), hwAddr)
 	klog.Infof("store ingress ip related node ip and mac. %s-%s-%s", ip.String(), nodeIP.String(), hwAddr.String())
+	klog.Infof("send gratuitous arp packet: %s-%s-%s", ip, nodeIP, hwAddr)
 	for _, op := range []arp.Operation{arp.OperationRequest, arp.OperationReply} {
-		klog.Infof("send gratuitous arp packet: %s-%s-%s", ip, nodeIP, hwAddr)
 
 		fb, err := generateArp(a.intf.HardwareAddr, op, hwAddr, ip, ethernet.Broadcast, ip)
 		if err != nil {
