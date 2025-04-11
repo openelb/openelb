@@ -97,7 +97,7 @@ The following table lists the configurable parameters of the OpenELB chart and t
 | `speaker.affinity`            | The affinity settings for the openelb-speaker.               |                                   |
 | `speaker.tolerations`         | The tolerations for the openelb-speaker.                     |                                   |
 | `speaker.nodeSelector`        | The node selector for the openelb-speaker                    |                                   |
-| `speaker.priorityClass`       | Priority Class Name for the openelb-controller               |                                   |
+| `speaker.priorityClass`       | Priority Class Name for the openelb-speaker                  |                                   |
 | `customImage.enable`          | Enable or disable the use of custom images.                  | `false`                           |
 | `customImage.forwardImage`    | The custom image for the openelb-forward component.          |                                   |
 | `customImage.proxyImage`      | The custom image for the openelb-proxy component.            |                                   |
