@@ -25,6 +25,9 @@ spec:
       tolerations: {{- toYaml .Values.speaker.tolerations | nindent 8 }}
       nodeSelector:
         {{- toYaml .Values.speaker.nodeSelector | nindent 8 }}
+      {{- with .Values.speaker.priorityClass }}
+      priorityClassName: {{ . }}
+      {{- end }}
       serviceAccountName: {{ template "openelb.speaker.serviceAccountName" . }}
       containers:
         - name: openelb-speaker

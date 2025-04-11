@@ -6,7 +6,7 @@ maintainers:
 - email: kubesphere@gmail.com
   name: KubeSphere
 name: openelb
-version: 0.6.0
+version: 0.6.1
 sources:
   - https://github.com/openelb/openelb
 type: application

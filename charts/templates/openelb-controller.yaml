@@ -25,6 +25,9 @@ spec:
         {{- include "openelb.controller.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ template "openelb.controller.serviceAccountName" . }}
+      {{- with .Values.controller.priorityClass }}
+      priorityClassName: {{ . }}
+      {{- end }}
       affinity: {{- toYaml .Values.controller.affinity | nindent 8 }}
       tolerations: {{- toYaml .Values.controller.tolerations | nindent 8 }}
       nodeSelector: {{- toYaml .Values.controller.nodeSelector | nindent 8 }}
