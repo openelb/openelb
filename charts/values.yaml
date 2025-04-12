@@ -35,6 +35,7 @@ controller:
       key: node-role.kubernetes.io/master
     - effect: NoSchedule
       key: node-role.kubernetes.io/control-plane
+  priorityClass: ""
   # nodeSelector:
   #   node-role.kubernetes.io/control-plane: ""
   # affinity:
@@ -68,6 +69,7 @@ speaker:
     requests:
       cpu: 100m
       memory: 100Mi
+  priorityClass: ""
   # nodeSelector:
   #   kubernetes.io/os: linux
   # affinity:

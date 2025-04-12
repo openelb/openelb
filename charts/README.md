@@ -82,6 +82,7 @@ The following table lists the configurable parameters of the OpenELB chart and t
 | `controller.affinity`         | The affinity settings  for the openelb-controller.           |                                   |
 | `controller.tolerations`      | The tolerations for the openelb-controller.                  |                                   |
 | `controller.nodeSelector`     | The node selector for the openelb-controller.                |                                   |
+| `controller.priorityClass`    | Priority Class name for the openelb-controller               |                                   |
 | `speaker.enable`              | Enable or disable the speaker component.                     | `true`                            |
 | `speaker.vip`                 | Enable or disable VIP mode for the speaker.                  | `false`                           |
 | `speaker.layer2`              | Enable or disable Layer2 mode for the speaker.               | `false`                            |
@@ -96,6 +97,7 @@ The following table lists the configurable parameters of the OpenELB chart and t
 | `speaker.affinity`            | The affinity settings for the openelb-speaker.               |                                   |
 | `speaker.tolerations`         | The tolerations for the openelb-speaker.                     |                                   |
 | `speaker.nodeSelector`        | The node selector for the openelb-speaker                    |                                   |
+| `speaker.priorityClass`       | Priority Class Name for the openelb-speaker                  |                                   |
 | `customImage.enable`          | Enable or disable the use of custom images.                  | `false`                           |
 | `customImage.forwardImage`    | The custom image for the openelb-forward component.          |                                   |
 | `customImage.proxyImage`      | The custom image for the openelb-proxy component.            |                                   |
