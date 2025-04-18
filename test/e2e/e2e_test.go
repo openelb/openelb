@@ -31,6 +31,7 @@ import (
 	// test sources
 	_ "github.com/openelb/openelb/test/e2e/bgp"
 	_ "github.com/openelb/openelb/test/e2e/controller"
+	_ "github.com/openelb/openelb/test/e2e/layer2"
 	_ "github.com/openelb/openelb/test/e2e/vip"
 )
 
