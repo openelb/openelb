@@ -1,3 +1,26 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openelb-speaker
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -9,30 +32,9 @@ rules:
   - ""
   resources:
   - configmaps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - endpoints
+  - nodes
+  - services
   verbs:
   - get
   - list
@@ -46,33 +48,12 @@ rules:
   - patch
   - update
 - apiGroups:
-  - ""
-  resources:
-  - nodes
-  - pods
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - network.kubesphere.io
   resources:
   - bgpconfs
   - bgppeers
   - eips
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -98,7 +79,7 @@ rules:
 # openelb-controller
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: openelb-controller
 rules:
@@ -123,26 +104,23 @@ rules:
     - update
     - patch
 - apiGroups:
-  - ""
+    - apps
   resources:
-  - configmaps
+    - daemonsets
+    - deployments
   verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+    - create
+    - delete
+    - patch
+    - update
+
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openelb-controller
+rules:
 - apiGroups:
   - ""
   resources:
@@ -154,6 +132,7 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
   - namespaces
   - nodes
   - pods
@@ -167,8 +146,6 @@ rules:
   resources:
   - services
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -209,4 +186,12 @@ rules:
   - get
   - patch
   - update
-
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch

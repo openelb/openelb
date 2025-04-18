@@ -13,6 +13,7 @@ const (
 	OpenELBLayer2Annotation string = "layer2.openelb.kubesphere.io/v1alpha1"
 
 	NodeProxyTypeAnnotationKey        string = "node-proxy.openelb.kubesphere.io/type"
+	NodeProxyNamespaceAnnotationKey   string = "node-proxy.openelb.kubesphere.io/namespace"
 	NodeProxyTypeDeployment           string = "deployment"
 	NodeProxyTypeDaemonSet            string = "daemonset"
 	LabelNodeProxyExternalIPPreffered string = "node-proxy.openelb.kubesphere.io/external-ip-preffered"
@@ -25,7 +26,8 @@ const (
 	NodeProxyWorkloadPrefix           string = "node-proxy-"
 	NodeProxyFinalizerName            string = "node-proxy.openelb.kubesphere.io/finalizer"
 
-	KubernetesMasterLabel string = "node-role.kubernetes.io/master"
+	KubernetesMasterLabel       string = "node-role.kubernetes.io/master"
+	KubernetesControlPlaneLabel string = "node-role.kubernetes.io/control-plane"
 
 	OpenELBEIPAnnotationKey         string = "eip.openelb.kubesphere.io/v1alpha1"
 	OpenELBEIPAnnotationKeyV1Alpha2 string = "eip.openelb.kubesphere.io/v1alpha2"
@@ -43,12 +45,14 @@ const (
 	OpenELBCNICalico      string = "calico"
 	EipRangeSeparator     string = "-"
 
-	OpenELBControllerLocker = "openelb-controller"
+	OpenELBControllerName   = "openelb-controller"
+	OpenELBControllerLocker = OpenELBControllerName
 	OpenELBSpeakerName      = "openelb-speaker"
 	OpenELBNamespace        = "openelb-system"
 	OpenELBBgpName          = "gobgp.conf"
 	EnvOpenELBNamespace     = "OPENELB_NAMESPACE"
 	EnvDaemonsetName        = "OPENELB_DSNAME"
+	EnvDeploymentName       = "OPENELB_DEPLOYNAME"
 	EnvNodeName             = "NODE_NAME"
 	EnvSecretName           = "MEMBER_LIST_SECRET"
 
