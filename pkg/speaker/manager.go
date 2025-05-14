@@ -248,10 +248,11 @@ func (m *Manager) setBalancer(ctx context.Context, protocol string, usage map[st
 		}
 
 		if len(nodes) == 0 {
-			warnStr := fmt.Sprintf("no available nodes for service ip %s:%s", ip, value)
+			warnStr := fmt.Sprintf("delete balancer with no available nodes for service ip %s:%s.", ip, value)
 			m.addSvcEventRecorder(ctx, value, corev1.EventTypeWarning, "SetBalancer", warnStr)
 			klog.Warning(warnStr)
-			continue
+
+			return m.speakers[protocol].DelBalancer(ip)
 		}
 
 		nodeNames := []string{}
@@ -307,6 +308,7 @@ func (m *Manager) HandleService(ctx context.Context, svc *corev1.Service) error 
 	for _, ip := range svc.Status.LoadBalancer.Ingress {
 		value, ok := eip.Status.Used[ip.IP]
 		if value == svc.GetNamespace()+"/"+svc.GetName() {
+			ingress[ip.IP] = value
 			continue
 		}
 

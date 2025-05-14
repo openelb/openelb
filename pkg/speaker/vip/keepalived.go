@@ -74,6 +74,11 @@ func NewKeepAlived(client *kubernetes.Clientset, logPath, args string) (*keepAli
 }
 
 func (k *keepAlived) SetBalancer(vip string, nodes []corev1.Node) error {
+	if len(nodes) == 0 {
+		klog.Warningf("no suitable nodes to participate in the announced election.")
+		return nil
+	}
+
 	iface := k.getInterfaces(vip)
 	if iface == "" {
 		return fmt.Errorf("no interface found for VIP %s", vip)
