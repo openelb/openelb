@@ -110,6 +110,16 @@ func EnvNamespace() string {
 	return ns
 }
 
+func EnvDeploymentName() string {
+	name := os.Getenv(constant.EnvDeploymentName)
+	if name == "" {
+		return constant.OpenELBControllerName
+	}
+
+	strs := strings.Split(name, "-")
+	return strings.Join(strs[:len(strs)-2], "-")
+}
+
 func EnvDaemonsetName() string {
 	name := os.Getenv(constant.EnvDaemonsetName)
 	if name == "" {
