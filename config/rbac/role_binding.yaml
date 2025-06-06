@@ -14,6 +14,18 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: openelb-speaker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openelb-speaker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openelb-speaker
+subjects:
+  - kind: ServiceAccount
+    name: openelb-speaker
 
 
 ---
@@ -33,5 +45,16 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: openelb-controller
-    
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openelb-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openelb-controller
+subjects:
+  - kind: ServiceAccount
+    name: openelb-controller 
 

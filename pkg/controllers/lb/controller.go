@@ -179,7 +179,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Reconcile by OpenELB NodeProxy if this service is specified to be exported by it
 	if validate.HasOpenELBNPAnnotation(svc.Annotations) {
-		return r.reconcileNP(svc)
+		return r.reconcileNP(ctx, svc)
 	}
 
 	request, err := r.ipmanager.ConstructRequest(ctx, svc)
@@ -200,6 +200,11 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			klog.Errorf("%s release ip[%s] form eip[%s] error :%s", request.Release.Key, request.Release.IP, request.Release.Eip, err.Error())
 			r.Event(svc, corev1.EventTypeWarning, "ReleaseIPFailed", err.Error())
 			return ctrl.Result{}, err
+		}
+
+		//clean node proxy data
+		if result, err := r.cleanNodeProxyData(ctx, clone); err != nil {
+			return result, err
 		}
 
 		//update service

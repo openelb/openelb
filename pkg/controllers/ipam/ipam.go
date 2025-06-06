@@ -3,12 +3,13 @@ package ipam
 import (
 	"context"
 	"fmt"
-	"github.com/openelb/openelb/pkg/util/iprange"
 	"math/big"
 	"net"
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/openelb/openelb/pkg/util/iprange"
 
 	networkv1alpha2 "github.com/openelb/openelb/api/v1alpha2"
 	"github.com/openelb/openelb/pkg/constant"
@@ -215,7 +216,13 @@ func (i *Manager) ConstructRequest(ctx context.Context, svc *v1.Service) (req Re
 	if len(svc.Status.LoadBalancer.Ingress) > 0 {
 		var ips []string
 		for _, i := range svc.Status.LoadBalancer.Ingress {
-			ips = append(ips, i.IP)
+			if i.IP != "" {
+				ips = append(ips, i.IP)
+			}
+
+			if i.Hostname != "" {
+				ips = append(ips, i.Hostname)
+			}
 		}
 
 		info.svcStatusLBIP = strings.Join(ips, ";")
