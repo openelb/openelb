@@ -71,3 +71,7 @@ func (f *Fake) DelBalancer(ip string) error {
 func (f *Fake) Start(stopCh <-chan struct{}) error {
 	return nil
 }
+
+func (f *Fake) ConfigureWithEIP(config Config, deleted bool) error {
+	return nil
+}

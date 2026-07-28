@@ -248,9 +248,14 @@ func (m *Manager) setBalancer(ctx context.Context, protocol string, usage map[st
 		}
 
 		if len(nodes) == 0 {
-			warnStr := fmt.Sprintf("no available nodes for service ip %s:%s", ip, value)
+			warnStr := fmt.Sprintf("delete balancer with no available nodes for service ip %s:%s.", ip, value)
 			m.addSvcEventRecorder(ctx, value, corev1.EventTypeWarning, "SetBalancer", warnStr)
 			klog.Warning(warnStr)
+
+			if err := m.speakers[protocol].DelBalancer(ip); err != nil {
+				m.addSvcEventRecorder(ctx, value, corev1.EventTypeWarning, "SetBalancer", err.Error())
+				return err
+			}
 			continue
 		}
 
