@@ -8,7 +8,7 @@ OpenELB is an open source load balancer designed for bare metal Kubernetes clust
 
 ---
 
-## Prerequistes
+## Prerequisites
 
 - kubernetes >= 1.15
 
